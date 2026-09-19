@@ -1,8 +1,0 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Dawnwalker · Convai</title>
-<style>body{background:#141617;color:#eee;font:17px system-ui;max-width:780px;margin:50px auto;padding:24px}h1{color:#dac197}label{display:block;margin:22px 0 6px}input,textarea,button{box-sizing:border-box;width:100%;padding:12px;background:#252a2c;color:white;border:1px solid #596064;border-radius:6px}button{cursor:pointer;background:#554631;margin-top:18px}small{color:#bdc3c6}#status{color:#dac197;margin:28px 0}#subtitle{min-height:90px;font-size:24px}pre{white-space:pre-wrap;font:13px monospace}</style>
-<h1>Dawnwalker · Convai</h1><p><b>F5</b> manages companions. Face a nearby character: <b>F6</b> opens single text chat and <b>F7</b> toggles single voice. <b>F8</b> opens group text and <b>F9</b> starts a group voice turn. Microphone capture starts off. Walk away to end a conversation.</p>
-<label for="key">Convai API key</label><input id="key" type="password" autocomplete="off"><small>The helper loads your key from the local runtime configuration and authenticates directly with Convai.</small>
-<label for="character">Default Convai character ID</label><input id="character" autocomplete="off">
-<label for="mapping">Optional character mappings (JSON: actor class or full actor name → Convai character ID)</label><textarea id="mapping" rows="3">{}</textarea>
-<button id="arm">Enable text replies and audio</button><button id="stop">Disconnect</button>
-<div id="status">Not armed</div><div id="subtitle"></div><pre id="detail"></pre><script type="module" src="/client.js"></script></html>

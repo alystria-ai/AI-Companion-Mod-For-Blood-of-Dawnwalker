@@ -1,0 +1,16 @@
+Dawnwalker Convai prebuilt components
+
+Node.js: executable distributed with its version-specific upstream LICENSE.
+Microsoft WebView2 SDK: Core, WinForms and loader components; see the included
+Microsoft license and notices. WebView2 Runtime is an external prerequisite.
+Convai Web SDK and browser dependencies: included in the compiled client bundle;
+their individual licenses and available notices accompany this file.
+Afacad: SIL Open Font License, included beside the font files.
+
+External dependencies, installed separately:
+UE4SS for Dawnwalker: https://www.nexusmods.com/thebloodofdawnwalker/mods/18
+Dawnwalker Mod Menu: https://www.nexusmods.com/thebloodofdawnwalker/mods/271
+The native party UI calls the installed menu's theme helper at runtime. Menu
+files and game artwork are not redistributed in this archive.
+
+The mod is unofficial and is not affiliated with the game's developers.
