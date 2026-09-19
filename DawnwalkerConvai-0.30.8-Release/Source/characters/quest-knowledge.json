@@ -1,0 +1,1286 @@
+{
+  "version": 4,
+  "default": "withhold",
+  "rules": [
+    {
+      "key": "anca-1",
+      "quest": "Withering Away",
+      "idPrefix": "q002_herbs",
+      "recipient": "anca",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "You gave Coen herbs for Esme and explained how to prepare them. You know his family was worried about her surviving Blood Mass; supplying medicine does not establish that he brewed it correctly or that she survived.",
+      "reason": "Supplier, not witness to administering the herbs. Price and optional choices withheld.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-withering-away-walkthrough/"
+    },
+    {
+      "key": "anca-2",
+      "quest": "Smoke and Ashes",
+      "idPrefix": "q101_laslea",
+      "recipient": "anca",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "At ruined Laslea, you removed the pickaxe from Coen and saw his unusual healing in daylight. You helped him use Compel Soul to investigate his family's disappearance. The trail pointed to Brencis holding them for his coronation, so Coen needed allies.",
+      "reason": "The shared return, discovery and investigation are witnessed. No later rescue or cure is implied.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-smoke-and-ashes-walkthrough/"
+    },
+    {
+      "key": "anca-3",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "recipient": "anca",
+      "state": "EQS_Success",
+      "endingPattern": "Leonica",
+      "text": "At St. Tyna's, you and Coen learned that Leonica's attempt to save the sisters from plague had trapped them in undeath. You recovered the forbidden books and found her notes. The separate ritual-choice memory determines whether Coen let you carry out her plan.",
+      "reason": "Direct participant; only shared events are included.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-echoes-of-silenced-bells-walkthrough/"
+    },
+    {
+      "key": "anca-4",
+      "quest": "Between the Words",
+      "idPrefix": "q101_ending",
+      "recipient": "anca",
+      "state": "EQS_Success",
+      "endingPattern": "sword",
+      "text": "You and Coen studied the forbidden books, using heat to reveal concealed writing. The research pointed to a monster-slaying sword associated with St. Mihai and to Albertus as a possible lead. Finding this information does not mean the sword was recovered.",
+      "reason": "Direct participant; only shared events are included.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-between-the-words-walkthrough/"
+    },
+    {
+      "key": "lacra-5",
+      "quest": "A Friend Like This",
+      "idPrefix": "q103_journal_investigation",
+      "recipient": "lacra",
+      "state": "EQS_Success",
+      "endingPattern": "village",
+      "text": "After your rooftop encounter with Coen, you worked with him to question Nish about Brencis's sire. The lead pointed to a mountain village reached by following windchimes. Nish's later fate and any particular promise from Coen are not established.",
+      "reason": "Direct participant; only shared events are included.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-a-friend-like-this-walkthrough/"
+    },
+    {
+      "key": "lacra-6",
+      "quest": "Song of the Mountain",
+      "idPrefix": "q103_journal_uriashes",
+      "recipient": "lacra",
+      "state": "EQS_Success",
+      "endingPattern": "The Elder told us",
+      "text": "You and Coen reached the uriash village, where the Elder directed you to the caves holding Isbrand. That report gave your search a destination; it does not establish that every encounter with the clan was peaceful.",
+      "reason": "Only the journal-confirmed Elder report branch; does not assume the violent alternative or optional choices.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-song-of-the-mountain-walkthrough/"
+    },
+    {
+      "key": "lacra-7",
+      "quest": "Hive and Seek",
+      "idPrefix": "q103_journal_caves",
+      "recipient": "lacra",
+      "state": "EQS_Success",
+      "endingPattern": "abandoned fort",
+      "text": "You and Coen found Isbrand so damaged that he could not answer questions. Kobolds had repeatedly fed on his regenerating body. You brought him to the abandoned fort to attempt recovery.",
+      "reason": "Direct participant; only shared events are included.",
+      "source": "https://www.method.gg/the-blood-of-dawnwalker/the-blood-of-dawnwalker-hive-and-seek-quest-walkthrough"
+    },
+    {
+      "key": "lacra-8",
+      "quest": "Our Rotten Roots",
+      "idPrefix": "q104_journal",
+      "recipient": "lacra",
+      "state": "EQS_Success",
+      "endingPattern": "Isbrand",
+      "text": "Isbrand could not answer normally, so you guided Coen through his memories in Anachora. Coen overcame the Broken Shade, and your shared investigation yielded a way to strike Brencis. This does not establish that Coen visited the optional solitary memory or invited Isbrand into his mind.",
+      "reason": "Shared investigation only. Optional memories Coen visits alone are deliberately excluded.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-our-rotten-roots-walkthrough/"
+    },
+    {
+      "key": "marat-scouts-reported",
+      "quest": "What Hunts the Night",
+      "idPrefix": "q106_journal_02_Troubles_in_The_Middens",
+      "recipient": "marat",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "Coen reported what he learned about the missing scouts and Brencis's winged creatures. You investigated the churchyard together, survived the ambush and examined the creature's strange mouth inscription. You offered a lead to someone who might decipher it.",
+      "reason": "This quest includes the report and shared investigation. The preceding induction quest alone does not tell Crake the scouts' findings.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-what-hunts-the-night-walkthrough/"
+    },
+    {
+      "key": "anca-ruins",
+      "recipient": "anca",
+      "quest": "Where Old Devils Lie",
+      "idPrefix": "sq721_Anca",
+      "state": "EQS_Success",
+      "endingPattern": "ruins|riddle",
+      "text": "You and Coen followed Enolf's research, solved the riddle and located the old ruins in your search for the Font. Reaching the ruins does not establish completion of the inner trials or use of the Font.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-where-old-devils-lie-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "anca-font-used",
+      "recipient": "anca",
+      "quest": "Stronger Than Achilles",
+      "idPrefix": "sq721_Anca_Trials",
+      "state": "EQS_Success",
+      "endingPattern": "I let her use the Font",
+      "text": "After the trials, you and Coen discovered that the Font drew on the blood of fallen heroes. Coen yielded its power to you. This records his sacrifice and your use of the Font, without inventing later symptoms, recovery or romance.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/stronger-than-achilles",
+      "reason": "The selected ending explicitly gives Anca the Font; contradictory consumption or destruction text rejects this choice.",
+      "endingNotPattern": "decided to use it|destroyed it|Anca.{0,60}dead"
+    },
+    {
+      "key": "marat-introduction",
+      "recipient": "marat",
+      "quest": "Shadows in the Woods",
+      "idPrefix": "Q105_Journal_after_Guard_Post",
+      "state": "EQS_Success",
+      "endingPattern": "spoke with Crake",
+      "text": "Sara brought Coen to the forest camp, where you and Drogos questioned him. You withheld the Manumits' support until he proved himself against the court. This first meeting does not establish later induction, private confessions or romance.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-shadows-in-the-woods-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "sara-rescue",
+      "recipient": "sara",
+      "quest": "Shadows in the Woods",
+      "idPrefix": "Q105_Journal_after_Guard_Post",
+      "state": "EQS_Success",
+      "endingPattern": "spoke with Crake",
+      "text": "Coen freed you from the guards and you guided him to Crake's forest camp. You were his link to the rebel leaders. Whether he paid, threatened or fought the guards is not established by this ending.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-shadows-in-the-woods-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "drogos-camp-meeting",
+      "recipient": "drogos",
+      "quest": "Shadows in the Woods",
+      "idPrefix": "Q105_Journal_after_Guard_Post",
+      "state": "EQS_Success",
+      "endingPattern": "spoke with Crake",
+      "text": "You were with Crake when Sara brought Coen to the rebel camp. You took part in assessing this outsider before he had earned the Manumits' trust. This does not give you knowledge of his later private missions or conversations with Crake.",
+      "source": "https://allthings.how/the-blood-of-dawnwalker-how-to-complete-follow-sara-in-shadows-in-the-woods/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "marat-dead-investigation",
+      "recipient": "marat",
+      "quest": "What Moves the Dead",
+      "idPrefix": "q106_journal_03_Mystery_Alchemist",
+      "state": "EQS_Success",
+      "endingPattern": "Silas|book",
+      "text": "You and Coen examined Mevasser's woodcut and searched Silas's house and the ruins beneath it for the origin of the gargoyles. You were captured, and Coen rescued and led you out. No optional escort home, wound-tending, kiss or later private tower discovery is established.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-what-moves-the-dead-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "marat-hex-reported",
+      "recipient": "marat",
+      "quest": "Who Pulls the Strings",
+      "idPrefix": "q106_journal_04_Astrologers_Tower",
+      "state": "EQS_Success",
+      "endingPattern": "showed Marat",
+      "text": "Coen returned with the hex for weakening the gargoyles and showed it to you. You began preparing the Manumits' march on Greifberg. You know the report, not every private event in Aurelius's tower, and the assault has not automatically happened.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-who-pulls-the-strings-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "vicho-simeon",
+      "recipient": "vicho",
+      "quest": "A Study in Crimson",
+      "idPrefix": "sq714_vampireally",
+      "state": "EQS_Success",
+      "endingPattern": "Simeon",
+      "text": "You and Coen investigated the deaths of your friends Eli and Devora, followed the trail to Doctor Simeon and fought him as a murohn after his experiments with vrakhiri teeth. At that stage you believed Simeon explained the murders; only a separate explicit confrontation establishes any later correction.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-a-study-in-crimson-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "pieter-sparring",
+      "recipient": "pieter",
+      "quest": "Like Father, Like Son",
+      "idPrefix": "q002_sparring",
+      "state": "EQS_Success",
+      "endingPattern": "father|Father",
+      "text": "You trained Coen in swordplay and admitted that villagers were considering rebellion against the vrakhiri. You were weighing whether to join. This conversation alone does not establish your eventual decision or tell you what Coen later discovered about your past.",
+      "source": "https://camzillasmom.com/the-blood-of-dawnwalker-like-father-like-son/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "leonica-confrontation",
+      "recipient": "leonica",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "state": "EQS_Success",
+      "endingPattern": "Leonica",
+      "text": "Anca returned to St. Tyna's with Coen and reached your ritual chamber. They confronted you amid the consequences of your plague-saving magic. You do not thereby witness their later decision about your notes or the sisters' release.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-echoes-of-silenced-bells-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "matriarch-directions",
+      "recipient": "matriarch",
+      "quest": "Song of the Mountain",
+      "idPrefix": "q103_journal_uriashes",
+      "state": "EQS_Success",
+      "endingPattern": "The Elder told us",
+      "text": "You gave Coen and Lacra the location of Isbrand's cave imprisonment. You know that you supplied the lead, not that they subsequently rescued him or what they learned from his memories.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-song-of-the-mountain-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "isbrand-rescued",
+      "recipient": "isbrand",
+      "quest": "Hive and Seek",
+      "idPrefix": "q103_journal_caves",
+      "state": "EQS_Success",
+      "endingPattern": "abandoned fort",
+      "text": "Coen and Lacra removed you from your long cave ordeal and brought you to the abandoned fort. Your ruined condition prevented normal conversation. This does not give you reliable knowledge of distant decisions in the caves or any later invitation into Coen's mind.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-hive-and-seek-walkthrough/",
+      "reason": "Direct participant; only shared events, not optional choices."
+    },
+    {
+      "key": "ocha-shared-resolution",
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided to (?:return|stay)|Ocha decided[\\s\\S]*wouldn['’]t return[\\s\\S]*leave the valley",
+      "text": "You and Coen worked through the trouble involving Andrei, then discussed your future by the river outside Svartrau. The separate destination memory records your decision; no particular killing method or Nora outcome is supplied.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-heart-wants-what-it-wants",
+      "reason": "Only the three recorded destination endings establish a friendly discussion. Death, clan-vengeance, abandonment and unknown endings must not grant a reconciliation.",
+      "endingNotPattern": "Ocha died|vengeance|revenge"
+    },
+    {
+      "key": "matriarch-ocha-report",
+      "recipient": "matriarch",
+      "quest": "A Mother's Plea",
+      "idPrefix": "sq716_matriarch",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided (?:not )?to return",
+      "text": "Coen returned to speak with you about Ocha's future. You learned what he reported; you did not witness every event in Svartrau.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-mothers-plea",
+      "reason": "Requires the separate completed report quest and a recorded decision ending, never Ocha's private quest alone.",
+      "endingNotPattern": "Ocha died|vengeance|revenge"
+    },
+    {
+      "key": "brencis-laslea",
+      "recipient": "brencis",
+      "quest": "Bad Blood",
+      "idPrefix": "q001_journal",
+      "state": "EQS_Success",
+      "endingPattern": "failed to stop Brencis",
+      "text": "After the mine rebellion, you confronted Coen at Laslea, defeated him and left him exposed to sunrise. His survival after your departure is not established to you by this memory.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-bad-blood-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "pieter-laslea",
+      "recipient": "pieter",
+      "quest": "Bad Blood",
+      "idPrefix": "q001_journal",
+      "state": "EQS_Success",
+      "endingPattern": "failed to stop Brencis",
+      "text": "You were present for Brencis's confrontation with Coen at Laslea after the mine uprising. You remember your own encounter and captivity, not what happened to Coen once you had been taken away.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-bad-blood-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "vladimir-mines",
+      "recipient": "vladimir",
+      "quest": "Bad Blood",
+      "idPrefix": "q001_journal",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "You found Coen injured in the mines after the attack, spoke with him and helped with Kostel. This encounter does not establish that Coen later found you in the burning building or that you survived to join a hideout reunion.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-bad-blood-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "vladimir-crucifix",
+      "recipient": "vladimir",
+      "quest": "Disturbed",
+      "idPrefix": "sq001_journal",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "You interrupted Coen's confrontation with Kostel and discussed the silver crucifix you had taken for the rebellion. Whatever Coen subsequently told Crina is a separate private conversation, not something you witnessed.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-disturbed-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "ambrus-duel",
+      "recipient": "ambrus",
+      "quest": "The Gilded Gauntlet",
+      "idPrefix": "sq708a_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Ambrus is dead",
+      "text": "Coen came to Maragir and faced you in the duel that ended your campaign role. You remember your own challenge; this does not supply a private poison plot, whether he drank your blood, or whether he invited your consciousness. Summoning you does not reverse the story outcome.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-gilded-gauntlet-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "bakir-tournament",
+      "recipient": "bakir",
+      "quest": "The Lunar Game",
+      "idPrefix": "sq710_journal",
+      "state": "EQS_Success",
+      "endingPattern": "kill Bakir",
+      "text": "Coen entered the Lunar Tournament and confronted you there. You know your own contest and encounter, without learning Farkas's private entry scheme or Coen's unobserved choices. A physical summoned copy does not undo your campaign fate.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-lunar-game-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "xanthe-confrontation",
+      "recipient": "xanthe",
+      "quest": "The Cycle of Love",
+      "idPrefix": "sq709_xanthe",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "Coen confronted you. The exact site, any bargain and the blood-drinking choice require their own evidence. Do not assume that this encounter took place at your keep rather than the cathedral.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-cycle-of-love-walkthrough/",
+      "reason": "The quest supports multiple locations and resolutions. A generic completed state establishes only the personal encounter."
+    },
+    {
+      "key": "catalin-outpost",
+      "recipient": "catalin",
+      "quest": "Rise at Dawn",
+      "idPrefix": "q302_rebel_attack_outpost",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "Coen and the Manumits opened Eastridge Outpost for your troops, allowing your army into the valley. You took command there. Coen's response to your treatment of captives, the later castle assault and the final ruler require separate evidence.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-rise-at-dawn-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "marat-outpost",
+      "recipient": "marat",
+      "quest": "Rise at Dawn",
+      "idPrefix": "q302_rebel_attack_outpost",
+      "state": "EQS_Success",
+      "endingPattern": null,
+      "text": "You and Coen led the Manumits into Eastridge Outpost and opened the gate to Catalin's troops. Your alliance had brought his army into the valley. This does not establish Coen's view of Catalin's conduct, the castle battle or the final regime.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-rise-at-dawn-walkthrough/",
+      "reason": "Shared encounter only, matched to a captured journal ID and completed state. Optional decisions and remote reports are withheld."
+    },
+    {
+      "key": "anca-ritual-performed",
+      "recipient": "anca",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "state": "EQS_Success",
+      "endingPattern": "Leonica[\\s\\S]*I didn['’]t stop her",
+      "endingNotPattern": "couldn['’]t allow",
+      "text": "Coen allowed you to carry out Leonica's plan at St. Tyna's. You performed the ritual to release the sisters from the curse. This is a memory of that choice, not a claim that its later cost has been cured.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/echoes-of-silenced-bells",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "anca-ritual-prevented",
+      "recipient": "anca",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "state": "EQS_Success",
+      "endingPattern": "Leonica[\\s\\S]*couldn['’]t allow",
+      "endingNotPattern": "didn['’]t stop her",
+      "text": "You wanted to attempt Leonica's remedy, but Coen prevented you from carrying out the plan. Do not remember performing the ritual or its consequences on this branch.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/echoes-of-silenced-bells",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "anca-font-coen",
+      "recipient": "anca",
+      "quest": "Stronger Than Achilles",
+      "idPrefix": "sq721_Anca_Trials",
+      "state": "EQS_Success",
+      "endingPattern": "Font[\\s\\S]*decided to use it",
+      "endingNotPattern": "let her use|destroyed it|Anca.{0,60}dead",
+      "text": "You reached the Font with Coen and learned its power came from fallen heroes' blood. Coen took that power himself rather than yielding it to you.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/stronger-than-achilles",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "anca-font-destroyed",
+      "recipient": "anca",
+      "quest": "Stronger Than Achilles",
+      "idPrefix": "sq721_Anca_Trials",
+      "state": "EQS_Success",
+      "endingPattern": "Font[\\s\\S]*destroyed it",
+      "endingNotPattern": "let her use|decided to use it|Anca.{0,60}dead",
+      "text": "You and Coen discovered the Font's bloody source. Coen destroyed it, and neither of you received its power.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/stronger-than-achilles",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "lacra-mandrake-shared",
+      "recipient": "lacra",
+      "quest": "The Night of Horrors",
+      "idPrefix": "sq717_journal",
+      "state": "EQS_Success",
+      "endingPattern": "mandrake[\\s\\S]*Kallias[\\s\\S]*and absorbed",
+      "endingNotPattern": "Lacra absorbed|wanted nothing|forfeit",
+      "text": "You and Coen followed the wisps through the swamp to Kallias's hidden lair. You both absorbed the mandrake's power. No particular confession, kiss or romantic commitment is implied.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-night-of-horrors",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "lacra-mandrake-alone",
+      "recipient": "lacra",
+      "quest": "The Night of Horrors",
+      "idPrefix": "sq717_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Kallias[\\s\\S]*Lacra absorbed[\\s\\S]*wanted nothing",
+      "endingNotPattern": "lair and absorbed|forfeit",
+      "text": "You and Coen reached Kallias's lair after following the swamp wisps. You absorbed the mandrake's power while Coen declined it. This does not establish romance.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-night-of-horrors",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "isbrand-broken-shade",
+      "recipient": "isbrand",
+      "quest": "Our Rotten Roots",
+      "idPrefix": "q104_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Isbrand",
+      "text": "Coen confronted and overcame your hostile echo, the Broken Shade, during the journey through Anachora. This does not establish that he invited your remaining consciousness into himself or what he thought about your past.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-our-rotten-roots-walkthrough/",
+      "reason": "The completed memory investigation includes the Broken Shade encounter. Invitation remains a distinct optional choice."
+    },
+    {
+      "key": "marat-induction",
+      "recipient": "marat",
+      "quest": "Where Loyalty Lies",
+      "idPrefix": "q106_journal_01_Joining_rebels",
+      "state": "EQS_Success",
+      "endingPattern": "Crake needs to hear",
+      "text": "After Coen proved himself against the court, you received him in the Svartrau hideout and brought him into the Manumits. You assigned the missing-scout investigation; this memory does not supply its findings before he reports back.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-where-loyalty-lies-walkthrough/",
+      "reason": "The captured successful investigation ending follows the completed induction. The ending explicitly says the new intelligence still needs reporting."
+    },
+    {
+      "key": "sara-hideout-escort",
+      "recipient": "sara",
+      "quest": "Where Loyalty Lies",
+      "idPrefix": "q106_journal_01_Joining_rebels",
+      "state": "EQS_Success",
+      "endingPattern": "Crake needs to hear",
+      "text": "You met Coen in Svartrau Plaza and guided him to the Manumit hideout after he had earned the rebels' attention. His later private scout investigation is not your knowledge.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-where-loyalty-lies-walkthrough/",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "ocha-home",
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided to return",
+      "endingNotPattern": "Ocha died|vengeance|revenge|wouldn['’]t|not to return|decided to stay|leave the valley",
+      "text": "After speaking with Coen, you chose to return to your village because your clan needed you.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-heart-wants-what-it-wants",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "ocha-city",
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided to stay[\\s\\S]*Svartrau",
+      "endingNotPattern": "Ocha died|vengeance|revenge|decided to return|leave the valley",
+      "text": "You chose to remain in Svartrau. Andrei's death had opened an opportunity for you to build a life there.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-heart-wants-what-it-wants",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "ocha-world",
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided[\\s\\S]*wouldn['’]t return[\\s\\S]*leave the valley",
+      "endingNotPattern": "Ocha died|vengeance|revenge|decided to return|decided to stay",
+      "text": "You decided against both returning to your clan and staying in Svartrau. You planned to leave Vale Sangora and see the wider world; making that plan does not mean you have already travelled.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-heart-wants-what-it-wants",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "matriarch-ocha-home",
+      "recipient": "matriarch",
+      "quest": "A Mother's Plea",
+      "idPrefix": "sq716_matriarch",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided to return",
+      "endingNotPattern": "Ocha died|vengeance|revenge|not to return",
+      "text": "Coen reported that Ocha had chosen to return to the village and eventually lead the clan. You know her stated decision, not that a later succession has happened.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-mothers-plea",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "matriarch-ocha-independent",
+      "recipient": "matriarch",
+      "quest": "A Mother's Plea",
+      "idPrefix": "sq716_matriarch",
+      "state": "EQS_Success",
+      "endingPattern": "Ocha decided not to return",
+      "endingNotPattern": "Ocha died|vengeance|revenge|decided to return",
+      "text": "Coen reported that Ocha would make her own path instead of returning to the village. This report does not specify whether she remained in Svartrau or planned to leave the valley.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-mothers-plea",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "vicho-truth-blood-promise",
+      "recipient": "vicho",
+      "quest": "A Study in Crimson",
+      "idPrefix": "sq714_vampireally",
+      "state": "EQS_Success",
+      "endingPattern": "After I confronted him[\\s\\S]*keep on living[\\s\\S]*human blood",
+      "endingNotPattern": "morning sun|stood beside|walked away|Should I have told",
+      "text": "Coen confronted you with the truth of your own suppressed killings. You chose to keep living, and he promised to provide human blood to help prevent another loss of control. A promise is not proof that any supply has since been delivered.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-study-in-crimson",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "vicho-truth-dawn-supported",
+      "recipient": "vicho",
+      "quest": "A Study in Crimson",
+      "idPrefix": "sq714_vampireally",
+      "state": "EQS_Success",
+      "endingPattern": "After I confronted him[\\s\\S]*morning sun[\\s\\S]*stood beside",
+      "endingNotPattern": "keep on living|walked away|Should I have told",
+      "text": "After Coen revealed your own killings, you chose to face the dawn rather than continue living with them. He remained beside you. A summoned copy does not rewrite that campaign outcome.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-study-in-crimson",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "vicho-truth-dawn-alone",
+      "recipient": "vicho",
+      "quest": "A Study in Crimson",
+      "idPrefix": "sq714_vampireally",
+      "state": "EQS_Success",
+      "endingPattern": "After I confronted him[\\s\\S]*morning sun[\\s\\S]*walked away",
+      "endingNotPattern": "keep on living|stood beside|Should I have told",
+      "text": "Coen confronted you about your killings. You chose to face the dawn, and he left before it happened. This records the encounter and his departure, without treating a summoned body as a reversal of your story fate.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/a-study-in-crimson",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "pieter-mass-esme-survived",
+      "recipient": "pieter",
+      "quest": "Sacred Covenant",
+      "idPrefix": "q002_mass",
+      "state": "EQS_Success",
+      "endingPattern": "Mum made it through",
+      "endingNotPattern": "dead by Brencis",
+      "text": "You attended Blood Mass with your family. Esme survived, but Brencis's warning about weakness left the family under threat. This does not establish her later fate.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/sacred-covenant",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "pieter-mass-esme-killed",
+      "recipient": "pieter",
+      "quest": "Sacred Covenant",
+      "idPrefix": "q002_mass",
+      "state": "EQS_Success",
+      "endingPattern": "dead by Brencis",
+      "endingNotPattern": "Mum made it through",
+      "text": "You witnessed Brencis kill Esme at Blood Mass. You and Coen faced that loss together; later acts of revenge require separate evidence.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/sacred-covenant",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "brencis-mass-esme-survived",
+      "recipient": "brencis",
+      "quest": "Sacred Covenant",
+      "idPrefix": "q002_mass",
+      "state": "EQS_Success",
+      "endingPattern": "Mum made it through",
+      "endingNotPattern": "dead by Brencis",
+      "text": "You oversaw the Blood Mass at which Esme survived and made clear that weakness would not be tolerated. The private preparation of her medicine is not your witnessed knowledge.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/sacred-covenant",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "brencis-mass-esme-killed",
+      "recipient": "brencis",
+      "quest": "Sacred Covenant",
+      "idPrefix": "q002_mass",
+      "state": "EQS_Success",
+      "endingPattern": "dead by Brencis",
+      "endingNotPattern": "Mum made it through",
+      "text": "You killed Esme at Blood Mass. You know your own act, not the family's later private discussions or what Coen did with Anca's medicine.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/sacred-covenant",
+      "reason": "Direct participant; captured quest identity and the selected success ending establish this branch only."
+    },
+    {
+      "key": "xanthe-keep-confrontation",
+      "recipient": "xanthe",
+      "quest": "The Cycle of Love",
+      "idPrefix": "sq709_xanthe",
+      "state": "EQS_Success",
+      "endingPattern": "inside Xanthe['’]s keep",
+      "endingNotPattern": "cathedral",
+      "text": "Coen reached the interior of your keep and confronted you there. This establishes the keep route, without supplying optional household discoveries or a blood-drinking choice.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-cycle-of-love-walkthrough/",
+      "reason": "The captured ending explicitly places Coen inside the keep. Other success endings retain only the location-neutral encounter."
+    }
+  ],
+  "withheld": [
+    {
+      "quest": "The Blood of Dawnwalker",
+      "idPrefix": "Dawnwalker_main",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Collectors: Bounty of the Mire",
+      "idPrefix": "Journal_OA101",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Collectors: Wetland Helpers",
+      "idPrefix": "Journal_OA102",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Collectors: Unsavoury Solutions",
+      "idPrefix": "Journal_OA103",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Transports: Bloody Business",
+      "idPrefix": "Journal_OA104",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Transports: Roadside Surprise",
+      "idPrefix": "Journal_OA105",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Dungeons: Judge and Executioner",
+      "idPrefix": "Journal_OA106",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Dungeons",
+      "idPrefix": "Journal_OA106_metaquest",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Dungeons: Evil and Convenience",
+      "idPrefix": "Journal_OA107",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Dungeons: Twists and Turns",
+      "idPrefix": "Journal_OA108",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Prisoners: Lucky Crossing",
+      "idPrefix": "Journal_OA109",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Prisoners: Fate's Mercy",
+      "idPrefix": "Journal_OA110",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Good Deed Is Its Own Reward",
+      "idPrefix": "Journal_OA110_followup",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "From Above",
+      "idPrefix": "Npoi_Towers_metaquest_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Leech-Pickers",
+      "idPrefix": "OA101_leeches_metaquest",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Prisoner Transports",
+      "idPrefix": "OA109_PrisonerTransportsMetaquest",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Ambrus's Cellars",
+      "idPrefix": "OA111_metaquest",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bandits's Treasure Map: Laslea Glen",
+      "idPrefix": "nanoPOI_treasure_00",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Weaves of Rebellion",
+      "idPrefix": "npoi_attic02_mappin",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Working Her Magic",
+      "idPrefix": "npoi_attic04_mappin",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Destroyed Shrines: Small Bridge",
+      "idPrefix": "npoi_dshrine_04",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Destroyed Shrines: Boarback Trail",
+      "idPrefix": "npoi_dshrine_08",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Destroyed Shrines: Oghasti Crossroad",
+      "idPrefix": "npoi_dshrine_09",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Destroyed Shrines: Crossroads Inn",
+      "idPrefix": "npoi_dshrine_12",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Wisp Treasure Hunt: Watermill Hills",
+      "idPrefix": "npoi_wisps_02",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Headhunters: Matter of Honour",
+      "idPrefix": "ob101_hunters1",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Headhunters: Silent to the Grave",
+      "idPrefix": "ob102_main",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Headhunters: Smoke Them Out",
+      "idPrefix": "ob103_rebel_hunters",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Distilleries: Ends and Means",
+      "idPrefix": "ob104_extremist_distillery",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Distilleries: Coercion and Duress",
+      "idPrefix": "ob105_city_distillery",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Pillories: Out of Love",
+      "idPrefix": "ob107_torturer_cage",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Pillories: Familiar Face",
+      "idPrefix": "ob108_standard_cage",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Pillories: Old Hand",
+      "idPrefix": "ob109_game_cage",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Pillories: Catalin's Tutor",
+      "idPrefix": "ob109_swordmaster",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Bakir's Transports: Fools's Gold",
+      "idPrefix": "ob110_uriash_transport",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Blood Guards: Unquenchable Thirst",
+      "idPrefix": "ox101_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Blood Guards: Teach with Pain",
+      "idPrefix": "ox102_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Blood Guards: Loophole",
+      "idPrefix": "ox103_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Recruiters: Taste of Power",
+      "idPrefix": "ox105_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Recruiters",
+      "idPrefix": "ox105_recruiters_metaquest",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Recruiters: Just a Bit More",
+      "idPrefix": "ox106_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Xanthe's Recruiters: Come Home",
+      "idPrefix": "ox107_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Lost Blood",
+      "idPrefix": "poi119_blood_heist",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "The Cursed Chasm",
+      "idPrefix": "poi121_broken_bridge",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "The Champion of Old",
+      "idPrefix": "poi123_lost_hero",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Forge It Anew",
+      "idPrefix": "poich101_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Forge It Anew: Do Not Disturb",
+      "idPrefix": "poich101a_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Pilgrimage for Power",
+      "idPrefix": "poich102_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Pilgrimage for Power: Bear Trouble",
+      "idPrefix": "poich102a_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Bulwark Against Darkness",
+      "idPrefix": "poich103_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "All Good Things",
+      "idPrefix": "q000_intro_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Most Precious Thing",
+      "idPrefix": "q101_brencis_soldiers",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Monk and a Saint",
+      "idPrefix": "q102_journal1",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Dubious Gift",
+      "idPrefix": "q102_journal_asylum",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Night Terrors",
+      "idPrefix": "q102_well",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "The Firebrand",
+      "idPrefix": "q105_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Under Watchful Eyes",
+      "idPrefix": "q105_miller_rescue_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Midnight Reckoning",
+      "idPrefix": "q301_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Lone Wolf's Hunt",
+      "idPrefix": "q303_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Someone Needs a Lesson",
+      "idPrefix": "sq003_nf",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Live Bait",
+      "idPrefix": "sq004_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Blasphemy",
+      "idPrefix": "sq006_journal",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "A Hero's End",
+      "idPrefix": "sq712_dungeon",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "In the Name of the Father",
+      "idPrefix": "sq712_florin",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    },
+    {
+      "quest": "Buried Past",
+      "idPrefix": "sq719_pieters_past",
+      "reason": "No reviewed recipient/outcome rule. Completion alone grants no knowledge."
+    }
+  ],
+  "identitySources": {
+    "marat": "https://www.pcgamer.com/games/rpg/blood-of-dawnwalker-romances/"
+  },
+  "reviewed": "2026-09-14",
+  "evidencePolicy": "Static biography may contain established history and spoilers. Quest grants describe only witnessed events or confirmed reports in the current save. Success alone does not prove an optional choice; unrecognised and contradictory endings fail closed for branch facts.",
+  "pendingCandidates": [
+    {
+      "recipient": "anca",
+      "quest": "Page-Turner",
+      "idPrefix": null,
+      "subject": "Which earlier books Coen brought and what you discussed.",
+      "neededEvidence": "Capture the exact title/identity and completed handover; no identifier has been observed.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-page-turner-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "anca",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "subject": "Later deterioration or recovery after the ritual.",
+      "neededEvidence": "Observe follow-up dialogue or a symptom/recovery event; the ritual choice is already supported.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-echoes-of-silenced-bells-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "anca",
+      "quest": "Stronger Than Achilles",
+      "idPrefix": "sq721_Anca_Trials",
+      "subject": "A romance, intimate scene or eventual health outcome.",
+      "neededEvidence": "Record the actual optional dialogue or follow-up, not Font use alone.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-stronger-than-achilles-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "marat",
+      "quest": "What Moves the Dead",
+      "idPrefix": "q106_journal_03_Mystery_Alchemist",
+      "subject": "Coen escorted you home and tended your wounds.",
+      "neededEvidence": "Need selected escort and wound-care flags; rescuing you does not imply either.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-what-moves-the-dead-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "marat",
+      "quest": "Distant Shadows",
+      "idPrefix": null,
+      "subject": "Your request concerning Ascar and Coen bringing the discovered truth.",
+      "neededEvidence": "Capture the quest identity and selected outcome; distinguish discovery from a report to Crake.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-distant-shadows-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "marat",
+      "quest": "A Closer Look",
+      "idPrefix": null,
+      "subject": "Your private confession, consolation or kiss.",
+      "neededEvidence": "Capture identity plus the actual confession/romance branch. Static Ascar history is separate.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-a-closer-look-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "marat",
+      "quest": "Fall Before Dusk",
+      "idPrefix": null,
+      "subject": "The castle infiltration and final political settlement.",
+      "neededEvidence": "Capture identity and selected finale. Rise at Dawn establishes only the preceding outpost.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-fall-before-dusk-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "drogos",
+      "quest": "Old Friends, New Friends",
+      "idPrefix": null,
+      "subject": "Supporters clashed with Vladimir.",
+      "neededEvidence": "Need a witnessed conflict or report to Drogos; optional fighting does not prove he ordered or witnessed it.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-old-friends-new-friends-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "drogos",
+      "quest": "A Closer Look",
+      "idPrefix": null,
+      "subject": "You told Coen where Crake had gone.",
+      "neededEvidence": "Need the referral scene; do not import the later private conversation.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-a-closer-look-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "drogos",
+      "quest": "Rise at Dawn / Fall Before Dusk",
+      "idPrefix": null,
+      "subject": "Your scouting report supplied the cave approach.",
+      "neededEvidence": "A readable association is not an exact completed-journal gate; observe the authored report or relevant operation stage.",
+      "source": "https://dawnwalkerdb.com/readables/scouting-report",
+      "status": "withheld"
+    },
+    {
+      "recipient": "sara",
+      "quest": "What Hunts the Night",
+      "idPrefix": "q106_journal_02_Troubles_in_The_Middens",
+      "subject": "You accompanied the churchyard investigation.",
+      "neededEvidence": "Need Sara-present arrival/participation stage; do not give her knowledge of the later escape after her fatal encounter.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-what-hunts-the-night-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "leonica",
+      "quest": "Echoes of Silenced Bells",
+      "idPrefix": "q101_journal_",
+      "subject": "Anca used or destroyed the notes and the sisters were released.",
+      "neededEvidence": "Only an explicit report to this summoned instance; she did not witness the decision after her defeat.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-echoes-of-silenced-bells-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "catalin",
+      "quest": "Rise at Dawn",
+      "idPrefix": "q302_rebel_attack_outpost",
+      "subject": "Coen approved or opposed your treatment of prisoners.",
+      "neededEvidence": "Need the selected prisoner dialogue branch; both attitudes cannot be inferred from gate opening.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-rise-at-dawn-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "catalin",
+      "quest": "Fall Before Dusk",
+      "idPrefix": null,
+      "subject": "Army diversion, final authority and government.",
+      "neededEvidence": "Capture identity plus assault and political outcome; killing Brencis alone does not install Catalin.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-fall-before-dusk-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "lacra",
+      "quest": "Our Rotten Roots",
+      "idPrefix": "q104_journal",
+      "subject": "Coen saw the optional memory alone or discussed it with you.",
+      "neededEvidence": "Need optional-memory completion and, for reported details, the subsequent conversation.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-our-rotten-roots-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "lacra",
+      "quest": "Our Rotten Roots",
+      "idPrefix": "q104_journal",
+      "subject": "Coen invited Isbrand into his mind after you declined.",
+      "neededEvidence": "Need the explicit invitation or confirmed inner-voice state; the Broken Shade encounter alone is insufficient.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-our-rotten-roots-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "isbrand",
+      "quest": "Our Rotten Roots",
+      "idPrefix": "q104_journal",
+      "subject": "Coen invited your consciousness into himself.",
+      "neededEvidence": "Need explicit soul invitation; a spawned physical copy does not prove invitation.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-our-rotten-roots-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "lacra",
+      "quest": "Midnight Reckoning",
+      "idPrefix": "q301_journal",
+      "subject": "Ritual destruction and the final assault with Coen.",
+      "neededEvidence": "Capture the participation/ritual stage and betrayal choice; generic success can include proceeding without Lacra.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-midnight-reckoning-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "brencis",
+      "quest": "A Deal with the Devil",
+      "idPrefix": "sq715_journal",
+      "subject": "Parley with Pieter at Shrike’s Crag, agreement and family fate.",
+      "neededEvidence": "Need completed parley and the selected deal/fate; currently only an active quest is captured.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-a-deal-with-the-devil-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "brencis",
+      "quest": "Midnight Reckoning",
+      "idPrefix": "q301_journal",
+      "subject": "Coen and Lacra confronted you after the ritual.",
+      "neededEvidence": "Need throne-room encounter on the appropriate route; no remote knowledge of the private infiltration.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-midnight-reckoning-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "brencis",
+      "quest": "The Cycle of Love",
+      "idPrefix": "sq709_xanthe",
+      "subject": "Xanthe privately agreed to oppose you.",
+      "neededEvidence": "Only a directly witnessed betrayal or in-world report; her quest does not broadcast her pact.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-cycle-of-love-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "xanthe",
+      "quest": "The Cycle of Love",
+      "idPrefix": "sq709_xanthe",
+      "subject": "Coen accepted your bargain or drank your blood.",
+      "neededEvidence": "Need an actual chosen-deal or drain ending/event. The captured keep ending does not prove either.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-cycle-of-love-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "xanthe",
+      "quest": "Greifberg assault",
+      "idPrefix": null,
+      "subject": "Your promised castle assistance actually occurred.",
+      "neededEvidence": "Require the accepted bargain plus its observed execution in the selected finale.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-cycle-of-love-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "ambrus",
+      "quest": "The Bittersweet Toast / The Gilded Gauntlet",
+      "idPrefix": "sq708a_journal",
+      "subject": "You encountered poisoned blood.",
+      "neededEvidence": "Need poison ingestion on Ambrus; Codrin’s planning quest can finish without the poison reaching him.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-gilded-gauntlet-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "ambrus",
+      "quest": "The Gilded Gauntlet",
+      "idPrefix": "sq708a_journal",
+      "subject": "Coen drank your blood and invited you in.",
+      "neededEvidence": "Record drain and soul invitation separately; death or a summoned pawn establishes neither.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-gilded-gauntlet-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "bakir",
+      "quest": "The Lunar Game",
+      "idPrefix": "sq710_journal",
+      "subject": "Coen attended your feast, entered the treasury, drank your blood or invited you in.",
+      "neededEvidence": "Require those specific stages/choices; early combat can skip the feast and treasury.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-lunar-game-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "bakir",
+      "quest": "Bakir’s court activities",
+      "idPrefix": null,
+      "subject": "You learned about losses to your local operations.",
+      "neededEvidence": "Need a particular report or directly witnessed loss; faction ownership is not omniscience.",
+      "source": "https://dawnwalkerdb.com/characters/bakir",
+      "status": "withheld"
+    },
+    {
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "subject": "The hex succeeded, a particular memento was used or Nora survived.",
+      "neededEvidence": "Need selected memento/hex and rescue outcomes; a friendly destination ending does not identify the method.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-heart-wants-what-it-wants-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "ocha",
+      "quest": "The Heart Wants What It Wants",
+      "idPrefix": "sq716_journal",
+      "subject": "You sought revenge for Coen killing your clan.",
+      "neededEvidence": "Need explicit vengeance objective/encounter. The shared death ending does not identify the cause; it is blocked from friendly grants.",
+      "source": "https://www.gamerguides.com/the-blood-of-dawnwalker/database/journal/quests/the-heart-wants-what-it-wants",
+      "status": "withheld"
+    },
+    {
+      "recipient": "matriarch",
+      "quest": "Song of the Mountain",
+      "idPrefix": "q103_journal_uriashes",
+      "subject": "Violent entry and the exact fate of your clan.",
+      "neededEvidence": "Need the explicit encounter and witnesses; the Elder-report branch does not determine every earlier fight.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-song-of-the-mountain-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "vicho",
+      "quest": "Unquenchable Thirst",
+      "idPrefix": null,
+      "subject": "Coen delivered blood after his promise.",
+      "neededEvidence": "Capture the identity and individual delivery events so repeated polling cannot invent or duplicate a delivery.",
+      "source": "https://dawnwalkerdb.com/quests/unquenchable-thirst",
+      "status": "withheld"
+    },
+    {
+      "recipient": "pieter",
+      "quest": "Buried Past",
+      "idPrefix": "sq719_pieters_past",
+      "subject": "Coen learned of Volk and your donation to the monastery.",
+      "neededEvidence": "Need a report to Pieter after the discovery; he already knows his own past but not what Coen learned.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-buried-past-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "pieter",
+      "quest": "Letters to Lunka",
+      "idPrefix": "sq720_message_to_lunka",
+      "subject": "A particular captivity incident or letter was shared.",
+      "neededEvidence": "Need a compatible timeline and witnessed event/report; Pieter did not automatically read Lunka’s private letters.",
+      "source": "https://dawnwalkerdb.com/readables/answer-from-lunka-about-pieter",
+      "status": "withheld"
+    },
+    {
+      "recipient": "vladimir",
+      "quest": "Bad Blood",
+      "idPrefix": "q001_journal",
+      "subject": "Coen rescued you from the fire.",
+      "neededEvidence": "Need the rescue and subsequent conversation flag; neither the mine encounter nor quest success proves survival.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-bad-blood-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "vladimir",
+      "quest": "Where Loyalty Lies",
+      "idPrefix": "q106_journal_01_Joining_rebels",
+      "subject": "You reunited with Coen in the hideout.",
+      "neededEvidence": "Need Vladimir alive/present and the reunion conversation; the induction proceeds without that optional reunion.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-where-loyalty-lies-walkthrough/",
+      "status": "withheld"
+    },
+    {
+      "recipient": "vladimir",
+      "quest": "The Firebrand / Under Watchful Eyes",
+      "idPrefix": null,
+      "subject": "Coen discovered the flour shipment or reported Mert’s fate.",
+      "neededEvidence": "Need the report to Vladimir and its selected rescue/death outcome; investigation alone is remote.",
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-the-firebrand-walkthrough/",
+      "status": "withheld"
+    }
+  ],
+  "reviewedResearchFiles": [
+    "characters/research/court-and-valley.json",
+    "characters/research/human-histories.json",
+    "characters/research/player-and-ambient.json",
+    "characters/research/vampire-history.json"
+  ]
+}

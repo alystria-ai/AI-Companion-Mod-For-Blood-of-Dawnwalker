@@ -1,0 +1,306 @@
+{
+  "version": 1,
+  "scope": "Research candidates; not a spawn-ready roster",
+  "source": "runtime/companion-asset-catalog.tsv",
+  "characters": [
+    {
+      "id": "anca",
+      "name": "Anca",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Anca",
+          "asset": "NPCDef_Anca",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Anca.NPCDef_Anca_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "lacra",
+      "name": "Lacra",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Lacra/NPCDef_Lacra_Base",
+          "asset": "NPCDef_Lacra_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Lacra/NPCDef_Lacra_Base.NPCDef_Lacra_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        },
+        {
+          "package": "/Game/_Dawnwalker/Quest/q103_lacra/Characters/Humanoid/NPCDef_Lacra",
+          "asset": "NPCDef_Lacra",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Quest/q103_lacra/Characters/Humanoid/NPCDef_Lacra.NPCDef_Lacra_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "bakir",
+      "name": "Bakir",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Bakir/NPCDef_Summoned_CoenHelper_Bakir",
+          "asset": "NPCDef_Summoned_CoenHelper_Bakir",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Bakir/NPCDef_Summoned_CoenHelper_Bakir.NPCDef_Summoned_CoenHelper_Bakir_C",
+          "reason": "Existing CoenHelper-named variant; allegiance, lifespan and encounter dependencies require inspection"
+        },
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Bakir/NPCDef_Bakir_Base",
+          "asset": "NPCDef_Bakir_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Bakir/NPCDef_Bakir_Base.NPCDef_Bakir_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "ambrus",
+      "name": "Ambrus",
+      "aliases": [
+        "Ambrose"
+      ],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Ambrus/NPCDef_Summoned_CoenHelper_Ambrus",
+          "asset": "NPCDef_Summoned_CoenHelper_Ambrus",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Ambrus/NPCDef_Summoned_CoenHelper_Ambrus.NPCDef_Summoned_CoenHelper_Ambrus_C",
+          "reason": "Existing CoenHelper-named variant; allegiance, lifespan and encounter dependencies require inspection"
+        },
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Ambrus/NPCDef_Ambrus_Base",
+          "asset": "NPCDef_Ambrus_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Ambrus/NPCDef_Ambrus_Base.NPCDef_Ambrus_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "xanthe",
+      "name": "Xanthe",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Xanthe/NPCDef_Summoned_CoenHelper_Xanthe",
+          "asset": "NPCDef_Summoned_CoenHelper_Xanthe",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Xanthe/NPCDef_Summoned_CoenHelper_Xanthe.NPCDef_Summoned_CoenHelper_Xanthe_C",
+          "reason": "Existing CoenHelper-named variant; allegiance, lifespan and encounter dependencies require inspection"
+        },
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Xanthe/NPCDef_Xanthe_Base",
+          "asset": "NPCDef_Xanthe_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Xanthe/NPCDef_Xanthe_Base.NPCDef_Xanthe_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "brencis",
+      "name": "Brencis",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Brencis/NPCDef_Brencis_Base",
+          "asset": "NPCDef_Brencis_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Brencis/NPCDef_Brencis_Base.NPCDef_Brencis_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "marat",
+      "name": "Crake",
+      "aliases": [
+        "Crake",
+        "Marat"
+      ],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Marat",
+          "asset": "NPCDef_Marat",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Marat.NPCDef_Marat_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "matriarch",
+      "name": "Uriash Matriarch / Bakr-Erga",
+      "aliases": [
+        "Matriarch",
+        "Bakr-Erga"
+      ],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/UriashMatriarch/NPCDef_UriashMatriarch_Base",
+          "asset": "NPCDef_UriashMatriarch_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/UriashMatriarch/NPCDef_UriashMatriarch_Base.NPCDef_UriashMatriarch_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "leonica",
+      "name": "Leonica",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Leonica/NPCDef_Leonica_Base",
+          "asset": "NPCDef_Leonica_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Leonica/NPCDef_Leonica_Base.NPCDef_Leonica_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "ocha",
+      "name": "Ocha",
+      "aliases": [
+        "Bakr-Ocha"
+      ],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Quest/_Side_Quests/sq716_uriash_girl/Characters/NPCDef_Ocha",
+          "asset": "NPCDef_Ocha",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Quest/_Side_Quests/sq716_uriash_girl/Characters/NPCDef_Ocha.NPCDef_Ocha_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "vicho",
+      "name": "Vicho",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Quest/_Side_Quests/sq714_vampireally/Characters/Humanoid/NPCDef_Vicho",
+          "asset": "NPCDef_Vicho",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Quest/_Side_Quests/sq714_vampireally/Characters/Humanoid/NPCDef_Vicho.NPCDef_Vicho_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "drogos",
+      "name": "Drogos",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Drogos",
+          "asset": "NPCDef_Drogos",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Drogos.NPCDef_Drogos_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        },
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Drogos_Non_boss",
+          "asset": "NPCDef_Drogos_Non_boss",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Drogos_Non_boss.NPCDef_Drogos_Non_boss_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "sara",
+      "name": "Sara",
+      "aliases": [
+        "Sarah"
+      ],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Quest/q106_rebel_issues/Characters/NPCDef_Sarah",
+          "asset": "NPCDef_Sarah",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Quest/q106_rebel_issues/Characters/NPCDef_Sarah.NPCDef_Sarah_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "catalin",
+      "name": "Catalin",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Catalin",
+          "asset": "NPCDef_Catalin",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Catalin.NPCDef_Catalin_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "pieter",
+      "name": "Pieter",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter_armed",
+          "asset": "NPCDef_Pieter_armed",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter_armed.NPCDef_Pieter_armed_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "vladimir",
+      "name": "Vladimir",
+      "aliases": [
+        "Vlad"
+      ],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Vladimir",
+          "asset": "NPCDef_Vladimir",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Vladimir.NPCDef_Vladimir_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "isbrand",
+      "name": "Isbrand",
+      "aliases": [],
+      "requested": false,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Isbrand/NPCDef_Isbrand_Base",
+          "asset": "NPCDef_Isbrand_Base",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Isbrand/NPCDef_Isbrand_Base.NPCDef_Isbrand_Base_C",
+          "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    }
+  ]
+}
