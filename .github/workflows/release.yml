@@ -1,0 +1,84 @@
+name: Build release
+on:
+  workflow_dispatch:
+    inputs:
+      create_draft:
+        description: Create a draft GitHub release with the verified packages
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - name: Install pinned dependencies and check source
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { throw 'Dependency installation failed' }
+          npm run check
+          if ($LASTEXITCODE) { throw 'TypeScript check failed' }
+          npm test
+          if ($LASTEXITCODE) { throw 'Tests failed' }
+      - name: Prepare verified build tools
+        run: ./scripts/Prepare-ReleaseDependencies.ps1
+      - name: Build browser client and collect licenses
+        run: |
+          node node_modules/esbuild/bin/esbuild bridge/client.ts --bundle --format=esm --outfile=bridge/public/client.js --metafile=runtime/bundle-meta.json
+          if ($LASTEXITCODE) { throw 'Browser build failed' }
+          node scripts/collect-browser-licenses.mjs
+          if ($LASTEXITCODE) { throw 'License collection failed' }
+      - name: Build packages
+        env:
+          CONVAI_API_KEY: ${{ secrets.CONVAI_API_KEY }}
+        run: ./scripts/Build-Release.ps1
+      - name: Verify release contents
+        env:
+          CONVAI_API_KEY: ${{ secrets.CONVAI_API_KEY }}
+        run: ./scripts/Verify-Release.ps1
+      - name: Record build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/*.zip
+      - name: Upload release packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: DawnwalkerConvai-release
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+            dist/RELEASE-NOTES.md
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Create draft release
+        if: inputs.create_draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $files = @(Get-ChildItem dist -Filter '*.zip' -File | ForEach-Object FullName)
+          gh release create "v$version" @files dist/SHA256SUMS.txt --draft --title "AI Companion Manager $version" --notes-file dist/RELEASE-NOTES.md --target $env:GITHUB_SHA
+          if ($LASTEXITCODE) { throw 'Draft release creation failed' }

@@ -1,0 +1,307 @@
+{
+  "characterId": "a2073e0c-abcc-11f1-9a65-42010a7be02f",
+  "testText": "Hello. How are things here? Please answer in one or two short sentences.",
+  "roster": [
+    {
+      "key": "anca",
+      "id": "a2073e0c-abcc-11f1-9a65-42010a7be02f",
+      "name": "Anca",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "anca",
+        "NPCDef_anca_Base",
+        "anca_Base",
+        "Anca",
+        "NPCDef_Anca"
+      ]
+    },
+    {
+      "key": "brencis",
+      "id": "a5d02300-abcc-11f1-bc75-42010a7be02f",
+      "name": "Brencis",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "brencis",
+        "NPCDef_brencis_Base",
+        "brencis_Base",
+        "Brencis",
+        "NPCDef_Brencis_Base"
+      ]
+    },
+    {
+      "key": "lacra",
+      "id": "a8851c68-abcc-11f1-a376-42010a7be02f",
+      "name": "Lacra",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "lacra",
+        "NPCDef_lacra_Base",
+        "lacra_Base",
+        "Lacra",
+        "NPCDef_Lacra_Base"
+      ]
+    },
+    {
+      "key": "marat",
+      "id": "ac530aee-abcc-11f1-8417-42010a7be02f",
+      "name": "Crake",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "marat",
+        "crake",
+        "NPCDef_marat_Base",
+        "marat_Base",
+        "Crake / Marat",
+        "NPCDef_Marat"
+      ]
+    },
+    {
+      "key": "xanthe",
+      "id": "af31617a-abcc-11f1-8dca-42010a7be02f",
+      "name": "Xanthe",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "xanthe",
+        "NPCDef_xanthe_Base",
+        "xanthe_Base",
+        "Xanthe",
+        "NPCDef_Xanthe_Base"
+      ]
+    },
+    {
+      "key": "ambrus",
+      "id": "ea8dde38-abcc-11f1-8208-42010a7be02f",
+      "name": "Ambrus",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "ambrus",
+        "NPCDef_ambrus_Base",
+        "ambrus_Base",
+        "Ambrus",
+        "NPCDef_Ambrus_Base"
+      ]
+    },
+    {
+      "key": "bakir",
+      "id": "f2417e3c-abcc-11f1-aa26-42010a7be02f",
+      "name": "Bakir",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "bakir",
+        "NPCDef_bakir_Base",
+        "bakir_Base",
+        "Bakir",
+        "NPCDef_Bakir_Base"
+      ]
+    },
+    {
+      "key": "coen",
+      "id": "fbdd59ca-abcc-11f1-aa26-42010a7be02f",
+      "name": "Coen",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "coen"
+      ]
+    },
+    {
+      "key": "male-1",
+      "id": "0345eb82-abcd-11f1-80fb-42010a7be02f",
+      "name": "Roadside Laborer",
+      "kind": "generic",
+      "gender": "MALE",
+      "aliases": []
+    },
+    {
+      "key": "male-2",
+      "id": "0b4360bc-abcd-11f1-a376-42010a7be02f",
+      "name": "Market Trader",
+      "kind": "generic",
+      "gender": "MALE",
+      "aliases": []
+    },
+    {
+      "key": "male-3",
+      "id": "11798d9e-abcd-11f1-a376-42010a7be02f",
+      "name": "Cautious Townsman",
+      "kind": "generic",
+      "gender": "MALE",
+      "aliases": []
+    },
+    {
+      "key": "male-4",
+      "id": "1a09025a-abcd-11f1-8cbb-42010a7be02f",
+      "name": "Traveling Artisan",
+      "kind": "generic",
+      "gender": "MALE",
+      "aliases": []
+    },
+    {
+      "key": "male-5",
+      "id": "20a09b96-abcd-11f1-a4d0-42010a7be02f",
+      "name": "Young Villager",
+      "kind": "generic",
+      "gender": "MALE",
+      "aliases": []
+    },
+    {
+      "key": "female-1",
+      "id": "2785b3b0-abcd-11f1-a376-42010a7be02f",
+      "name": "Market Woman",
+      "kind": "generic",
+      "gender": "FEMALE",
+      "aliases": []
+    },
+    {
+      "key": "female-2",
+      "id": "306cb82a-abcd-11f1-ab8d-42010a7be02f",
+      "name": "Village Weaver",
+      "kind": "generic",
+      "gender": "FEMALE",
+      "aliases": []
+    },
+    {
+      "key": "female-3",
+      "id": "37765964-abcd-11f1-ab8d-42010a7be02f",
+      "name": "Roadside Traveler",
+      "kind": "generic",
+      "gender": "FEMALE",
+      "aliases": []
+    },
+    {
+      "key": "female-4",
+      "id": "41001b50-abcd-11f1-a06b-42010a7be02f",
+      "name": "Weathered Villager",
+      "kind": "generic",
+      "gender": "FEMALE",
+      "aliases": []
+    },
+    {
+      "key": "female-5",
+      "id": "496a3c3a-abcd-11f1-a376-42010a7be02f",
+      "name": "Quiet Townswoman",
+      "kind": "generic",
+      "gender": "FEMALE",
+      "aliases": []
+    },
+    {
+      "key": "matriarch",
+      "id": "b047b3dc-af2a-11f1-8257-42010a7be02f",
+      "name": "Bakr-Erga",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "matriarch",
+        "Uriash Matriarch / Bakr-Erga",
+        "UriashMatriarch_Base",
+        "NPCDef_UriashMatriarch_Base",
+        "Bakr-Erga",
+        "Uriash Matriarch / Bakr-Erga",
+        "NPCDef_UriashMatriarch_Base"
+      ]
+    },
+    {
+      "key": "leonica",
+      "id": "b8e79a02-af2a-11f1-b01d-42010a7be02f",
+      "name": "Leonica",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "leonica",
+        "Leonica_Base",
+        "NPCDef_Leonica_Base",
+        "Leonica",
+        "NPCDef_Leonica_Base"
+      ]
+    },
+    {
+      "key": "ocha",
+      "id": "c342fe92-af2a-11f1-8462-42010a7be02f",
+      "name": "Ocha",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "ocha",
+        "Bakr-Ocha",
+        "NPCDef_Ocha",
+        "Ocha",
+        "NPCDef_Ocha"
+      ]
+    },
+    {
+      "key": "vicho",
+      "id": "ce6510f8-af2a-11f1-95db-42010a7be02f",
+      "name": "Vicho",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "vicho",
+        "NPCDef_Vicho",
+        "Vicho",
+        "NPCDef_Vicho"
+      ]
+    },
+    {
+      "key": "drogos",
+      "id": "d7597e06-af2a-11f1-b694-42010a7be02f",
+      "name": "Drogos",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "drogos",
+        "NPCDef_Drogos",
+        "Drogos",
+        "NPCDef_Drogos"
+      ]
+    },
+    {
+      "key": "sara",
+      "id": "e09b20dc-af2a-11f1-ab8d-42010a7be02f",
+      "name": "Sara",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "sara",
+        "Sarah",
+        "NPCDef_Sarah",
+        "Sara",
+        "NPCDef_Sarah"
+      ]
+    },
+    {
+      "key": "catalin",
+      "id": "ea906c6e-af2a-11f1-8462-42010a7be02f",
+      "name": "Catalin",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "catalin",
+        "NPCDef_Catalin",
+        "Catalin",
+        "NPCDef_Catalin"
+      ]
+    },
+    {
+      "key": "isbrand",
+      "id": "0766b0be-af2b-11f1-9c43-42010a7be02f",
+      "name": "Isbrand",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "isbrand",
+        "Isbrand_Base",
+        "NPCDef_Isbrand_Base",
+        "Isbrand",
+        "NPCDef_Isbrand_Base"
+      ]
+    }
+  ],
+  "profileRevision": "f46c7593eaf42be9"
+}

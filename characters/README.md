@@ -49,4 +49,4 @@ Run `node scripts/build-character-profiles.mjs` to rebuild exports. `python scri
 
 The active installation now reuses one player end-user ID across characters. Their cloud memories remain separate by character; clones share their character memory. Generic actors assigned the same persona share its cloud LTM even though their sessions differ. Local save timelines branch, but old cloud memories are not automatically erased.
 
-See [full research, Convai API methodology, validation and limitations](../docs/CHARACTER-PROFILES-V0282.md) and [installation/customization instructions](../README.md).
+See full research, Convai API methodology, validation and limitations and [installation/customization instructions](../README.md).

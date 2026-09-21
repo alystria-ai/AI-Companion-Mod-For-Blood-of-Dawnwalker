@@ -1,8 +1,11 @@
-param([switch]$BundleSharedKey)
+param([switch]$BundleSharedKey,[switch]$StableNames)
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
 $taskStamp=Get-Date -Format 'yyyyMMdd-HHmmss'
-$taskRelease=Join-Path $taskRoot ('dist/DawnwalkerConvai-0.30.8-'+$taskStamp)
+$taskVersion=(Get-Content (Join-Path $taskRoot 'package.json') -Raw|ConvertFrom-Json).version
+if($taskVersion -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid release version'}
+$taskSuffix=if($StableNames){''}else{'-'+$taskStamp}
+$taskRelease=Join-Path $taskRoot ('dist/DawnwalkerConvai-'+$taskVersion+$taskSuffix)
 $taskOutput=$taskRelease+'-Complete'
 $taskMod=Join-Path $taskOutput 'Dawnwalker/Binaries/Win64/ue4ss/Mods/DawnwalkerConvai'
 $taskPayload=Join-Path $taskMod 'Payload'
@@ -50,7 +53,7 @@ return root
  New-Item -ItemType Directory -Force -Path (Join-Path $taskPayload 'docs')|Out-Null
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/PREBUILT-INSTALL.md') -Destination (Join-Path $taskPayload 'docs/INSTALL.md')
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/FILE-STRUCTURE.md') -Destination (Join-Path $taskPayload 'docs/FILE-STRUCTURE.md')
- [IO.File]::WriteAllText((Join-Path $taskPayload 'release.json'),'{"version":"0.30.8","game":"1.05","ue4ss":"1.2.1 RC6","menu":"1.0.6.2","native":9,"assets":2,"protection":2}',[Text.UTF8Encoding]::new($false))
+ [IO.File]::WriteAllText((Join-Path $taskPayload 'release.json'),(@{version=$taskVersion;game='1.05';ue4ss='1.2.1 RC6';menu='1.0.6.2';native=9;assets=2;protection=2}|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/THIRD-PARTY-PREBUILT.txt') -Destination (Join-Path $taskPayload 'licenses/THIRD-PARTY.txt')
  foreach($taskName in @('NODE-LICENSE.txt','WEBVIEW2-LICENSE.txt','WEBVIEW2-NOTICE.txt')){Copy-Item -LiteralPath (Join-Path $taskRoot ('vendor/release-licenses/'+$taskName)) -Destination (Join-Path $taskPayload 'licenses')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'vendor/release-licenses/browser') -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'licenses')}
@@ -61,7 +64,7 @@ return root
   $taskPartRoot=$taskRelease+'-'+$taskPart
   foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskOutput 'Dawnwalker') -Recurse -File){
    $taskRelative=$taskFile.FullName.Substring($taskOutput.Length+1)
-   $taskLua=$taskFile.Extension -ieq '.lua'
+   $taskLua=$taskFile.Extension -eq '.lua'
    if(($taskPart -eq 'Scripts' -and $taskLua) -or ($taskPart -eq 'Runtime' -and !$taskLua)){
     $taskDestination=Join-Path $taskPartRoot $taskRelative
     New-Item -ItemType Directory -Force -Path (Split-Path $taskDestination -Parent)|Out-Null
@@ -69,15 +72,14 @@ return root
    }
   }
   if($taskPart -eq 'Scripts'){continue}
-  $taskIntro='# Runtime package: Lua-only Scripts package also required'
+  $taskIntro=if($taskPart -eq 'Scripts'){'# Scripts package: Runtime package also required'}else{'# Runtime package: Scripts package also required'}
   $taskIntro+="`r`n`r`nExtract BOTH split packages into the game installation folder, merging the Dawnwalker directory. Alternatively use only the Complete package. Do not run the helper manually.`r`n`r`n"
   [IO.File]::WriteAllText((Join-Path $taskPartRoot 'README.md'),$taskIntro+[IO.File]::ReadAllText((Join-Path $taskOutput 'README.md')),[Text.UTF8Encoding]::new($false))
  }
  foreach($taskPackage in @($taskOutput,($taskRelease+'-Scripts'),($taskRelease+'-Runtime'))){
   if($taskPackage -eq ($taskRelease+'-Scripts')){
-   $taskArchive=$taskPackage+'.zip'
-   Compress-Archive -LiteralPath (Join-Path $taskPackage 'Dawnwalker') -DestinationPath $taskArchive
-   Write-Output ('Release package: '+$taskArchive)
+   Compress-Archive -LiteralPath (Join-Path $taskPackage 'Dawnwalker') -DestinationPath ($taskPackage+'.zip')
+   Write-Output ('Release package: '+$taskPackage+'.zip')
    continue
   }
   Get-ChildItem -LiteralPath $taskPackage -Recurse -File | Sort-Object FullName | ForEach-Object {((Get-FileHash -LiteralPath $_.FullName).Hash+'  '+$_.FullName.Substring($taskPackage.Length+1))} | Set-Content -LiteralPath (Join-Path $taskPackage 'SHA256SUMS.txt') -Encoding ascii

@@ -36,6 +36,14 @@ The example contains placeholders. Configure your own Convai account and charact
 
 ## Distribution build
 
+### GitHub Actions
+
+Maintainers can open **Actions → Build release → Run workflow** on `main`. The workflow checks the source, downloads checksum-pinned Node.js, Zig and WebView2 dependencies, builds the helper and native DLLs, and produces Complete, Lua-only Scripts, Runtime and key-free Source ZIPs. It verifies that the two player packages reconstruct Complete, publishes checksums and build attestations, and creates a draft release by default.
+
+The shared-service build reads the repository's `CONVAI_API_KEY` Actions secret. Public roster defaults are in `characters/release-config.json`; no developer runtime state is uploaded. The workflow runs manually on `main`, never on pull requests. Dependencies and workflow actions are pinned. Review the draft before publishing it. GitHub attestation verification is available with `gh attestation verify <archive.zip> --repo alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker`.
+
+### Local packaging
+
 Before packaging, populate `vendor/release-licenses/` with the licenses matching the exact dependencies you distribute:
 
 - `NODE-LICENSE.txt`: the full license from the Node.js distribution you selected.

@@ -29,8 +29,6 @@ Dawnwalker/
                   ├─ characters/
                   ├─ docs/
                   ├─ licenses/
-                  ├─ docs/
-                  ├─ release.json
                   ├─ mod/
                   │  └─ Scripts/
                   ├─ node/
@@ -54,7 +52,6 @@ Dawnwalker/
 | `Payload/runtime/` | Packaged conversation configuration plus generated session, status and diagnostic files. |
 | `Payload/scripts/` | Helper startup script used by the packaged runtime. |
 | `Payload/licenses/` | Third-party licenses and notices. |
-| `Payload/docs/` and `Payload/release.json` | Installation/file guide and packaged component versions. |
 | `Payload/release.json` | Machine-readable mod, game, prerequisite and native-helper versions. |
 
 `Payload/runtime/support-report.txt` is generated when **F5 → Help → Copy logs** is used. It contains a sanitized support report rather than the complete unredacted logs.

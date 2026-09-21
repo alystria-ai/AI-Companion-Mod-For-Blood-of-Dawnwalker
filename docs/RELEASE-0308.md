@@ -15,3 +15,7 @@ Use the Complete archive, or install both matching 0.30.8 Scripts and Runtime ar
 All 282 regression tests pass. Browser audio checks verify directional panning, distance falloff, preservation of a centred multitone signal to better than 100 dB signal/error, and successful buffered playback. The player confirmed that the updated voices sound good in game. Binaural front/back and elevation filtering is intentionally absent; there is no wall occlusion or room echo simulation.
 
 This remains a preview for game 1.05, UE4SS 1.2.1 RC6 and Dawnwalker Mod Menu 1.0.6.2 or later. Previous per-character gameplay and Vortex validation limitations still apply.
+
+## Release packaging update — 22 September 2026
+
+The player README now leads with downloads, installation and controls. Detailed implementation information is collected in the developer guide. Scripts contains only Lua; Runtime supplies every other required player file. The helper now includes its product name and version. A manually triggered GitHub Actions workflow builds and verifies all packages from source, records build provenance and prepares a draft release.
