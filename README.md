@@ -12,16 +12,17 @@ Talk by **voice or text**, hear their replies with **subtitles and lipsync**, an
 
 ## Download and install
 
-Download **both** files. They are two parts of the same mod:
+Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/latest). Choose **Complete** for a single download, or install **both Scripts and Runtime** below:
 
 | Download | What's inside |
 | --- | --- |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/raw/refs/heads/main/DawnwalkerConvai-0.30.8-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/raw/refs/heads/main/DawnwalkerConvai-0.30.8-Runtime.zip) | Everything else needed to run the mod |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Runtime.zip) | Everything else needed to run the mod |
 
 1. Close the game.
 2. Install [UE4SS for Dawnwalker **1.2.1 RC6**](https://www.nexusmods.com/thebloodofdawnwalker/mods/18) and [Dawnwalker Mod Menu **1.0.6.2 or later**](https://www.nexusmods.com/thebloodofdawnwalker/mods/271), following their instructions.
-3. Extract **both ZIPs into your game installation folder**. Merge the included `Dawnwalker` folders when asked.
+3. Extract **Complete**, or **both Scripts and Runtime**, into your game installation folder. Merge the included `Dawnwalker` folders when asked.
 4. Launch the game, load a save, and press **F5**.
 
 Your installation should contain:
