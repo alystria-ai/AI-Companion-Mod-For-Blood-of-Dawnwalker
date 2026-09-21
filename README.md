@@ -6,6 +6,10 @@ Talk by **voice or text**, hear their replies with **subtitles and lipsync**, an
 
 **Version 0.30.8 · Windows · Game 1.05**
 
+[![Watch the AI Companion Manager demo](https://img.youtube.com/vi/K1X4xf-1i_8/hqdefault.jpg)](https://youtu.be/K1X4xf-1i_8)
+
+**[Watch the gameplay demo on YouTube](https://youtu.be/K1X4xf-1i_8)**
+
 ## Download and install
 
 Download **both** files. They are two parts of the same mod:
