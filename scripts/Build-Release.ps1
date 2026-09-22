@@ -36,4 +36,4 @@ try{
  }
 }finally{$taskSourceArchive.Dispose()}
 Get-ChildItem dist -Filter '*.zip' -File | Sort-Object Name | ForEach-Object {((Get-FileHash $_.FullName).Hash.ToLower()+'  '+$_.Name)} | Set-Content dist/SHA256SUMS.txt -Encoding ascii
-Copy-Item docs/RELEASE-0308.md dist/RELEASE-NOTES.md
+Copy-Item docs/RELEASE-0309.md dist/RELEASE-NOTES.md

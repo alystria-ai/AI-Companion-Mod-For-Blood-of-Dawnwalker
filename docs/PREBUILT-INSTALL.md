@@ -1,4 +1,4 @@
-# Dawnwalker Convai 0.30.8 Preview
+# Dawnwalker Convai 0.30.9 Preview
 
 Talk with nearby characters through text or voice, or summon travelling companions that follow Coen and use their native combat AI. This is a preview release: the conversation and companion framework is usable, but every character, power and combat interaction has not been validated in normal play.
 
@@ -14,23 +14,19 @@ The release contains the helper, local runtime and shared-service configuration.
 
 ## Choose a download
 
-GitHub downloads: [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/raw/refs/heads/main/DawnwalkerConvai-0.30.8-Scripts.zip) and [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/raw/refs/heads/main/DawnwalkerConvai-0.30.8-Runtime.zip). Download both. Archive checksums are in [SHA256SUMS.txt](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/blob/main/SHA256SUMS.txt).
-
-The Scripts ZIP contains only `.lua` files, without a README or checksum file. Installation instructions, licenses and the Runtime file manifest are in the Runtime ZIP. The previously supplied Complete archive is an alternative single download; GitHub currently hosts the two split ZIPs.
-
 | Download | Contents | When to use it |
 | --- | --- | --- |
 | **Complete** | All scripts, data, configuration, helper executables, DLLs and licenses | Recommended for a new install or a normal update |
-| **Scripts** | Lua files only, with their installation paths preserved | Use only together with the matching **Runtime** archive |
-| **Runtime** | Everything else: JavaScript, PowerShell, data, configuration, helper executables, DLLs, local runtime, documentation and licenses | Use only together with the matching **Scripts** archive |
+| **Scripts** | Lua game scripts only | Use only together with the matching **Runtime** archive |
+| **Runtime** | All remaining files: configuration, browser client, helper, dependencies and licenses | Use only together with the matching **Scripts** archive |
 
-**Scripts and Runtime are two halves of the same release. Install both 0.30.8 archives.** Neither split archive is a playable standalone package. Do not mix versions.
+**Scripts and Runtime are two halves of the same release. Install both 0.30.9 archives.** Neither split archive is a playable standalone package. Do not mix versions.
 
 ## Install
 
 1. Close the game.
 2. Install UE4SS 1.2.1 RC6 for game version 1.05 and Dawnwalker Mod Menu 1.0.6.2 or later.
-3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.30.8.
+3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.30.9.
 4. Extract the selected archive or archives into the game installation folder, merging the included `Dawnwalker` folder.
 5. Verify this exact directory exists:
 

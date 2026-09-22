@@ -5,6 +5,8 @@ static const wchar_t protectionTag[]=L"DawnwalkerConvai.Source.OwnedCompanion";
 static wchar_t preparedEffect[2048],activeEffect[2048],activeAsc[2048];
 static unsigned char activeHandle[8];
 static int preparedAddedRoot,hasActive;
+static int captureWeak(WeakObject *ref,void *object);
+static WeakObject preparedRef,activeAscRef;
 
 static void *protectionLibrary(void){
     return resolveObject(L"/Script/GameplayAbilities.Default__AbilitySystemBlueprintLibrary",L"/Script/GameplayAbilities.AbilitySystemBlueprintLibrary");
@@ -78,6 +80,7 @@ static int prepareProtection(FILE *reply,const wchar_t *effectPath,const wchar_t
     if(!*preparedEffect){
         if(!isRooted(effect)){rootObject(effect);preparedAddedRoot=1;}
         wcsncpy(preparedEffect,effectPath,2047);preparedEffect[2047]=0;
+        captureWeak(&preparedRef,effect);
     }
     fprintf(reply,"positive\t1\nnegative\t0\n");ok=1;
 cleanup:frameClose(&no);frameClose(&query);frameClose(&yes);return ok;
@@ -121,6 +124,7 @@ static int applyProtection(FILE *reply,const wchar_t *ascPath,const wchar_t *eff
     if(!in||!out)goto cleanup;copyValue(ap,in,sr);processEvent(asc,apply.fn,apply.data);
     int32_t handle=0;memcpy(&handle,out,4);if(handle<=0){fail("Protection effect application returned an invalid handle");goto cleanup;}
     memcpy(activeHandle,out,8);wcsncpy(activeEffect,effectPath,2047);activeEffect[2047]=0;wcsncpy(activeAsc,ascPath,2047);activeAsc[2047]=0;hasActive=1;
+    captureWeak(&activeAscRef,asc);
     fprintf(reply,"handle\t%d\n",handle);ok=1;
 cleanup:frameClose(&apply);frameClose(&spec);return ok;
 }
@@ -128,9 +132,10 @@ static int removeProtection(FILE *reply,const wchar_t *ascPath,int32_t handle,co
     int32_t stored=0;memcpy(&stored,activeHandle,4);
     if(!hasActive||handle!=stored||wcscmp(activeAsc,ascPath)||wcscmp(activeEffect,effectPath)||wcscmp(preparedEffect,effectPath))return fail("Removal does not match the active protection effect");
     void *ascClass=findObject(NULL,NULL,L"/Script/GameplayAbilities.AbilitySystemComponent",0);
-    void *effect=resolveObject(effectPath,L"/Script/GameplayAbilities.GameplayEffect");
-    void *asc=findObject(NULL,NULL,ascPath,0);Frame remove={0};int ok=0;
-    if(!effect||!ascClass)goto cleanup;
+    void *asc=activeAscRef.serial?weakGet(&activeAscRef):findObject(NULL,NULL,ascPath,0);Frame remove={0};int ok=0;
+    /* World teardown can destroy the effect before its owner. Removing the
+     * exact saved handle needs only the ASC, not the old effect UObject. */
+    if(!ascClass)goto cleanup;
     if(!asc||!isA(asc,ascClass)){
         memset(activeHandle,0,sizeof(activeHandle));activeEffect[0]=0;activeAsc[0]=0;hasActive=0;
         fprintf(reply,"removed\t0\nexpired\t1\n");return 1;
@@ -138,14 +143,21 @@ static int removeProtection(FILE *reply,const wchar_t *ascPath,int32_t handle,co
     if(!frameOpen(&remove,asc,L"RemoveActiveGameplayEffect"))goto cleanup;
     void *h=field(&remove,L"Handle",8,1,NULL);int32_t *stacks=field(&remove,L"StacksToRemove",4,0,NULL);unsigned char *result=field(&remove,L"ReturnValue",1,0,NULL);
     if(!h||!stacks||!result)goto cleanup;memcpy(h,activeHandle,8);*stacks=-1;processEvent(asc,remove.fn,remove.data);
-    if(!*result){fail("Exact protection handle was not active");goto cleanup;}
-    memset(activeHandle,0,sizeof(activeHandle));activeEffect[0]=0;activeAsc[0]=0;hasActive=0;fprintf(reply,"removed\t1\n");ok=1;
+    /* GAS may already have removed this handle during save/world teardown.
+     * An absent handle is a completed cleanup, not a reason to retry forever. */
+    fprintf(reply,"removed\t%d\nexpired\t%d\n",*result?1:0,*result?0:1);
+    memset(activeHandle,0,sizeof(activeHandle));activeEffect[0]=0;activeAsc[0]=0;hasActive=0;ok=1;
 cleanup:frameClose(&remove);return ok;
 }
 static int releaseProtection(FILE *reply,const wchar_t *effectPath){
     if(hasActive)return fail("Remove the active protection effect before release");
     if(!*preparedEffect||wcscmp(preparedEffect,effectPath))return fail("Effect is not the prepared protection effect");
-    void *effect=resolveObject(effectPath,L"/Script/GameplayAbilities.GameplayEffect");if(!effect)return 0;
-    if(preparedAddedRoot&&isRooted(effect))unrootObject(effect);
-    preparedEffect[0]=0;preparedAddedRoot=0;fprintf(reply,"released\t1\n");return 1;
+    void *effectClass=findObject(NULL,NULL,L"/Script/GameplayAbilities.GameplayEffect",0);
+    if(!effectClass)return fail("GameplayEffect class unavailable during release");
+    void *effect=preparedRef.serial?weakGet(&preparedRef):findObject(NULL,NULL,effectPath,0);
+    /* A saved path is allowed to expire when loading a save. There is no root
+     * left to release when its object has already gone away. */
+    if(effect&&!isA(effect,effectClass))return fail("Protection effect class mismatch");
+    if(effect&&preparedAddedRoot&&isRooted(effect))unrootObject(effect);
+    preparedEffect[0]=0;preparedAddedRoot=0;preparedRef=(WeakObject){0,0};activeAscRef=(WeakObject){0,0};fprintf(reply,"released\t1\n");return 1;
 }

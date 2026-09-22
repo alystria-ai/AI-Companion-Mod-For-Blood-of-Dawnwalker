@@ -44,6 +44,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Tests failed' }
       - name: Prepare verified build tools
         run: ./scripts/Prepare-ReleaseDependencies.ps1
+      - name: Check native save-reload cleanup
+        run: |
+          node --test tests/protection-cleanup.test.mjs
+          if ($LASTEXITCODE) { throw 'Native cleanup regression failed' }
       - name: Build browser client and collect licenses
         run: |
           node node_modules/esbuild/bin/esbuild bridge/client.ts --bundle --format=esm --outfile=bridge/public/client.js --metafile=runtime/bundle-meta.json
