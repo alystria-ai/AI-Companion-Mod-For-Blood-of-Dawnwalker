@@ -1,0 +1,109 @@
+{
+  "characterId": "2f688314-b6db-11f1-80f7-42010a7be02f",
+  "roster": [
+    {
+      "key": "anca",
+      "id": "2f688314-b6db-11f1-80f7-42010a7be02f"
+    },
+    {
+      "key": "brencis",
+      "id": "9062452e-b6db-11f1-8565-42010a7be02f"
+    },
+    {
+      "key": "lacra",
+      "id": "963e8552-b6db-11f1-b75c-42010a7be02f"
+    },
+    {
+      "key": "marat",
+      "id": "9e752730-b6db-11f1-996d-42010a7be02f"
+    },
+    {
+      "key": "xanthe",
+      "id": "a2e6f3d4-b6db-11f1-8c0f-42010a7be02f"
+    },
+    {
+      "key": "ambrus",
+      "id": "a9288bae-b6db-11f1-8d0c-42010a7be02f"
+    },
+    {
+      "key": "bakir",
+      "id": "b0246284-b6db-11f1-a3d0-42010a7be02f"
+    },
+    {
+      "key": "coen",
+      "id": "b5f87862-b6db-11f1-b9f0-42010a7be02f"
+    },
+    {
+      "key": "male-1",
+      "id": "e3bf6a30-b6db-11f1-8779-42010a7be02f"
+    },
+    {
+      "key": "male-2",
+      "id": "e988bcfa-b6db-11f1-bef7-42010a7be02f"
+    },
+    {
+      "key": "male-3",
+      "id": "f05bbd48-b6db-11f1-996d-42010a7be02f"
+    },
+    {
+      "key": "male-4",
+      "id": "f5b36692-b6db-11f1-8565-42010a7be02f"
+    },
+    {
+      "key": "male-5",
+      "id": "fade460a-b6db-11f1-80f7-42010a7be02f"
+    },
+    {
+      "key": "female-1",
+      "id": "28165932-b6dc-11f1-b9f0-42010a7be02f"
+    },
+    {
+      "key": "female-2",
+      "id": "2cc1d146-b6dc-11f1-8c78-42010a7be02f"
+    },
+    {
+      "key": "female-3",
+      "id": "326f0e9c-b6dc-11f1-8779-42010a7be02f"
+    },
+    {
+      "key": "female-4",
+      "id": "3ac9129a-b6dc-11f1-8cf4-42010a7be02f"
+    },
+    {
+      "key": "female-5",
+      "id": "440aaf12-b6dc-11f1-b75c-42010a7be02f"
+    },
+    {
+      "key": "matriarch",
+      "id": "70385c56-b6dc-11f1-9d51-42010a7be02f"
+    },
+    {
+      "key": "leonica",
+      "id": "aee7f894-b6dc-11f1-8793-42010a7be02f"
+    },
+    {
+      "key": "ocha",
+      "id": "b3f05e12-b6dc-11f1-a7e4-42010a7be02f"
+    },
+    {
+      "key": "vicho",
+      "id": "b994b066-b6dc-11f1-996d-42010a7be02f"
+    },
+    {
+      "key": "drogos",
+      "id": "bdcc2e16-b6dc-11f1-8d0c-42010a7be02f"
+    },
+    {
+      "key": "sara",
+      "id": "eadb797a-b6dc-11f1-8d0c-42010a7be02f"
+    },
+    {
+      "key": "catalin",
+      "id": "f073fcea-b6dc-11f1-b9f0-42010a7be02f"
+    },
+    {
+      "key": "isbrand",
+      "id": "f97c9fc2-b6dc-11f1-9d5c-42010a7be02f"
+    }
+  ]
+}

@@ -34,11 +34,12 @@ This is a preview release. The core conversation, menu, loading and companion sy
 
 ## Installation
 
-Three downloads are available:
+The main mod has three download choices, plus an optional language pack:
 
 - **Complete** contains the full mod and is recommended.
-- **Scripts** contains data, Lua, JavaScript and configuration, with no EXE or DLL files.
-- **Runtime** contains the helper executables, DLLs, local runtime and licenses.
+- **Scripts** contains the Lua game scripts.
+- **Runtime** contains the remaining configuration, helper executables, DLLs, local runtime and licenses.
+- **Multilingual voices** is an optional two-file ZIP: one JSON configuration and one installation note. It switches conversations to separate profiles using Azure multilingual voices for English, Russian, Spanish and French. Install it over a complete 0.30.9 installation. It contains no executable or API key.
 
 For a split installation, you must install **both Scripts and Runtime for version 0.30.9**. They are two halves of one install.
 
@@ -52,6 +53,8 @@ For a split installation, you must install **both Scripts and Runtime for versio
    ```
 
 5. Start the game, load a save and press F5.
+
+For the optional multilingual pack, close the game after the main installation and copy its `Dawnwalker` folder into the same game folder, replacing the configuration file. To return to the original English Kokoro voices, reinstall the normal Runtime or Complete archive. The multilingual character copies have separate conversation histories and cloud memories. The game interface and F5 menu are not translated.
 
 Vortex deployment has not been validated. If you use it, verify the exact path above after deployment; automatic detection is not guaranteed.
 

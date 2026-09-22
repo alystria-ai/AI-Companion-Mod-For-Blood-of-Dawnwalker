@@ -19,6 +19,7 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 | [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Complete.zip) | Recommended: all player files in one download |
 | [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Scripts.zip) | The Lua game scripts |
 | [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating for the save-reload fix:** install Complete or both matching packages. The fix is in Runtime; replacing Scripts alone is not enough. Restart the game after updating.
 
@@ -26,6 +27,8 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 2. Install [UE4SS for Dawnwalker **1.2.1 RC6**](https://www.nexusmods.com/thebloodofdawnwalker/mods/18) and [Dawnwalker Mod Menu **1.0.6.2 or later**](https://www.nexusmods.com/thebloodofdawnwalker/mods/271), following their instructions.
 3. Extract **Complete**, or **both Scripts and Runtime**, into your game installation folder. Merge the included `Dawnwalker` folders when asked.
 4. Launch the game, load a save, and press **F5**.
+
+For multilingual conversations, install the main mod first. Then close the game and copy the optional **Multilingual voices ZIP** into the same game folder, overwriting its one configuration file. English remains available in that pack. To restore the original English Kokoro voices, reinstall the normal 0.30.9 Runtime or Complete ZIP. The optional ZIP contains only a JSON configuration file and an installation note; it does not include an executable, DLL, script, or API key. Its character copies begin separate conversation histories and memories. The game and F5 menu remain in their original language.
 
 Your installation should contain:
 
