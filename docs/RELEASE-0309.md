@@ -10,6 +10,6 @@ Close the game before replacing files, then install Complete or both matching Sc
 
 ## Validation
 
-All 283 automated tests pass, including compiled native cleanup checks for destroyed objects, already-removed effects, reused object names and rejection of unrelated handles. The protection DLL builds successfully. Gameplay confirmation of repeated save loads is still pending.
+All 283 automated tests pass, including compiled native cleanup checks for destroyed objects, already-removed effects, reused object names and rejection of unrelated handles. The protection DLL builds successfully. The player confirmed the save-reload fix works in game. GitHub Actions built and verified the release packages and recorded build provenance.
 
 Requirements remain game 1.05, UE4SS 1.2.1 RC6 and Dawnwalker Mod Menu 1.0.6.2 or later. Scripts and Runtime remain two required halves of the split installation.

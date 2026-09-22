@@ -1,4 +1,4 @@
-# Dawnwalker Convai 0.30.8 Preview
+# Dawnwalker Convai 0.30.9 Preview
 
 Talk to the people of The Blood of Dawnwalker through text or voice, with spoken replies, subtitles and lipsync. You can also summon named characters, enemies and creatures as travelling companions. They follow Coen, join fights and use the game's native AI, attacks and abilities.
 
@@ -6,7 +6,7 @@ This is a preview release. The core conversation, menu, loading and companion sy
 
 ## Features
 
-**New in 0.30.8:** clearer character voices, with left/right positioning and distance volume preserved. The audio change has been confirmed in game.
+**New in 0.30.9:** fixes repeated companion cleanup errors and stuttering after loading a save, including after dismissing the entire party. The fix has been confirmed in game. Update Runtime as well as Scripts, or use Complete.
 
 - Text and microphone conversations with nearby supported characters.
 - Voiced replies, subtitles, facial animation and spatial audio.
@@ -37,12 +37,10 @@ This is a preview release. The core conversation, menu, loading and companion sy
 Three downloads are available:
 
 - **Complete** contains the full mod and is recommended.
-- **Scripts** contains only Lua files, with their installation paths preserved. It has no README, checksum file, JavaScript, PowerShell, configuration or binaries.
-- **Runtime** contains everything else: JavaScript, PowerShell, data, configuration, helper executables, DLLs, local runtime, documentation and licenses.
+- **Scripts** contains data, Lua, JavaScript and configuration, with no EXE or DLL files.
+- **Runtime** contains the helper executables, DLLs, local runtime and licenses.
 
-Download both revised 0.30.8 ZIPs from [GitHub](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker). Install both together, including when upgrading an existing 0.30.8 installation.
-
-For a split installation, you must install **both Scripts and Runtime for version 0.30.8**. They are two halves of one install.
+For a split installation, you must install **both Scripts and Runtime for version 0.30.9**. They are two halves of one install.
 
 1. Close the game.
 2. Install UE4SS 1.2.1 RC6 and Dawnwalker Mod Menu 1.0.6.2 or later.

@@ -4,7 +4,7 @@ Bring company on your travels through Vale Sangora. Summon characters to follow 
 
 Talk by **voice or text**, hear their replies with **subtitles and lipsync**, and invite nearby companions into a **group conversation**. No Convai account or command-line setup is needed.
 
-**Version 0.30.8 · Windows · Game 1.05**
+**Version 0.30.9 · Windows · Game 1.05**
 
 [![Watch the AI Companion Manager demo](https://img.youtube.com/vi/K1X4xf-1i_8/hqdefault.jpg)](https://youtu.be/K1X4xf-1i_8)
 
@@ -16,9 +16,11 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.8/DawnwalkerConvai-0.30.8-Runtime.zip) | Everything else needed to run the mod |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Runtime.zip) | Everything else needed to run the mod |
+
+**Updating for the save-reload fix:** install Complete or both matching packages. The fix is in Runtime; replacing Scripts alone is not enough. Restart the game after updating.
 
 1. Close the game.
 2. Install [UE4SS for Dawnwalker **1.2.1 RC6**](https://www.nexusmods.com/thebloodofdawnwalker/mods/18) and [Dawnwalker Mod Menu **1.0.6.2 or later**](https://www.nexusmods.com/thebloodofdawnwalker/mods/271), following their instructions.
@@ -91,6 +93,6 @@ This is a preview mod. Some roster entries, boss powers and area attacks still n
 
 ## For developers
 
-[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-0308.md)
+[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-0309.md)
 
 The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai connections, group chat, quest memory and adapting the approach to another game.
