@@ -1,6 +1,9 @@
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
 Set-Location $taskRoot
+$taskVersion=(Get-Content package.json -Raw|ConvertFrom-Json).version
+$taskNotes=Join-Path $taskRoot ('docs/RELEASE-'+$taskVersion.Replace('.','')+'.md')
+if(!(Test-Path -LiteralPath $taskNotes)){throw 'Matching release notes are required before building'}
 if(!$env:CONVAI_API_KEY){throw 'CONVAI_API_KEY is required for the shared-service release'}
 if(Test-Path runtime/convai-config.json){throw 'Use a clean build checkout; existing runtime configuration will not be overwritten'}
 $taskConfig=Get-Content characters/release-config.json -Raw | ConvertFrom-Json
@@ -39,5 +42,4 @@ try{
  }
 }finally{$taskSourceArchive.Dispose()}
 Get-ChildItem dist -Filter '*.zip' -File | Sort-Object Name | ForEach-Object {((Get-FileHash $_.FullName).Hash.ToLower()+'  '+$_.Name)} | Set-Content dist/SHA256SUMS.txt -Encoding ascii
-$taskNotes=Join-Path $taskRoot ('docs/RELEASE-'+$taskVersion.Replace('.','')+'.md')
 Copy-Item -LiteralPath $taskNotes -Destination (Join-Path $taskRoot 'dist/RELEASE-NOTES.md')
