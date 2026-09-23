@@ -1,14 +1,14 @@
 # LLM NPC Companions System for The Blood of Dawnwalker
 
-Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync, including romantic conversations with Anca and Lacra. Play in first-person POV, customise eye, hair and armour colours, or fight waves of enemies and bosses in Horde mode. No Convai account or command-line setup is needed.
+Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync. Play in first-person POV, fight waves of enemies and bosses in Horde mode, customise eye, hair and armour colours, and have romantic conversations with Anca and Lacra. No Convai account or command-line setup is needed.
 
 ## Features
 
 - Text and microphone conversations with nearby supported characters, voiced replies, subtitles, facial animation and gentle distance-based volume; talk privately or in a group with up to three distinct speakers.
 - Optional first-person POV, enabled in Settings, with native cameras preserved for dialogue and cutscenes.
 - Horde mode with ten curated waves of varied enemies and bosses, adjustable enemy counts, wave growth, levels and rest times; waves load before combat, defeated bodies remain on the ground, and the rest countdown makes room for conversation subtitles.
-- Custom eye, hair and armour colours, saved per character and their copies, with an option to restore the original colours.
-- Romantic conversations with Anca and Lacra through separate profile toggles, Off by default and automatically On for each character whose romance is confirmed in the loaded save; you can also enable either profile early.
+- Custom eye, hair and armour colours with 33 shades, including vivid pinks, purples, blues, greens and reds. Each summoned copy keeps its own colours.
+- Romantic conversations with Anca and Lacra through separate Auto, On and Off profile choices. Auto follows the loaded save, On enables romance early, and Off uses the normal profile even after unlocking romance. When both romances are confirmed and both women are nearby in group chat, Anca and Lacra know about Coen’s relationship with each of them and can exchange character-specific romantic banter.
 - Optional multilingual pack switches conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
 - Character-specific biographies, speaking rules and relationships, with quest knowledge based on detected journal progress and relevant location, time and environmental context.
 - 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
@@ -98,8 +98,8 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | --- | --- | --- |
 | Companion damage | 250% | Scales summoned companions' normal physical damage. Enemy damage is unchanged; some special abilities use separate damage rules. |
 | Attack frequency | 180% | Adjusts the native attack-speed attribute so attacks finish faster. Native AI still chooses when to attack and which moves to use. |
-| Anca romance profile | Off | Automatically On when the loaded save confirms romance with Anca. You can enable it manually before that. |
-| Lacra romance profile | Off | Works independently of Anca, automatically turning On when the loaded save confirms romance with Lacra. You can also enable it early. |
+| Anca romance profile | Auto | Auto follows your save. On always uses her romantic profile; Off always uses her normal profile, even after unlocking romance. |
+| Lacra romance profile | Auto | The same Auto, On and Off choices, independent of Anca. |
 | First-person camera | Off | Switches to Coen's eye-level viewpoint. Turn Off to return to the normal camera. Dialogue, menus and cutscenes keep their native cameras. |
 | Starting enemies | 8 | Regular enemies in the first Horde wave, in addition to bosses. |
 | Enemies added per level | 2 | Extra regular enemies added with each cleared wave. |
@@ -107,13 +107,13 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | Bosses per level | 1 | Extra bosses in each wave, chosen from that wave's enemy theme. |
 | Horde timeout | 10 seconds | Rest before the next wave. The countdown pauses with the game and gives way to conversation subtitles. |
 
-Romance toggles change conversation profiles only. They do not complete quests, invent past encounters or play cutscenes. A profile enabled by saved romance history stays On for that save; loading an earlier save rechecks the history. Manual early activation is saved separately.
+Romance toggles change conversation profiles only. They do not complete quests, invent past encounters or play cutscenes. Auto rechecks romance history when you load a save. Your explicit On or Off choice is saved and takes priority over that history.
 
 Fallen companions recover automatically after 3 seconds out of combat. Recovery is always enabled, with no toggle to configure.
 
 ## Appearance and controls
 
-- **F5 → Summon:** select a character, then use the eye, hair and armour colour arrows above Summon. Choices apply to that character's summoned copies. Use Restore original colours to reset them.
+- **F5 → Summon:** select a character, then use the eye, hair and armour colour arrows above Summon. Colours are captured when you click Summon. Changing the choices or using Restore original colours affects future summons only; existing copies keep their own colours through recovery and travel.
 - **F5 → Controls:** remap the five shortcuts. You can also edit `keybindings.ini` in the mod folder.
 - **Multilingual voices:** the optional pack switches conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
 - **Conversation actions:** try “Follow me,” “Stop walking” or “Look at me.” Use the menu to dismiss a companion.

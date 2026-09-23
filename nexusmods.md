@@ -1,6 +1,6 @@
 # LLM NPC Companions System 0.5.0 - page draft
 
-Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync, including romantic conversations with Anca and Lacra. Play in first-person POV, customise eye, hair and armour colours, or fight waves of enemies and bosses in Horde mode. No Convai account or command-line setup is needed.
+Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync. Play in first-person POV, fight waves of enemies and bosses in Horde mode, customise eye, hair and armour colours, and have romantic conversations with Anca and Lacra. No Convai account or command-line setup is needed.
 
 This is a preview release. The core conversation, menu, loading and companion systems are working, but every roster entry, scripted power and friendly-fire path has not been validated in gameplay.
 
@@ -18,10 +18,10 @@ The next release adds first-person POV, Horde mode, custom eye, hair and armour 
 - Multiple simultaneous companions and duplicate summons, without an artificial party cap.
 - Native following and combat behavior rather than generated attack commands.
 - Adjustable companion damage and attack frequency.
-- Eye, hair and armour colour selectors with visible left/right arrows, saved preferences and an original-colour reset.
+- Eye, hair and armour colour selectors with 33 shades and left/right arrows. Each summon keeps its own colours; changes and the original-colour reset apply to future summons.
 - Optional first-person gameplay camera, with priority given to native dialogue and cinematics.
 - Ten curated horde levels with enemy-count, growth, boss-count and rest settings. Companions can join the fight; the rest countdown yields to conversation subtitles.
-- Separate Anca and Lacra romance profile toggles, Off by default and automatically On when the loaded save confirms the matching romance. Manual early activation is also available; relationship memories follow the save.
+- Separate Anca and Lacra romance profiles: Auto follows the save, On enables romance early, and Off uses the normal profile even after unlocking romance. When both romances are confirmed and both women are nearby in group chat, Anca and Lacra know about Coen’s relationship with each of them and can exchange character-specific romantic banter. Relationship memories still follow the save. When both romances are confirmed and both women are nearby in group chat, Anca and Lacra know about Coen’s relationship with each of them and can exchange character-specific romantic banter.
 - Automatic recovery for fallen companions after 3 seconds out of combat.
 - Spaced party formations, catch-up while travelling and party restoration across supported world-travel transitions.
 - Remappable menu, text and voice shortcuts.
