@@ -258,7 +258,7 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  Key={F5='F5',F6='F6',F7='F7',F8='F8'}
  RegisterKeyBind=function(key,callback)keys[key]=callback end
  ExecuteInGameThread=function(fn)fn()end
- LoopAsync=function(_,fn)tick=fn end
+ LoopAsync=function(ms,fn)tick=function()for i=1,math.ceil(33/ms)do fn()end end end
  local function valid()return true end
  local world={IsValid=valid,GetFullName=function()return 'World' end}
  local class={IsValid=valid,GetFullName=function()return 'NPCClass' end,ForEachProperty=function()end,ForEachFunction=function()end,GetSuperStruct=function()return nil end}
@@ -324,6 +324,10 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  world.GetAddress=function()return 1 end
  for _,object in ipairs({world,class,mesh,faceAnim,audio,jali,movement,npc,player,camera,pc})do object.HasAnyFlags=function()return false end end
  package.preload.live_reload=function()return {modules={}}end
+ package.preload.first_person_camera=function()return {active=function()return false end,tick=function()end,release=function()end}end
+ package.preload.horde_mode=function()return {tick=function()end,stop=function()end}end
+ package.preload.companion_romance=function()return {snapshot=function()return ''end}end
+ package.preload.companion_settings=function()return {values={},poll=function()end}end
  package.preload.companion_native=function()return {version=6}end
  local ownedParty=false;local partyAction=nil
  package.preload.companion_menu=function()return {close=function()end,isOpen=function()return false end,tick=function()end,toggle=function()end}end

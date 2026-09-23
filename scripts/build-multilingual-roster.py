@@ -25,6 +25,8 @@ VOICE_CHOICE = {
     'coen': 'Adam', 'brencis': 'Brian', 'marat': 'Florian', 'ambrus': 'Ollie',
     'bakir': 'Dustin', 'vicho': 'Marcello', 'drogos': 'Davis',
     'catalin': 'Andrew', 'isbrand': 'Steffan',
+    'lunka': 'Serena', 'yanna': 'Emma', 'mirto': 'Adam',
+    'pieter': 'Steffan', 'esme': 'Evelyn',
     'male-1': 'Adam', 'male-2': 'Remy', 'male-3': 'Christopher',
     'male-4': 'Lewis', 'male-5': 'Alessio',
 }
@@ -86,6 +88,7 @@ class API:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--only', nargs='*', help='Test selected keys, e.g. --only anca')
+    parser.add_argument('--refresh', action='store_true', help='Refresh verified copies from updated English biographies')
     args = parser.parse_args()
     cfg = load(RUNTIME / 'convai-config.json')
     state = load(STATE) if STATE.exists() else {}
@@ -115,6 +118,22 @@ def main():
             print('Cloned ' + key, flush=True)
         if entry['sourceId'] != profile['id']:
             raise RuntimeError('Source ID changed since clone: ' + key)
+        if args.refresh and entry.get('status') == 'verified':
+            source = api.call('/character/get', {'charID': profile['id']})
+            if not source.get('backstory'):
+                raise RuntimeError('Source profile unavailable: ' + key)
+            backstory = multilingual_backstory(source['backstory'])
+            api.call('/character/update', {'charID': entry['id'], 'backstory': backstory,
+                                           'voiceType': voice['voice_value'],
+                                           'memorySettings': {'enabled': True}})
+            actual = api.call('/character/get', {'charID': entry['id']})
+            if actual.get('backstory') != backstory or actual.get('voice_type') != voice['voice_value']:
+                raise RuntimeError('Refresh readback mismatch: ' + key)
+            entry['sourceBackstoryRevision'] = profile.get('profileRevision', '')
+            save(STATE, state)
+            print('Refreshed ' + key + ' / ' + VOICE_CHOICE[key], flush=True)
+            time.sleep(2.5)
+            continue
         if entry.get('status') == 'verified':
             if entry.get('languages') == LANGUAGES:
                 continue

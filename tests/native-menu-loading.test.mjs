@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
 const source=readFileSync('mod/Scripts/companion_menu.lua','utf8');
 function run(body){const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);try{const rc=lauxlib.luaL_dostring(L,to_luastring(`
- for _,name in ipairs({'ai_state','ui_input','companions','companion_settings'})do package.preload[name]=function()return {}end end
+ for _,name in ipairs({'ai_state','ui_input','companions','companion_settings','companion_appearance','horde_mode'})do package.preload[name]=function()return {}end end
  package.preload.runtime_path=function()return 'test'end
  local M=(function() ${source} end)()
  ${body}`));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}}

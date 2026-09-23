@@ -1,5 +1,14 @@
 [
   {
+    "id": "combat_albino_tatzelwurm",
+    "name": "Albino tatzelwurm",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Tatzelwurm/NPCDef_Tatzelwurm_Albino.NPCDef_Tatzelwurm_Albino_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
     "id": "combat_alpha_wolf",
     "name": "Alpha Wolf",
     "path": "/Game/_Dawnwalker/Combat/Enemies/Bosses/_MiniBosses/Alpha_Wolf/NPCDef_AlphaWolf_Base.NPCDef_AlphaWolf_Base_C",
@@ -15,6 +24,51 @@
     "category": "combat",
     "chat": false,
     "archetype": "ambrus",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_ancient_astral_dual_wielder",
+    "name": "Ancient astral dual wielder",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralUndead/NPCDef_AstralHumanDualWield_ZombieRoman.NPCDef_AstralHumanDualWield_ZombieRoman_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_ancient_astral_heavy_fighter",
+    "name": "Ancient astral heavy fighter",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralUndead/NPCDef_AstralHumanHeavy_ZombieRomanVer.NPCDef_AstralHumanHeavy_ZombieRomanVer_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_ancient_astral_rogue",
+    "name": "Ancient astral rogue",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralUndead/NPCDef_NewLocomotion_AstralHumanRouge_ZombieRomanVer.NPCDef_NewLocomotion_AstralHumanRouge_ZombieRomanVer_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_ancient_astral_swordsman",
+    "name": "Ancient astral swordsman",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralUndead/NPCDef_AstralHumanSword_ZombieRomanVer.NPCDef_AstralHumanSword_ZombieRomanVer_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_ancient_zombie",
+    "name": "Ancient zombie",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Zombie/NPCDef_Zombie_Ancient.NPCDef_Zombie_Ancient_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
     "note": "Native definition; individual gameplay validation pending."
   },
   {
@@ -57,6 +111,15 @@
     "id": "combat_astral_human_sword",
     "name": "Astral Human Sword",
     "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralHumanSword/NPCDef_AstralHumanSword_Normal.NPCDef_AstralHumanSword_Normal_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_astral_nest_zombie",
+    "name": "Astral nest zombie",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/AstralEnemies/AstralNestZombie/NPCDef_Zombie_AstralNest.NPCDef_Zombie_AstralNest_C",
     "category": "combat",
     "chat": false,
     "archetype": "",
@@ -243,6 +306,15 @@
     "note": "Native definition; individual gameplay validation pending."
   },
   {
+    "id": "combat_brown_wolf",
+    "name": "Brown wolf",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Wolf/NPCDef_Wolf_Brown.NPCDef_Wolf_Brown_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
     "id": "combat_cat",
     "name": "Cat",
     "path": "/Game/_Dawnwalker/NPC/Animals/SimpleCharacter/NPCDef_Cat.NPCDef_Cat_C",
@@ -286,6 +358,15 @@
     "chat": false,
     "archetype": "",
     "note": "Some ambient animals have no native combat AI."
+  },
+  {
+    "id": "combat_dark_astral_wolf",
+    "name": "Dark astral wolf",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/AstralWolf/NPCDef_Astral_Wolf_Dark.NPCDef_Astral_Wolf_Dark_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
   },
   {
     "id": "combat_deer",
@@ -333,6 +414,24 @@
     "note": "Native definition; individual gameplay validation pending."
   },
   {
+    "id": "combat_fallen_priest",
+    "name": "Fallen priest",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Witch/NPCDef_Witch_FallenPriest.NPCDef_Witch_FallenPriest_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_forest_kobold",
+    "name": "Forest kobold",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Forest_Combat.NPCDef_Kobold_Forest_Combat_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
     "id": "combat_gargoyle",
     "name": "Gargoyle",
     "path": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Gargoyle/NPCDef_Gargoyle_Base.NPCDef_Gargoyle_Base_C",
@@ -372,6 +471,15 @@
     "id": "combat_human_enemy_axe",
     "name": "Human Enemy Axe",
     "path": "/Game/_Dawnwalker/Combat/Enemies/HumanEnemies/HumanSwordHeavy/NPCDef_HumanEnemy_Axe_Base.NPCDef_HumanEnemy_Axe_Base_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_imp_kobold",
+    "name": "Imp kobold",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Imp_Combat.NPCDef_Kobold_Imp_Combat_C",
     "category": "combat",
     "chat": false,
     "archetype": "",
@@ -493,6 +601,15 @@
     "chat": false,
     "archetype": "",
     "note": "Some ambient animals have no native combat AI."
+  },
+  {
+    "id": "combat_pooka_kobold",
+    "name": "Pooka kobold",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Kobold/NPCDef_Kobold_Pooka_Combat.NPCDef_Kobold_Pooka_Combat_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
   },
   {
     "id": "combat_psoglav",
@@ -639,6 +756,15 @@
     "note": "Native definition; individual gameplay validation pending."
   },
   {
+    "id": "combat_undead_nun",
+    "name": "Undead nun",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Leonica/NPCDef_Undead_LeonicaNun.NPCDef_Undead_LeonicaNun_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
     "id": "combat_undead_regular_nun",
     "name": "Undead Regular Nun",
     "path": "/Game/_Dawnwalker/Combat/Enemies/UndeadNun/NPCDef_Undead_RegularNun_Base.NPCDef_Undead_RegularNun_Base_C",
@@ -723,6 +849,15 @@
     "id": "combat_vidmo",
     "name": "Vidmo",
     "path": "/Game/_Dawnwalker/Combat/Enemies/Vidmo/NPCDef_Vidmo_Base.NPCDef_Vidmo_Base_C",
+    "category": "combat",
+    "chat": false,
+    "archetype": "",
+    "note": "Native definition; individual gameplay validation pending."
+  },
+  {
+    "id": "combat_white_wolf",
+    "name": "White wolf",
+    "path": "/Game/_Dawnwalker/Combat/Enemies/EnemyVariants/Wolf/NPCDef_Wolf_White.NPCDef_Wolf_White_C",
     "category": "combat",
     "chat": false,
     "archetype": "",

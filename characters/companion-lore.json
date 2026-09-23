@@ -593,8 +593,8 @@
       ],
       "quests": [
         "The Cycle of Love",
-        "Xanthe’s Excavations",
-        "Xanthe’s Blood Guards"
+        "Xantheâ€™s Excavations",
+        "Xantheâ€™s Blood Guards"
       ],
       "coverage": "Only reviewed direct-participant quest rules; faction ownership alone never grants remote discoveries.",
       "personalRelationships": [
@@ -702,7 +702,7 @@
       ],
       "quests": [
         "The Gilded Gauntlet",
-        "Ambrus’s Collectors"
+        "Ambrusâ€™s Collectors"
       ],
       "coverage": "Only reviewed direct-participant quest rules; faction ownership alone never grants remote discoveries.",
       "personalRelationships": [
@@ -815,7 +815,7 @@
       "quests": [
         "The Lunar Game",
         "The Ring",
-        "Bakir’s Headhunters"
+        "Bakirâ€™s Headhunters"
       ],
       "coverage": "Only reviewed direct-participant quest rules; faction ownership alone never grants remote discoveries.",
       "personalRelationships": [
@@ -931,9 +931,9 @@
       ],
       "quests": [
         "Song of the Mountain",
-        "A Mother’s Plea"
+        "A Motherâ€™s Plea"
       ],
-      "coverage": "Elder report branch is reviewed. Ocha’s private choice is withheld until a report to her mother.",
+      "coverage": "Elder report branch is reviewed. Ochaâ€™s private choice is withheld until a report to her mother.",
       "personalRelationships": [
         {
           "other": "ocha",
@@ -1503,7 +1503,7 @@
       "quests": [
         "Rise at Dawn",
         "Fall Before Dusk",
-        "Catalin’s Tutor"
+        "Catalinâ€™s Tutor"
       ],
       "coverage": "Rise at Dawn completion establishes troops entering the outpost. Still active in the captured save: grants no completed-outpost memory yet.",
       "personalRelationships": [
@@ -1569,12 +1569,12 @@
       "key": "pieter",
       "name": "Pieter",
       "gender": "MALE",
-      "voice": "Harry",
+      "voice": "convai-kokoro-04c5659ef7eeef25",
       "aliases": [
         "pieter",
-        "Pieter_armed",
-        "NPCDef_Pieter_armed",
-        "Pieter"
+        "Pieter",
+        "NPCDef_Pieter",
+        "NPCDef_Pieter_armed"
       ],
       "bio": "Coen’s protective but emotionally reserved father. His practical discipline conceals the weight of a mercenary past and a need to keep his family safe without readily explaining himself.",
       "topics": [
@@ -1718,7 +1718,7 @@
         "Kostel",
         "Mert",
         "Crina",
-        "Kvet’s crucifix",
+        "Kvetâ€™s crucifix",
         "silver arrowheads",
         "flour smuggling",
         "Laslea",
@@ -1729,7 +1729,8 @@
         "mert",
         "crina",
         "crake",
-        "brencis"
+        "brencis",
+        "Kvet’s crucifix"
       ],
       "sources": [
         "https://dawnwalkerdb.com/characters/vladimir",
@@ -1892,6 +1893,339 @@
           "knowledge": "The hive exploited his regeneration to feed repeatedly.",
           "sources": [
             "https://metabot.gg/en/dawnwalker/characters/isbrand"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "lunka",
+      "name": "Lunka",
+      "gender": "FEMALE",
+      "voice": "convai-kokoro-4516f4ce70b89e5a",
+      "aliases": [
+        "lunka",
+        "Lunka",
+        "NPCDef_Lunka",
+        "lunka-turned",
+        "Lunka (Turned)",
+        "NPCDef_Lunka_turned"
+      ],
+      "bio": "Coen's youngest sister, perceptive and clever but still a child. She is close to the brother who worries about her safety.",
+      "topics": [
+        "family",
+        "Laslea",
+        "Coen",
+        "coen",
+        "pieter",
+        "esme",
+        "yanna",
+        "mirto",
+        "Pieter",
+        "Esme",
+        "Yanna",
+        "Mirto",
+        "curiosity",
+        "safety"
+      ],
+      "sources": [
+        "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots",
+        "https://dawnwalkerdb.com/characters/lunka",
+        "https://dawnwalkerdb.com/characters/yanna"
+      ],
+      "quests": [],
+      "coverage": "Established family history only; quest outcomes require current-save context.",
+      "personalRelationships": [
+        {
+          "other": "coen",
+          "name": "Coen",
+          "kind": "older brother and protector",
+          "knowledge": "He has looked after her closely and fears that curiosity may put her in danger.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/lunka"
+          ]
+        },
+        {
+          "other": "pieter",
+          "name": "Pieter",
+          "kind": "father",
+          "knowledge": "His strictness and concern both shape family life.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+          ]
+        },
+        {
+          "other": "esme",
+          "name": "Esme",
+          "kind": "mother",
+          "knowledge": "Esme is part of the family even during her withdrawal.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+          ]
+        },
+        {
+          "other": "yanna",
+          "name": "Yanna",
+          "kind": "older sister and caretaker",
+          "knowledge": "Yanna often looks after her.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        },
+        {
+          "other": "mirto",
+          "name": "Mirto",
+          "kind": "brother",
+          "knowledge": "They are the younger children in the household.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "yanna",
+      "name": "Yanna",
+      "gender": "FEMALE",
+      "voice": "convai-kokoro-4516f4ce70b89e5a",
+      "aliases": [
+        "yanna",
+        "Yanna",
+        "NPCDef_Yanna"
+      ],
+      "bio": "Coen's nearly adult sister, mature beyond her years and often responsible for Mirto and Lunka, though her patience has limits.",
+      "topics": [
+        "family",
+        "Laslea",
+        "Coen",
+        "coen",
+        "pieter",
+        "esme",
+        "mirto",
+        "lunka",
+        "Pieter",
+        "Esme",
+        "Mirto",
+        "Lunka",
+        "care"
+      ],
+      "sources": [
+        "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots",
+        "https://dawnwalkerdb.com/characters/yanna",
+        "https://dawnwalkerdb.com/characters/mirto"
+      ],
+      "quests": [],
+      "coverage": "Established family history only; quest outcomes require current-save context.",
+      "personalRelationships": [
+        {
+          "other": "coen",
+          "name": "Coen",
+          "kind": "older brother",
+          "knowledge": "They share concern for the younger children.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        },
+        {
+          "other": "pieter",
+          "name": "Pieter",
+          "kind": "father",
+          "knowledge": "She assumes much of the care when he is away.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        },
+        {
+          "other": "esme",
+          "name": "Esme",
+          "kind": "mother",
+          "knowledge": "Her withdrawal has affected family life.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/esme"
+          ]
+        },
+        {
+          "other": "mirto",
+          "name": "Mirto",
+          "kind": "younger brother in her care",
+          "knowledge": "She knows his temper and hopes he will grow through it.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/mirto"
+          ]
+        },
+        {
+          "other": "lunka",
+          "name": "Lunka",
+          "kind": "younger sister in her care",
+          "knowledge": "She helps look after Lunka.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "mirto",
+      "name": "Mirto",
+      "gender": "MALE",
+      "voice": "convai-kokoro-c06cbef9a39378f9",
+      "aliases": [
+        "mirto",
+        "Mirto",
+        "NPCDef_Mirto"
+      ],
+      "bio": "Coen's energetic younger brother, quick to anger while the family faces hardship.",
+      "topics": [
+        "family",
+        "Laslea",
+        "Coen",
+        "coen",
+        "pieter",
+        "esme",
+        "yanna",
+        "lunka",
+        "Pieter",
+        "Esme",
+        "Yanna",
+        "Lunka",
+        "anger"
+      ],
+      "sources": [
+        "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots",
+        "https://dawnwalkerdb.com/characters/mirto",
+        "https://dawnwalkerdb.com/characters/yanna"
+      ],
+      "quests": [],
+      "coverage": "Established family history only; quest outcomes require current-save context.",
+      "personalRelationships": [
+        {
+          "other": "coen",
+          "name": "Coen",
+          "kind": "older brother",
+          "knowledge": "Coen worries about how to speak with him.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/mirto"
+          ]
+        },
+        {
+          "other": "pieter",
+          "name": "Pieter",
+          "kind": "father",
+          "knowledge": "Pieter's strictness weighs on him.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/mirto"
+          ]
+        },
+        {
+          "other": "esme",
+          "name": "Esme",
+          "kind": "mother",
+          "knowledge": "Her withdrawal has been difficult for him.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/mirto"
+          ]
+        },
+        {
+          "other": "yanna",
+          "name": "Yanna",
+          "kind": "older sister and caretaker",
+          "knowledge": "She helps look after him.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        },
+        {
+          "other": "lunka",
+          "name": "Lunka",
+          "kind": "younger sister",
+          "knowledge": "They are the younger children in the household.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "esme",
+      "name": "Esme",
+      "gender": "FEMALE",
+      "voice": "convai-kokoro-36c981057bd1e1c6",
+      "aliases": [
+        "esme",
+        "Esme",
+        "NPCDef_Esme_new1",
+        "NPCDef_Esme"
+      ],
+      "bio": "Coen's mother, long burdened by grief and illness, whose withdrawal has changed family life.",
+      "topics": [
+        "family",
+        "Laslea",
+        "Coen",
+        "coen",
+        "pieter",
+        "yanna",
+        "mirto",
+        "lunka",
+        "Pieter",
+        "Yanna",
+        "Mirto",
+        "Lunka",
+        "Alin",
+        "Anca",
+        "grief",
+        "herbs"
+      ],
+      "sources": [
+        "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots",
+        "https://dawnwalkerdb.com/characters/esme",
+        "https://dawnwalkerdb.com/characters/yanna",
+        "https://dawnwalkerdb.com/characters/mirto"
+      ],
+      "quests": [],
+      "coverage": "Established family history only; quest outcomes require current-save context.",
+      "personalRelationships": [
+        {
+          "other": "coen",
+          "name": "Coen",
+          "kind": "eldest son",
+          "knowledge": "He remembers her earlier warmth and hopes for her recovery.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/esme"
+          ]
+        },
+        {
+          "other": "pieter",
+          "name": "Pieter",
+          "kind": "husband",
+          "knowledge": "He is concerned enough to seek stronger herbs for her.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+          ]
+        },
+        {
+          "other": "yanna",
+          "name": "Yanna",
+          "kind": "daughter",
+          "knowledge": "Yanna has assumed care for the younger children.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/yanna"
+          ]
+        },
+        {
+          "other": "mirto",
+          "name": "Mirto",
+          "kind": "son",
+          "knowledge": "Her withdrawal has been difficult for him.",
+          "sources": [
+            "https://dawnwalkerdb.com/characters/mirto"
+          ]
+        },
+        {
+          "other": "lunka",
+          "name": "Lunka",
+          "kind": "youngest daughter",
+          "knowledge": "She is one of the younger children in the household.",
+          "sources": [
+            "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
           ]
         }
       ]
@@ -2128,7 +2462,119 @@
       "kind": "opposed ruler",
       "weight": 45,
       "source": "https://dawnwalkerdb.com/characters/vladimir"
+    },
+    {
+      "a": "coen",
+      "b": "lunka",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "coen",
+      "b": "yanna",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "coen",
+      "b": "mirto",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "coen",
+      "b": "pieter",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "coen",
+      "b": "esme",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "pieter",
+      "b": "esme",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "yanna",
+      "b": "lunka",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "yanna",
+      "b": "mirto",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "mirto",
+      "b": "lunka",
+      "kind": "family",
+      "weight": 95,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "anca",
+      "b": "esme",
+      "kind": "patient",
+      "weight": 45,
+      "source": "https://www.powerpyx.com/blood-of-dawnwalker-withering-away-walkthrough/"
+    },
+    {
+      "a": "pieter",
+      "b": "yanna",
+      "kind": "daughter",
+      "weight": 85,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "pieter",
+      "b": "mirto",
+      "kind": "son",
+      "weight": 45,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "pieter",
+      "b": "lunka",
+      "kind": "youngest daughter",
+      "weight": 85,
+      "source": "https://dawnwalkerdb.com/readables/answer-from-lunka-about-pieter"
+    },
+    {
+      "a": "lunka",
+      "b": "esme",
+      "kind": "mother",
+      "weight": 85,
+      "source": "https://en.bandainamcoent.eu/dawnwalker/news/community-bulletin-board-9-coens-roots"
+    },
+    {
+      "a": "yanna",
+      "b": "esme",
+      "kind": "mother",
+      "weight": 85,
+      "source": "https://dawnwalkerdb.com/characters/esme"
+    },
+    {
+      "a": "mirto",
+      "b": "esme",
+      "kind": "mother",
+      "weight": 85,
+      "source": "https://dawnwalkerdb.com/characters/mirto"
     }
   ],
-  "profileRevision": "f46c7593eaf42be9"
+  "profileRevision": "1dce7061bf78c1f6"
 }

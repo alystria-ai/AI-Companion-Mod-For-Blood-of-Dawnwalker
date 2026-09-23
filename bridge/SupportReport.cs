@@ -39,11 +39,11 @@ public sealed class SupportReport {
         return value.Trim();
     }
     public static string Build(string directory){
-        var report=new StringBuilder("Dawnwalker Convai 0.30.7 diagnostic report\r\n");
+        var report=new StringBuilder("LLM NPC Companions System 0.4 development diagnostic report\r\n");
         report.AppendLine("UTC: "+DateTime.UtcNow.ToString("o"));
         report.AppendLine("Windows: "+Environment.OSVersion.Version+"; 64-bit process: "+Environment.Is64BitProcess);
         report.AppendLine("Recent diagnostic tails only. No chat history, configuration or recordings included.");
-        foreach(var name in new[]{"reload-status.txt","background-status.txt","ui-status.txt","companion-performance.txt","companion-spawn-diagnostic.txt","spatial-status.txt","helper-errors.log","background-errors.log","webview-errors.log"}){
+        foreach(var name in new[]{"reload-status.txt","horde-status.txt","camera-status.txt","background-status.txt","ui-status.txt","companion-performance.txt","companion-spawn-diagnostic.txt","spatial-status.txt","helper-errors.log","background-errors.log","webview-errors.log"}){
             report.AppendLine("\r\n--- "+name+" ---");
             try{report.AppendLine(Sanitize(Tail(Path.Combine(directory,name),8192)));}
             catch{report.AppendLine("Unavailable (not created yet or currently locked).");}

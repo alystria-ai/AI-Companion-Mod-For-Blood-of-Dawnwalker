@@ -12,7 +12,7 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 public sealed class DialogueState {
-    public string text,status,actor,name,microphoneStatus,microphoneTranscript,microphoneDevice,mode,room;
+    public string text,hordeText,status,actor,name,microphoneStatus,microphoneTranscript,microphoneDevice,mode,room;
     public double microphoneLevel;public bool microphoneSilent;
     public bool active,gameAlive,microphoneRequested,microphoneOn;
     public long generation,updated;
@@ -65,6 +65,8 @@ public sealed class DialogueOverlay : Form {
     bool voiceGroup,micStopping;string voiceNotice="";DateTime voiceNoticeUntil;
     bool VoiceNoticeVisible {get{return voiceNotice!=""&&DateTime.UtcNow<voiceNoticeUntil;}}
     bool VoiceVisible {get{return state.microphoneOn||(state.microphoneRequested&&VoiceFailed)||VoiceNoticeVisible;}}
+    bool HordeVisible {get{return !editing&&!opening&&!sending&&!VoiceVisible&&String.IsNullOrWhiteSpace(state.text)&&!String.IsNullOrWhiteSpace(state.hordeText);}}
+    string DisplayText {get{return HordeVisible?state.hordeText:state.text;}}
     string VoiceKey {get{return (micBusy||VoiceNoticeVisible?voiceGroup:state.mode=="group")?bindings.Label("GroupVoice"):bindings.Label("SingleVoice");}}
     bool VoiceFailed {get{return !state.microphoneOn&&!String.IsNullOrEmpty(state.microphoneStatus)&&(state.microphoneStatus.StartsWith("Microphone unavailable")||state.microphoneStatus.StartsWith("Microphone control failed")||state.microphoneStatus.StartsWith("Microphone disconnected"));}}
     bool Alive {get{return !closing&&!IsDisposed&&!Disposing;}}
@@ -131,7 +133,7 @@ public sealed class DialogueOverlay : Form {
                 int height=PanelHeight(width);
                 SetBounds(origin.X+(gw-width)/2,origin.Y+gh-height-S(35),width,height);
             }
-            if(editing||VoiceVisible||(state.active&&!String.IsNullOrWhiteSpace(state.text))){LayoutInput();if(!Visible)Show();Invalidate();}else Hide();
+            if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(state.text))){LayoutInput();if(!Visible)Show();Invalidate();}else Hide();
         }catch{if(!editing)Hide();}
     }
     protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
@@ -142,7 +144,7 @@ public sealed class DialogueOverlay : Form {
     }
     int SubtitleHeight(int width){
         using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=GameFont(15)){
-            float textHeight=g.MeasureString(state.text??"",font,Math.Max(80,(int)(width/scale)-48)).Height;
+            float textHeight=g.MeasureString(DisplayText??"",font,Math.Max(80,(int)(width/scale)-48)).Height;
             return S(42+(int)Math.Ceiling(Math.Max(25,Math.Min(110,textHeight))));
         }
     }
@@ -155,7 +157,7 @@ public sealed class DialogueOverlay : Form {
             return S(72+Math.Max(26,lines));
         }
     }
-    int PanelHeight(int width){return (editing?S(180):String.IsNullOrWhiteSpace(state.text)?0:SubtitleHeight(width))+VoiceHeight(width);}
+    int PanelHeight(int width){return (editing?S(180):String.IsNullOrWhiteSpace(DisplayText)?0:SubtitleHeight(width))+VoiceHeight(width);}
     protected override bool ProcessCmdKey(ref Message msg,Keys keyData){
         if(editing&&keyData==Keys.Enter){SubmitFromKey();return true;}
         if(editing&&keyData==Keys.Escape){EndCompose(false);return true;}
@@ -168,7 +170,7 @@ public sealed class DialogueOverlay : Form {
         editing=value;input.Visible=value;send.Visible=value;
         if(!preview){int style=GetWindowLong(Handle,-20);SetWindowLong(Handle,-20,value?(style|0x08000000)&~0x20:style|(0x08000000|0x20));}
         Height=Math.Max(S(67),PanelHeight(Width));LayoutInput();Invalidate();
-        if(!value&&!VoiceVisible&&String.IsNullOrWhiteSpace(state.text))Hide();
+        if(!value&&!VoiceVisible&&!HordeVisible&&String.IsNullOrWhiteSpace(state.text))Hide();
     }
     async void BeginCompose(bool group){
         if(!Alive||sending||opening||editing)return;opening=true;error="";
@@ -281,9 +283,9 @@ public sealed class DialogueOverlay : Form {
         using(var gradient=new LinearGradientBrush(logical,Color.FromArgb(28,29,24),panel,90))g.FillRectangle(gradient,logical);
         using(var pen=new Pen(gold,1)){g.DrawRectangle(pen,0,0,w-1,h-1);if(editing)g.DrawRectangle(pen,25,h-79,w-133,40);}
         using(var title=GameFont(11))using(var body=GameFont(15))using(var hint=new Font("Segoe UI",12,FontStyle.Regular,GraphicsUnit.Pixel))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
-            if(!String.IsNullOrWhiteSpace(state.text)||editing){
-                g.DrawString((state.mode=="group"?"GROUP · ":"")+Speaker(),title,brass,new RectangleF(24,8,w-48,22),format);
-                var caption=String.IsNullOrWhiteSpace(state.text)?(editing?"What would you like to say?":""):state.text;
+            if(!String.IsNullOrWhiteSpace(DisplayText)||editing){
+                g.DrawString(HordeVisible?"HORDE":(state.mode=="group"?"GROUP · ":"")+Speaker(),title,brass,new RectangleF(24,8,w-48,22),format);
+                var caption=String.IsNullOrWhiteSpace(DisplayText)?(editing?"What would you like to say?":""):DisplayText;
                 g.DrawString(caption,body,light,new RectangleF(24,32,w-48,editing?60:h-39-(int)(VoiceHeight(Width)/scale)),format);
             }
             string footer=editing?(String.IsNullOrEmpty(error)?"ENTER  SEND     ·     ESC  RETURN":error):"";

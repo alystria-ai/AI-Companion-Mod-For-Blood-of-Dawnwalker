@@ -4,7 +4,7 @@ $taskRoot=Split-Path $PSScriptRoot -Parent
 Set-Location $taskRoot
 $taskVersion=(Get-Content package.json -Raw|ConvertFrom-Json).version
 $taskMaps=@{}
-foreach($taskPart in @('Complete','Scripts','Runtime','Source')){
+foreach($taskPart in @('Complete','Scripts','Runtime','Source','Multilingual')){
  $taskZip=[IO.Compression.ZipFile]::OpenRead((Join-Path $taskRoot "dist/DawnwalkerConvai-$taskVersion-$taskPart.zip"))
  $taskMap=@{}
  try{
@@ -17,6 +17,7 @@ foreach($taskPart in @('Complete','Scripts','Runtime','Source')){
    $taskMap[$taskName]=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($taskBytes))
    if($taskPart -eq 'Scripts' -and !$taskName.EndsWith('.lua')){throw 'Scripts must contain Lua only'}
    if($taskPart -eq 'Runtime' -and $taskName.EndsWith('.lua')){throw 'Lua belongs in Scripts'}
+   if($taskPart -eq 'Multilingual' -and $taskName -notin @('README-MULTILINGUAL.txt','Dawnwalker/Binaries/Win64/ue4ss/Mods/DawnwalkerConvai/Payload/runtime/convai-config.json')){throw 'Unexpected multilingual file'}
    if($taskPart -eq 'Source' -and $taskName -match '(\.(exe|dll|zip|tgz)$|^(runtime|vendor|node_modules|backups|\.git)/)'){throw 'Unexpected file in source archive'}
    $taskText=[Text.Encoding]::UTF8.GetString($taskBytes)
    $taskHost=$taskName.EndsWith('/bridge/native/ConvaiHost.exe') -and $taskPart -in @('Complete','Runtime')

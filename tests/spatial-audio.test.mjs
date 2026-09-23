@@ -31,16 +31,14 @@ test('Lua source-to-camera transform preserves right/left, camera rotation, heig
  try{const rc=lauxlib.luaL_dostring(L,to_luastring(code));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
 });
 
-test('uncoloured spatial output smooths movement and resets stale ownership',async()=>{
+test('distance-only voice volume stays gentle and resets for missing speaker data',async()=>{
  const b=await build({entryPoints:['bridge/spatial-output.ts'],bundle:true,write:false,format:'iife',globalName:'M'});
  const ctx={};vm.runInNewContext(b.outputFiles[0].text,ctx);
- const events=[],p=()=>({value:0,cancelScheduledValues(){},setTargetAtTime(v,t,tau){events.push([v,t,tau]);}});
- const node={positionX:p(),positionY:p(),positionZ:p(),connect(){},disconnect(){}};
- const out=new ctx.M.SpatialOutput({createPanner:()=>node,currentTime:1,destination:{}});
- assert.equal(node.panningModel,'equalpower');assert.equal(node.distanceModel,'inverse');assert.equal(node.refDistance,2);
- out.setPosition([2,0,-3]);assert.deepEqual(events.map(e=>e[0]),[2,0,-3]);assert.ok(events.every(e=>e[2]===.045));
- out.setPosition([2,0,-3]);assert.equal(events.length,3,'Unchanged polling queued extra ramps');
- out.setPosition(null);assert.deepEqual(events.slice(-3).map(e=>e[0]),[0,0,-2]);
+ const events=[];const node={gain:{value:1,cancelScheduledValues(){},setTargetAtTime(v,t,tau){events.push([v,t,tau]);}},connect(){},disconnect(){}};
+ const out=new ctx.M.SpatialOutput({createGain:()=>node,currentTime:1,destination:{}});
+ assert.equal(ctx.M.speechGain([0,0,4]),1);assert.equal(ctx.M.speechGain([0,0,30]),.85);assert.equal(ctx.M.speechGain([0,0,300]),.85);
+ out.setPosition([0,0,30]);assert.deepEqual(events[0],[.85,1,.15]);out.setPosition([0,0,30]);assert.equal(events.length,1);
+ out.setPosition(null);assert.deepEqual(events[1],[1,1,.15]);
  assert.equal(ctx.M.voicePosition({generation:8,at:10000,position:[1,2,3]},7,10001),null);
  assert.equal(ctx.M.voicePosition({generation:7,at:10000,position:[1,2,3]},7,12500),null);
 });

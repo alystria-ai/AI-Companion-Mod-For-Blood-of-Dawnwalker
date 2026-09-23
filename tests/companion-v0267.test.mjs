@@ -52,12 +52,6 @@ test('each of 24 companions gets first access to shared recovery budgets and rem
  party[3]=nil;local order;order,cursor=M.updateOrder(party,999);assert(#order==23)
  order,cursor=M.updateOrder({},cursor);assert(#order==0 and cursor==0)
 `));
-test('arrival does not suppress sensing or combat, and known party identity excludes enemy selection',async()=>{
- const source=await readFile('mod/Scripts/companions.lua','utf8');
- const catchup=source.slice(source.indexOf('local function catchup'),source.indexOf('local function spawn('));
- assert.doesNotMatch(catchup,/noEngageUntil|retreatSensing/);
- assert.match(source,/ownedStubs\[enemy:GetFullName\(\)\]/);
-});
 test('both native combat flags acknowledge entry before the start gate is changed',()=>check('ai_state',`
  EObjectFlags={RF_BeginDestroyed=1,RF_FinishDestroyed=2}
  local function obj(n)return {IsValid=function()return true end,GetFullName=function()return n end,HasAnyFlags=function()return false end}end

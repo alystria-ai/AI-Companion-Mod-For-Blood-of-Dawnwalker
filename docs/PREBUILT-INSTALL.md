@@ -1,6 +1,6 @@
-# Dawnwalker Convai 0.30.9 Preview
+# LLM NPC Companions System 0.5.0
 
-Talk with nearby characters through text or voice, or summon travelling companions that follow Coen and use their native combat AI. This is a preview release: the conversation and companion framework is usable, but every character, power and combat interaction has not been validated in normal play.
+Talk with nearby characters through text or voice, customise companions’ eye, hair and armour colours, use a first-person viewpoint, or take your party into Horde battles. Companions follow Coen and use their native combat AI. This is a preview release: the conversation and companion framework is usable, but every character, power and combat interaction has not been validated in normal play.
 
 ## Requirements
 
@@ -20,13 +20,13 @@ The release contains the helper, local runtime and shared-service configuration.
 | **Scripts** | Lua game scripts only | Use only together with the matching **Runtime** archive |
 | **Runtime** | All remaining files: configuration, browser client, helper, dependencies and licenses | Use only together with the matching **Scripts** archive |
 
-**Scripts and Runtime are two halves of the same release. Install both 0.30.9 archives.** Neither split archive is a playable standalone package. Do not mix versions.
+**Scripts and Runtime are two halves of the same release. Install both 0.5.0 archives.** Neither split archive is a playable standalone package. Do not mix versions.
 
 ## Install
 
 1. Close the game.
 2. Install UE4SS 1.2.1 RC6 for game version 1.05 and Dawnwalker Mod Menu 1.0.6.2 or later.
-3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.30.9.
+3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.5.0.
 4. Extract the selected archive or archives into the game installation folder, merging the included `Dawnwalker` folder.
 5. Verify this exact directory exists:
 

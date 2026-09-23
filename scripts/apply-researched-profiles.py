@@ -39,6 +39,10 @@ def main():
              if str(v.get('voice_value','')).startswith('convai-kokoro-')}
     beforepath=folder/'cloud-before-enrichment.json'
     if options.apply and not beforepath.exists():write(beforepath,{'characters':cloud})
+    family_keys={'lunka','yanna','mirto','pieter','esme'}
+    def owned_marker(key, backstory):
+        return ('[DawnwalkerConvai roster v1]' in backstory or
+                (key in family_keys and '[Family profile v1]' in backstory))
     report={'revision':rich['revision'],'profiles':[],'missing':[],
             'strategy':'Core backstory sections include biography, rules and original sample replies; native speaking_style write API not established.'}
     for local in roster:
@@ -46,9 +50,9 @@ def main():
         if options.only and key not in options.only:continue
         if not current:
             report['missing'].append(key); print('Not present on account; retained as research only: '+key,flush=True); continue
-        if '[DawnwalkerConvai roster v1]' not in json.dumps(current):
+        if not owned_marker(key,json.dumps(current)):
             current=api('/character/get',{'charID':local['id']})
-            if '[DawnwalkerConvai roster v1]' not in current.get('backstory',''):raise RuntimeError('Ownership marker missing: '+key)
+            if not owned_marker(key,current.get('backstory','')):raise RuntimeError('Ownership marker missing: '+key)
         voice=current.get('voice_type','')
         if voice not in allowed:
             preferred=local.get('voice',''); voice=preferred if preferred in allowed else next(
@@ -82,6 +86,10 @@ def main():
         cfg['roster']=[next(p for p in roster if p['key']==old['key']) if old['key'] in verified else old
                        for old in cfg['roster'] if old['key'] not in missing]
         cfg['profileRevision']=rich['revision'];write(cfgpath,cfg)
+        release_path=ROOT/'characters/release-config.json'
+        release=read(release_path)
+        release['profileRevision']=rich['revision']
+        write(release_path,release)
     print('Profile pass complete: '+str(len(report['profiles']))+' existing; '+str(len(report['missing']))+' absent. No cloud characters created.',flush=True)
 
 if __name__=='__main__':main()

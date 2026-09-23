@@ -9,15 +9,19 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {encodeFrame, parseTarget, parseSpatial} from './protocol.mjs';
 import {TextRequests} from './text-requests.mjs';
 import {ActionQueue,parseQuests} from './game-context.mjs';
-import {knowledge,recipient} from './quest-knowledge.mjs';
+import {knowledge as questKnowledge,recipient} from './quest-knowledge.mjs';
+import {parseRelationships,relationshipKnowledge,relationshipProfiles} from './relationships.mjs';
+let relationships=null;
+const knowledge=(snapshot,npc)=>relationshipKnowledge(questKnowledge(snapshot,npc),relationships,npc);
 import {environmentContext} from './environment.mjs';
 import {heartbeatMs} from './heartbeat.mjs';
 import {Companions} from './companions.mjs';
-let environmentRaw='',spatialRaw='',lastSpatialRead=0;
+let environmentRaw='',spatialRaw='',lastSpatialRead=0,hordeText='';
 let microphone={enabled:false,id:'initial',generation:0};let lastMicFocus=0,lastVoiceDiagnostic='',lastVoiceStamp=0;
 const actionQueue=new ActionQueue();let questMemory=null,lastQuestRead=0,lastMemoryReport='';
 const textRequests=new TextRequests();
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const romanceVariants=JSON.parse(await readFile(resolve(root,'characters/romance-config.json'),'utf8').catch(()=>'{}'));
 const bundledConfig=JSON.parse(process.env.DAWNWALKER_DEFAULT_CONFIG||'{}');delete process.env.DAWNWALKER_DEFAULT_CONFIG;
 const runtime = process.env.DAWNWALKER_RUNTIME || resolve(root, 'runtime');
 await mkdir(runtime, {recursive:true});
@@ -46,7 +50,13 @@ setInterval(async () => {
     if(Date.now()-lastSpatialRead>=80){lastSpatialRead=Date.now();spatialRaw=await readFile(resolve(runtime,'spatial.txt'),'utf8').catch(()=>'');}
     if(Date.now()-lastQuestRead>1000){
       lastQuestRead=Date.now();
+      const horde=(await readFile(resolve(runtime,'horde-state.tsv'),'utf8').catch(()=>'')).trim().split('\t');
+      const fresh=horde[0]==='HORDE'&&horde[1]==='1'&&Math.abs(Date.now()/1000-Number(horde[2]))<4;
+      const remaining=Number(horde[7]),level=Number(horde[5])+1,levels=Number(horde[6]);
+      hordeText=fresh&&horde[3]==='1'&&horde[4]==='rest'&&Number.isFinite(remaining)&&remaining>0&&level<=levels
+        ?`Level ${level} / ${levels} begins in ${Math.ceil(remaining)} s`:'';
       environmentRaw=await readFile(resolve(runtime,'environment.txt'),'utf8').catch(()=>'');
+      try{relationships=parseRelationships(await readFile(resolve(runtime,'relationships.tsv'),'utf8'));}catch{}
       try{questMemory=parseQuests(await readFile(resolve(runtime,'quests.txt'),'utf8'));await atomic('quest-memory.json',JSON.stringify(questMemory));}catch{questMemory=null;}
     }
     actionQueue.ack(await readFile(resolve(runtime,'action-result.txt'),'utf8').catch(()=>''));
@@ -63,7 +73,7 @@ setInterval(async () => {
     if(groupDiagnostic!==lastGroupDiagnostic){await atomic('group-status.json',groupDiagnostic);lastGroupDiagnostic=groupDiagnostic;}
     if(replyDiagnostic&&Date.now()-lastReplyDiagnostic>=1000){await atomic('group-reply-status.json',JSON.stringify(replyDiagnostic));lastReplyDiagnostic=Date.now();}
     await atomic('frame.txt',currentFrame || encodeFrame({generation:target.generation}));
-    await atomic('overlay.json',JSON.stringify({...overlay,active:target.active,generation:target.generation,actor:target.actor,name:target.name||'',mode:target.mode,room:target.room,microphoneRequested:microphone.enabled,gameAlive:Date.now()-lastGame<3500}));
+    await atomic('overlay.json',JSON.stringify({...overlay,hordeText,active:target.active,generation:target.generation,actor:target.actor,name:target.name||'',mode:target.mode,room:target.room,microphoneRequested:microphone.enabled,gameAlive:Date.now()-lastGame<3500}));
   } catch(e) { console.error('Bridge file error:',e.message); } finally {flushing=false;}
 },33);
 const files = new Map([['/',['public/index.html','text/html']],['/client.js',['public/client.js','text/javascript']],['/reply-capture.js',['public/reply-capture.js','text/javascript']]]);
@@ -83,14 +93,14 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET' && path==='/config') {
       const config={...bundledConfig,...JSON.parse(await readFile(resolve(runtime,'convai-config.json'),'utf8').catch(()=>'{}'))};
-      res.setHeader('Content-Type','application/json');res.end(JSON.stringify(config));return;
+      res.setHeader('Content-Type','application/json');res.end(JSON.stringify(relationshipProfiles(config,romanceVariants)));return;
     }
     if(req.method==='GET' && path==='/group-context') {
       const params=new URL(req.url,origin).searchParams,view=group.view(target),next=view?.upcoming?.find(s=>s.token===params.get('token'));
       if(!target.active||view?.stage!=='reply'||params.get('token')!==next?.token||params.get('room')!==target.room){res.writeHead(409).end('Group selection changed');return;}
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify({token:next.token,questMemory:knowledge(questMemory,next.characterId),environment:environmentContext(environmentRaw,target)}));return;
     }
-    if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
+    if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
     if(req.method==='POST' && path==='/microphone'){
       let body='';for await(const chunk of req){body+=chunk;if(body.length>1024){res.writeHead(413).end();return;}}
       const value=JSON.parse(body);

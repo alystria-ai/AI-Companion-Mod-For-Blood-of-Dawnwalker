@@ -1,6 +1,6 @@
 # Dawnwalker Convai file structure
 
-Version 0.30.8 has two layouts: the development source tree and the self-contained installed mod. They contain related files, but they are not interchangeable.
+The mod has two layouts: the development source tree and the self-contained installed mod. They contain related files, but they are not interchangeable.
 
 ## Installed layout
 
@@ -40,7 +40,7 @@ Dawnwalker/
 | Installed path | Purpose |
 | --- | --- |
 | `DawnwalkerConvai/Scripts/` | Small UE4SS entry point. `runtime_path.lua` points to the packaged payload beside it. |
-| `DawnwalkerConvai/config.ini` | Companion damage and attack-frequency values. |
+| `DawnwalkerConvai/config.ini` | Companion damage, attack frequency, profile selection, camera and horde preferences. |
 | `DawnwalkerConvai/keybindings.ini` | The five configurable shortcuts. |
 | `DawnwalkerConvai/mod_settings.ini` | Metadata used by the game's Mod Settings interface. |
 | `Payload/mod/Scripts/` | Gameplay Lua: conversations, UI, companions, combat, recovery and movement. |
@@ -61,8 +61,8 @@ Dawnwalker/
 | Archive | Installed content |
 | --- | --- |
 | **Complete** | The entire `DawnwalkerConvai` tree shown above. |
-| **Scripts** | Only `.lua` files: the UE4SS bootstrap and gameplay scripts, at their original installation paths. |
-| **Runtime** | All non-Lua files: configuration, JavaScript, PowerShell, roster data, executables, DLLs, the bundled local runtime, documentation and licenses. |
+| **Scripts** | Lua bootstrap and gameplay scripts only. |
+| **Runtime** | All non-Lua files: configuration, data, browser client, executables, DLLs, documentation and licenses. |
 
 The split archives deliberately overlap at the directory level. Extract both matching versions to the same game root so the final tree contains both sets of files. **Scripts alone and Runtime alone are incomplete.**
 
@@ -93,3 +93,6 @@ The development installer uses a small installed bootstrap that points back to t
 The public source contains no shared-service credential. Developers copy `examples/convai-config.example.json` into the ignored `runtime/` folder and provide their own account values locally. Authorized release builds can compile the shared configuration into the helper resource; the packaged runtime JSON does not expose it.
 
 Do not create a release by archiving the whole repository. The release builder uses an explicit allowlist to avoid development state, local paths, browser profiles, test output and unrelated build inputs.
+
+
+For 0.4, `characters/romance-config.json` contains public mappings for the relationship profile copies. `companion_appearance.lua` owns saved colours and material changes; `companion_romance.lua` reads current-save relationship evidence. Romance stays within conversation, with no scene playback. The bridge's `relationships.mjs` validates the snapshot and adds private relationship context. `characters/research/family.json` is the source for the additional family biographies. `TODO.local.md` is an ignored local work list and is never part of a release or source archive.

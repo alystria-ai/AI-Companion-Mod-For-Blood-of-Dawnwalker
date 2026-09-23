@@ -30,9 +30,9 @@ if files then
     gameQueue(function()if router:reload(files)then router.last=fingerprint end end)
 else report('Cannot load workspace Lua: '..tostring(fingerprint))end
 local elapsed=0
-LoopAsync(33,function()
-    router:tick(33)
-    elapsed=elapsed+33
+LoopAsync(16,function()
+    router:tick(16)
+    elapsed=elapsed+16
     if elapsed>=1000 then
         elapsed=0
         local nextFiles,nextFingerprint=snapshot()

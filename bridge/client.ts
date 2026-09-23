@@ -1,6 +1,6 @@
 import {ConvaiClient} from '@convai/web-sdk/vanilla';
 import {METAHUMAN_ORDER_251} from '@convai/web-sdk/lipsync-helpers';
-import {matchProfile, type Profile} from './characters';
+import {matchProfile, profileId, profileForId, type Profile, type Relationships} from './characters';
 import {QuestMemory} from './quest-memory';
 import {HeardMemory,type Heard} from './heard-memory';
 import {ReplyTracker} from './reply-tracker';
@@ -29,7 +29,7 @@ let observedQuestRevision='',memoryUser='';
 let memoryReport={userId:'',profileId:'',status:'Waiting for journal',submitted:0};
 type GroupView={id:string;token:string;stage:string;alreadySent:boolean;status:string;heard:Heard[];context:string;index:number;count:number;text?:string;upcoming?:{characterId:string;actor:string;name:string;token:string}[]};
 type Target={generation:number;active:boolean;actor:string;actorClass:string;name?:string;definition?:string;bodyType?:string;voiceTag?:string;status:string;gameAlive:boolean;mode:'single'|'group';room:string;turn:string;group?:GroupView|null;requestId:number;textRequests?:{id:string;generation:number;text:string}[]};
-type GameTarget=Target&{spatial?:SpatialSample|null;partyCharacters?:string[];microphone?:{enabled:boolean;id:string;generation:number};environment?:{revision:string;text:string};questMemory?:{recipient?:string;revision:string;text:string;ledger?:{id:string;text:string}[];facts:{id:string;text:string}[]};actionResult?:{generation:number;id:string;ok:boolean;message:string}};
+type GameTarget=Target&{relationships?:Relationships;spatial?:SpatialSample|null;partyCharacters?:string[];microphone?:{enabled:boolean;id:string;generation:number};environment?:{revision:string;text:string};questMemory?:{recipient?:string;revision:string;text:string;ledger?:{id:string;text:string;counter?:number}[];facts:{id:string;text:string}[]};actionResult?:{generation:number;id:string;ok:boolean;message:string}};
 let contextRevision='',actionCounter=0,lastActionResult='';
 const actionRequests:{generation:number;id:string;name:string}[]=[];
 const supportedActions=['Follow','Stop Walking','Look At Player','Leave'];
@@ -41,7 +41,7 @@ let testText='Hello Anca. Please introduce yourself in two short sentences.';
 const el=(id:string)=>document.getElementById(id)!;
 const input=(id:string)=>(el(id) as HTMLInputElement).value.trim();
 let token='',armed=false,client:ConvaiClient|null=null,renderer:SpatialRenderer|null=null;
-let current:Target|null=null,requestGeneration=-1,subtitle='',subtitleUntil=0,status='Not armed',frame:Record<string,number>={};
+let current:GameTarget|null=null,requestGeneration=-1,subtitle='',subtitleUntil=0,status='Not armed',frame:Record<string,number>={};
 let previous=performance.now(),carry=0,epoch=0,updating=false;
 let connecting=false,connectedCharacter='',nextReconnect=0,retryDelay=1000;
 const sessions=new Map<string,string>();
@@ -212,7 +212,7 @@ setInterval(()=>{
 async function tick(){
   if(updating)return;updating=true;
   try{
-    const idleRecipient=profiles.find(p=>p.id===(connectedCharacter||input('character')))?.key||'';
+    const idleRecipient=profileForId(profiles,connectedCharacter||input('character'))?.key||'';
     const response=await fetch('/target?memoryRecipient='+encodeURIComponent(idleRecipient),{headers:{'x-bridge-token':token}});if(!response.ok)throw Error('Bridge unavailable');
     const target:GameTarget=await response.json();
     if(target.gameAlive&&target.questMemory&&target.questMemory.revision!=='unavailable'&&observedQuestRevision!==target.questMemory.revision){
@@ -242,8 +242,8 @@ async function tick(){
     const profile=target.active?matchProfile(target,profiles,assignments):undefined;
     if(assignments[target.actor]!==oldAssignment)localStorage.setItem('dawnwalker-npc-assignments',JSON.stringify(assignments));
     const override=target.active&&(mapping[target.actor]||mapping[target.actorClass]);
-    const id=target.active?(override||profile?.id||(profiles.length?'':input('character'))):(connectedCharacter||input('character'));
-    selectedName=target.active?(target.name||profile?.name||'NPC'):(profiles.find(p=>p.id===id)?.name||selectedName);
+    const id=target.active?(override||profileId(profile,target.relationships)||(profiles.length?'':input('character'))):(connectedCharacter||input('character'));
+    selectedName=target.active?(target.name||profile?.name||'NPC'):(profileForId(profiles,id)?.name||selectedName);
     desiredIdentity=target.active?identityFor(id,profile?.kind==='generic'?target.actor:''):(connectionIdentity||identityFor(id));
     if(target.active&&!id)show('No matching character profile · '+(target.name||target.bodyType||'identity unknown'));
     if(target.active&&connectionIdentity!==desiredIdentity){frame={};subtitle='';}
@@ -253,10 +253,10 @@ async function tick(){
     }
     const candidate=target.group?.upcoming?.[0];
     const nextProfile=profiles.find(p=>p.key===candidate?.characterId&&p.kind==='main');
-    const nextId=candidate&&(mapping[candidate.actor]||nextProfile?.id);
+    const nextId=candidate&&(mapping[candidate.actor]||profileId(nextProfile,target.relationships));
     const nextIdentity=nextId?identityFor(nextId):'';
     const wanted=[...(nextId?[{id:nextId,identity:nextIdentity}]:[]),
-      ...profiles.filter(p=>p.kind==='main'&&target.partyCharacters?.includes(p.key)).map(p=>({id:p.id,identity:identityFor(p.id)})),
+      ...profiles.filter(p=>p.kind==='main'&&target.partyCharacters?.includes(p.key)).map(p=>{const id=profileId(p,target.relationships)!;return {id,identity:identityFor(id)};}),
       ...(id?[{id,identity:desiredIdentity}]:[])];
     connections.reconcile(armed&&target.gameAlive?wanted:[],connecting?desiredIdentity:connectionIdentity,Date.now(),connecting);
     const scope=questCloud.timeline+':'+target.room+':'+target.group?.id;
@@ -270,7 +270,7 @@ async function tick(){
     const priorPrep=pendingReply?.reply.finalAt&&pendingReply.reply.text&&target.group?.upcoming?.[1]?pendingReply:null;
     const planCandidate=priorPrep?target.group!.upcoming![1]:candidate;
     const planProfile=profiles.find(p=>p.key===planCandidate?.characterId&&p.kind==='main');
-    const planId=planCandidate&&(mapping[planCandidate.actor]||planProfile?.id);
+    const planId=planCandidate&&(mapping[planCandidate.actor]||profileId(planProfile,target.relationships));
     const planIdentity=planId?identityFor(planId):'';
     const preceding=priorPrep?.reply||playingReply?.reply||reply;
     const preparedConnection=planIdentity?connections.get(planIdentity):undefined;
@@ -292,17 +292,17 @@ async function tick(){
     const hearingKey=questCloud.timeline+':'+target.group?.id+':'+target.group?.heard.at(-1)?.id;
     if(target.group?.heard&&hearingKey!==ingestedHeard){heardMemory.ingest(questCloud.timeline,target.group.heard);ingestedHeard=hearingKey;}
     if(target.group?.alreadySent&&target.group.stage==='reply'&&groupVoice){reply.token=target.group.token;groupVoice=null;}
-    const heardFacts=heardMemory.facts(questCloud.timeline,profile?.key||profiles.find(p=>p.id===id)?.key||'');
+    const heardFacts=heardMemory.facts(questCloud.timeline,profile?.key||profileForId(profiles,id)?.key||'');
     heardRevision=heardFacts.map(f=>f.id).join(',');
     if(client?.isBotReady&&connectionIdentity===desiredIdentity&&target.questMemory){
       // Retained connections and manual profile overrides must never receive
       // another character's facts, even during a selection transition.
-      if(target.questMemory.recipient!==undefined&&target.questMemory.recipient!==profiles.find(p=>p.id===id)?.key){
+      if(target.questMemory.recipient!==undefined&&target.questMemory.recipient!==profileForId(profiles,id)?.key){
         target.questMemory={...target.questMemory,text:'No verified quest knowledge for this character. Do not infer other characters’ discoveries.',facts:[]};
       }
-      const revision=target.questMemory.revision+':'+selectedName+':'+(target.environment?.revision||'none')+':'+(target.group?.token||'single')+':'+heardRevision;
+      const revision=target.questMemory.revision+':'+selectedName+':'+(target.environment?.revision||'none')+':'+(target.group?.token||'single')+':'+heardRevision+':'+JSON.stringify(target.relationships||{});
       if(revision!==contextRevision){
-        client.updateContext({mode:'replace',run_llm:'false',text:`You are ${selectedName}, speaking to Coen. Only the supplied heard transcript confirms what other participants heard; generated session history can include replies cancelled before playback. Runtime actions available: Follow, Stop Walking, Look At Player, Leave. For a summoned companion, Follow resumes following and native combat assistance; Stop Walking means wait here until Follow; Look At Player faces Coen for this conversation; Leave ends the conversation without dismissing the summoned companion. Friendly world NPCs can follow temporarily if their native AI supports it. Request the relevant action when Coen asks, including Follow when he asks you to accompany him. Do not claim success until the game confirms it. Characters choose their own attacks and abilities; do not offer tactical roles, aggression settings or order plans. Item grants, changing quests and arbitrary destinations are unavailable.\n${target.questMemory.text}\n${target.environment?.text||'Current surroundings unavailable.'}\n${heardFacts.map(f=>f.text).join('\n')}\n${target.mode==='group'?(target.group?.context||'Coen is addressing a nearby group. Respond as yourself; do not invent what anyone else says.'):'Private conversation with Coen.'}`});
+        client.updateContext({mode:'replace',run_llm:'false',text:`You are ${selectedName}, speaking to Coen. Only the supplied heard transcript confirms what other participants heard; generated session history can include replies cancelled before playback. Runtime actions available: Follow, Stop Walking, Look At Player, Leave. For a summoned companion, Follow resumes following and native combat assistance; Stop Walking means wait here until Follow; Look At Player faces Coen for this conversation; Leave ends the conversation without dismissing the summoned companion. Friendly world NPCs can follow temporarily if their native AI supports it. Request the relevant action when Coen asks, including Follow when he asks you to accompany him. Do not claim success until the game confirms it. Characters choose their own attacks and abilities; do not offer tactical roles, aggression settings or order plans. Item grants, changing quests and arbitrary destinations are unavailable.\nRomance scene playback is unavailable. Keep romance within conversation; do not promise a cutscene, teleportation or a game-time change.\n${target.questMemory.text}\n${target.environment?.text||'Current surroundings unavailable.'}\n${heardFacts.map(f=>f.text).join('\n')}\n${target.mode==='group'?(target.group?.context||'Coen is addressing a nearby group. Respond as yourself; do not invent what anyone else says.'):'Private conversation with Coen.'}`});
         contextRevision=revision;
       }
       if(target.questMemory.revision!=='unavailable'&&client.memoryManager){
@@ -364,7 +364,7 @@ async function tick(){
     const position=target.active&&target.gameAlive?voicePosition(target.spatial,target.generation):null;
     renderer?.setPosition(position);playingReply?.audio.setPosition(position);
     const observedReply=playingReply?.reply||reply;
-    const replyStatus={mode:target.mode,build:'0.30.8',lastPreparationFailure,spatial:position?{position}:null,audioError:renderer?.error||'',connections:connections.diagnostic(),prepared:playingReply?{token:playingReply.token,capturedMs:playingReply.audio.capturedMs,playing:playingReply.audio.playing}:pendingReply?{token:pendingReply.token,capturedMs:pendingReply.audio.capturedMs,playing:false}:null,connection:connectionTiming,requestToTextMs:observedReply.firstTextAt?observedReply.firstTextAt-observedReply.startedAt:null,requestToAudioMs:observedReply.firstAudioAt?observedReply.firstAudioAt-observedReply.startedAt:null,handoffToAudioMs,token:observedReply.token,finalText:!!observedReply.finalAt,heardAudio:observedReply.heardAudio,finished:observedReply.finished,thinking:!!client?.state.isThinking,speaking:!!client?.state.isSpeaking,queued:client?.blendshapeQueue?.length||0,queueSpeaking:!!client?.blendshapeQueue?.isBotSpeaking(),ready:!!client?.isBotReady};
+    const replyStatus={mode:target.mode,build:'0.5.0',lastPreparationFailure,spatial:position?{position}:null,audioError:renderer?.error||'',connections:connections.diagnostic(),prepared:playingReply?{token:playingReply.token,capturedMs:playingReply.audio.capturedMs,playing:playingReply.audio.playing}:pendingReply?{token:pendingReply.token,capturedMs:pendingReply.audio.capturedMs,playing:false}:null,connection:connectionTiming,requestToTextMs:observedReply.firstTextAt?observedReply.firstTextAt-observedReply.startedAt:null,requestToAudioMs:observedReply.firstAudioAt?observedReply.firstAudioAt-observedReply.startedAt:null,handoffToAudioMs,token:observedReply.token,finalText:!!observedReply.finalAt,heardAudio:observedReply.heardAudio,finished:observedReply.finished,thinking:!!client?.state.isThinking,speaking:!!client?.state.isSpeaking,queued:client?.blendshapeQueue?.length||0,queueSpeaking:!!client?.blendshapeQueue?.isBotSpeaking(),ready:!!client?.isBotReady};
     const voiceDiagnostic=voiceInput.sample();
     await fetch('/frame',{method:'POST',headers:{'Content-Type':'application/json','x-bridge-token':token},body:JSON.stringify({generation:target.generation,weights:target.active?frame:{},subtitle:target.active?subtitle:'',status,ackTextIds:[...sentTextIds],actionRequests,memoryReport,groupVoice,groupDone,singleDone,replyStatus,microphoneOn:microphone.on,microphoneStatus:microphone.status,microphoneTranscript:voiceTranscript,voiceDiagnostic})});
   }catch(e){frame={};show('Bridge retry · '+(e instanceof Error?e.message:String(e)).slice(0,180));}

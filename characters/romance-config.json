@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "key": "anca",
+      "variant": "english",
+      "baseId": "a2073e0c-abcc-11f1-9a65-42010a7be02f",
+      "id": "ce1cde0e-b75f-11f1-8ec6-42010a7be02f"
+    },
+    {
+      "key": "lacra",
+      "variant": "english",
+      "baseId": "a8851c68-abcc-11f1-a376-42010a7be02f",
+      "id": "d35e3eda-b75f-11f1-aad2-42010a7be02f"
+    },
+    {
+      "key": "anca",
+      "variant": "multilingual",
+      "baseId": "2f688314-b6db-11f1-80f7-42010a7be02f",
+      "id": "d76f3d3a-b75f-11f1-bb76-42010a7be02f"
+    },
+    {
+      "key": "lacra",
+      "variant": "multilingual",
+      "baseId": "963e8552-b6db-11f1-b75c-42010a7be02f",
+      "id": "dd99b33e-b75f-11f1-8779-42010a7be02f"
+    }
+  ]
+}

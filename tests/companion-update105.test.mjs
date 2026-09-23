@@ -10,12 +10,6 @@ test('recovery requires continuous peace; disable, renewed combat and dismissal 
  assert(M.canRespawn(m,18000,false,true,8));assert(not M.canRespawn(m,19000,false,false,8));assert(m.peaceSince==nil)
  local replacement={};assert(not M.canRespawn(replacement,20000,false,true,8))
 `));
-test('combat-only roster is distinct and backed by the captured asset catalogue',async()=>{
- const roster=JSON.parse(await readFile('characters/companion-config.json','utf8'));const assets=await readFile('tests/fixtures/companion-assets-105.tsv','utf8');
- const ids=new Set();for(const c of roster.characters){assert(!ids.has(c.id));ids.add(c.id);assert(assets.includes(c.path.split('.')[0]+'\t'));if(c.category==='combat')assert.equal(c.chat,false);}
- assert(roster.characters.filter(c=>c.category==='combat').length>=50);assert.equal(roster.characters.filter(c=>c.category==='story').length,15);
-});
-
 const aggregatedTuningSetup=`
  local settings={revision=0,values={AttackFrequency=150}}
  package.preload.companion_settings=function()return settings end

@@ -7,6 +7,11 @@ local FaceInspector = require('face_inspector')
 local FaceGraph = require('face_graph')
 local Companions=require('companions')
 local NativeMenu=require('companion_menu')
+local Romance=require('companion_romance')
+local Settings=require('companion_settings')
+local Horde=require('horde_mode')
+local FirstPerson=require('first_person_camera')
+local lastRelationshipRead=0
 local combatTrace=nil
 local UiInput=require('ui_input')
 local speechLayer=nil
@@ -76,7 +81,10 @@ local function forgetConversation(message)
     previewEnd=0;conversationRoom='';speakerTurn='';identity={};selectedName='';selectedClass=''
     generation=generation+1;status=message or 'Conversation unloaded';publish()
 end
-Companions.beforeReset(function()forgetConversation('Conversation ended for world or party reset')end)
+Companions.beforeReset(function(reason)
+    if reason=='party-reset'then FirstPerson.release();Horde.stop('Horde ended for world or party reset',true)end
+    forgetConversation('Conversation ended for world or party reset')
+end)
 local function neutral()
     if speechLayer then pcall(function()FaceGraph.applyWeights(speechLayer,{})end)end
     for _,b in ipairs(bindings) do if valid(b.mesh) then pcall(function() b.mesh:SetMorphTarget(FName(b.name),b.original or 0.0,true) end) end end
@@ -119,7 +127,7 @@ local function stop(message,quiet)
     local layer=speechLayer;speechLayer=nil
     if layer then FaceGraph.restoreLayer(layer)end
 end
-if RegisterModCleanup then RegisterModCleanup(function()if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
+if RegisterModCleanup then RegisterModCleanup(function()FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
 local function trace(nearest)
     local pc=playerController();if not valid(pc) or not valid(pc.Pawn) then return nil,'Player not ready' end
     cachedController=pc
@@ -497,7 +505,7 @@ local function developmentCommand()
             local marker=io.open(root..'/companion-native-'..id..'.txt','r')
             if marker then marker:close();return end
             write('companion-native-'..id..'.txt','Started '..os.date())
-            local partyProbes={partyaudit='inspect_party_combat',partystats='inspect_party_stats',partydamage='inspect_party_damage'}
+            local partyProbes={partyaudit='inspect_party_combat',partystats='inspect_party_stats',partydamage='inspect_party_damage',appearance='inspect_companion_appearance',appearancecheck='test_companion_appearance',romance='inspect_romance'}
             if hint=='protectioncheck'then
                 local pc=playerController();assert(valid(pc)and valid(pc.Pawn),'Player unavailable')
                 local report=assert(loadfile(root..'/../mod/Development/inspect_companion_protection.lua'))()(root,pc.Pawn,require('companion_native'),require('ai_state'))
@@ -782,6 +790,7 @@ local function uiCommand()
         write('ui-ready.txt',command..'\nready')
     elseif command:match('^close:')then restoreFocusPause()end
 end
+local launchBackground
 if config.AutoStartConvai then LoopAsync(1000,function()
     local now=os.time()
     if now-lastBackgroundAttempt<30 then return false end
@@ -791,25 +800,51 @@ if config.AutoStartConvai then LoopAsync(1000,function()
     local requested=restart~=nil;if restart then restart:close()end
     if now-heartbeat>10 or requested then
         lastBackgroundAttempt=now
-        -- Executed outside ExecuteInGameThread; the helper owns WebRTC/audio, not Lua.
-        os.execute('powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'..root..'/../scripts/Start-Background.ps1"')
+        -- The native export starts the fixed script without opening a console.
+        if not launchBackground then
+            local fn,err=package.loadlib(root..'/../bridge/native/background_launcher_v1.dll','start_background_hidden')
+            if not fn then log('Background launcher unavailable: '..tostring(err));return false end
+            launchBackground=fn
+        end
+        local ok,err=pcall(launchBackground)
+        if not ok then log('Background launch failed: '..tostring(err));return false end
+        local failure=io.open(root..'/background-launch-error.txt','r')
+        if failure then log((failure:read('*a')or 'Background launch failed'):gsub('%s+$',''));failure:close()end
     end
     return false
 end)end
-safe(function() status='v0.30.7: release packaging and support report';publish();log(status) end)
-local partyElapsed=0
-LoopAsync(33,function()
-    -- Idle mods do not need to enter ProcessEvent thirty times a second.
-    partyElapsed=partyElapsed+33;local partyDue=partyElapsed>=250
-    if not selected and not partyDue and not NativeMenu.isOpen()then return false end
+safe(function() status='v0.5.0: companions, conversations and horde mode';publish();log(status) end)
+-- One dispatcher owns camera and application work. A lost UE4SS callback must
+-- not leave either path permanently marked pending.
+local partyElapsed,workElapsed=0,0
+local dispatchSerial,dispatchAt=0,0
+LoopAsync(16,function()
+    partyElapsed=partyElapsed+16;workElapsed=workElapsed+16
+    local partyDue=partyElapsed>=250;local workDue=workElapsed>=33
+    local cameraDue=Settings.values.FirstPersonCamera==1 or FirstPerson.active()
+    local ordinaryDue=workDue and (selected~=nil or partyDue or NativeMenu.isOpen())
+    if not cameraDue and not ordinaryDue then return false end
     idleSecond=os.time()
-    if pending then return false end;pending=true
-    if partyDue then partyElapsed=0 end
+    if pending and os.time()-dispatchAt<2 then return false end
+    pending=true;dispatchAt=os.time();dispatchSerial=dispatchSerial+1
+    local ticket=dispatchSerial
+    if ordinaryDue then workElapsed=workElapsed%33 end
+    if ordinaryDue and partyDue then partyElapsed=0 end
     local queued,queueError=pcall(ExecuteInGameThread,function()
+        if ticket~=dispatchSerial then return end
         local tickOk=safe(function()
+            if partyDue then Settings.poll()end
+            FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen()or composeController~=nil)
+            if not ordinaryDue then return end
+            if partyDue then Horde.tick(false)end
             NativeMenu.tick()
             uiCommand()
             if partyDue then Companions.tick(playerController(),selected);groupCommand()end
+            if os.time()-lastRelationshipRead>=2 then
+                lastRelationshipRead=os.time()
+                local ok,snapshot=pcall(Romance.snapshot,playerController())
+                if ok then write('relationships.tsv',snapshot)else write('relationship-status.txt',tostring(snapshot))end
+            end
             -- Conversation context must refresh immediately for an active speaker.
             -- Otherwise defer background snapshots while the companion menu is open;
             -- retaining their due times makes overdue work resume after it closes.

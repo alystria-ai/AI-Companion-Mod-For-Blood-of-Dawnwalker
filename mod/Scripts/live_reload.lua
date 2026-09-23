@@ -1,6 +1,6 @@
 -- Stable callback router: swapping application code never registers duplicate keys/timers.
 local M={}
-M.modules={'app','config','targeting','engagement','face_inspector','jali_probe','jali_preview','face_graph','companion_config','companion_native','companions','ui_input','companion_combat','ai_state','companion_recovery','companion_damage','party_formation','formation_native','companion_settings','companion_tuning','companion_menu','companion_protection'}
+M.modules={'app','config','targeting','engagement','face_inspector','jali_probe','jali_preview','face_graph','companion_config','companion_native','companions','ui_input','companion_combat','ai_state','companion_recovery','companion_damage','party_formation','formation_native','companion_settings','companion_appearance','companion_romance','first_person_camera','horde_catalog','horde_native','horde_mode','companion_tuning','companion_menu','companion_protection'}
 function M.new(base,externalRequire,queue,report)
     local self={active=nil,last=nil,observed=nil,rejected=nil,pending=false}
     M.router=self -- Version migrations can hand off a cached module explicitly.

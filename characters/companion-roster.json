@@ -256,21 +256,6 @@
       ]
     },
     {
-      "id": "pieter",
-      "name": "Pieter",
-      "aliases": [],
-      "requested": false,
-      "status": "asset-located; spawning-and-combat-unverified",
-      "candidates": [
-        {
-          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter_armed",
-          "asset": "NPCDef_Pieter_armed",
-          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter_armed.NPCDef_Pieter_armed_C",
-          "reason": "Definition located; combat setup and independent spawning require inspection"
-        }
-      ]
-    },
-    {
       "id": "vladimir",
       "name": "Vladimir",
       "aliases": [
@@ -299,6 +284,102 @@
           "asset": "NPCDef_Isbrand_Base",
           "generatedClassPathCandidate": "/Game/_Dawnwalker/Combat/Enemies/Bosses/Isbrand/NPCDef_Isbrand_Base.NPCDef_Isbrand_Base_C",
           "reason": "Definition located; combat setup and independent spawning require inspection"
+        }
+      ]
+    },
+    {
+      "id": "lunka",
+      "aliases": [],
+      "status": "asset-located; spawning-and-combat-unverified",
+      "name": "Lunka",
+      "requested": true,
+      "protectIfNoncombatant": true,
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Lunka",
+          "asset": "NPCDef_Lunka",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Lunka.NPCDef_Lunka_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
+        }
+      ]
+    },
+    {
+      "id": "lunka-turned",
+      "aliases": [],
+      "status": "asset-located; spawning-and-combat-unverified",
+      "name": "Lunka (Turned)",
+      "requested": true,
+      "protectIfNoncombatant": true,
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Lunka_turned",
+          "asset": "NPCDef_Lunka_turned",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Lunka_turned.NPCDef_Lunka_turned_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
+        }
+      ]
+    },
+    {
+      "id": "yanna",
+      "aliases": [],
+      "status": "asset-located; spawning-and-combat-unverified",
+      "name": "Yanna",
+      "requested": true,
+      "protectIfNoncombatant": true,
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Yanna",
+          "asset": "NPCDef_Yanna",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Yanna.NPCDef_Yanna_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
+        }
+      ]
+    },
+    {
+      "id": "mirto",
+      "aliases": [],
+      "status": "asset-located; spawning-and-combat-unverified",
+      "name": "Mirto",
+      "requested": true,
+      "protectIfNoncombatant": true,
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Mirto",
+          "asset": "NPCDef_Mirto",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/SecondaryNPC/NPCDef_Mirto.NPCDef_Mirto_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
+        }
+      ]
+    },
+    {
+      "id": "pieter",
+      "name": "Pieter",
+      "aliases": [],
+      "requested": true,
+      "status": "asset-located; spawning-and-combat-unverified",
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter",
+          "asset": "NPCDef_Pieter",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Pieter.NPCDef_Pieter_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
+        }
+      ],
+      "protectIfNoncombatant": true
+    },
+    {
+      "id": "esme",
+      "aliases": [],
+      "status": "asset-located; spawning-and-combat-unverified",
+      "name": "Esme",
+      "requested": true,
+      "protectIfNoncombatant": true,
+      "candidates": [
+        {
+          "package": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Esme_new1",
+          "asset": "NPCDef_Esme_new1",
+          "generatedClassPathCandidate": "/Game/_Dawnwalker/NPC/MainNPC/NPCDef_Esme_new1.NPCDef_Esme_new1_C",
+          "reason": "Definition located; independent spawning and combat require inspection"
         }
       ]
     }

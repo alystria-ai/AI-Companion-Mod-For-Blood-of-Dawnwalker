@@ -28,11 +28,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-WebView.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1 -AssetLoader
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1 -Protection
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-BackgroundLauncher.ps1
 ```
 
 The example contains placeholders. Configure your own Convai account and character IDs in the ignored `runtime/convai-config.json` when developing conversations. Do not overwrite an existing configuration with the example or commit your runtime folder. The public source contains no shared-service credential.
 
-`Build-WebView.ps1` compiles the C# files into `bridge/native/ConvaiHost.exe` and copies the three WebView2 SDK runtime libraries. The native builds produce `companion_native_v9.dll`, `companion_assets_v2.dll` and `companion_protection_v2.dll` in that same output directory. `npm run build` writes `bridge/public/client.js`.
+`Build-WebView.ps1` compiles the C# files into `bridge/native/ConvaiHost.exe` and copies the three WebView2 SDK runtime libraries. The native builds produce `companion_native_v9.dll`, `companion_assets_v2.dll`, `companion_protection_v2.dll` and `background_launcher_v1.dll` in that same output directory. `npm run build` writes `bridge/public/client.js`.
 
 ## Distribution build
 

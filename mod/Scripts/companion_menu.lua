@@ -1,5 +1,5 @@
 -- Own native UMG layout; artwork and typeface come from the installed menu theme.
-local AI=require('ai_state');local Input=require('ui_input');local Party=require('companions');local Settings=require('companion_settings')
+local AI=require('ai_state');local Input=require('ui_input');local Party=require('companions');local Settings=require('companion_settings');local Appearance=require('companion_appearance');local Horde=require('horde_mode')
 local root=require('runtime_path');local M={};local view=nil;local Theme=nil;local serial=0
 local function cls(path)return assert(AI.find(path),path)end
 local function text(w,value)
@@ -41,9 +41,11 @@ end
 local function button(panel,label,fn,width,help)
  local b=new('Button');b.IsFocusable=false;local c=caption(label,26)
  b:SetContent(c);Theme.button(b,c,view.theme,false)
+ b.WidgetStyle.NormalPadding={Left=0,Top=0,Right=0,Bottom=0}
+ b.WidgetStyle.PressedPadding={Left=0,Top=0,Right=0,Bottom=0}
  -- The dependency's default button font is deliberately small; our design is 1920x1080.
  Theme.font(c,view.theme,26);c:SetJustification(0)
- c.Slot:SetHorizontalAlignment(0);c.Slot:SetVerticalAlignment(2);c.Slot:SetPadding({Left=24,Top=4,Right=18,Bottom=4})
+ c.Slot:SetHorizontalAlignment(0);c.Slot:SetVerticalAlignment(2);c.Slot:SetPadding({Left=0,Top=4,Right=18,Bottom=4})
  local overlay=new('Overlay');fill(add(overlay,b))
  local click=clickLayer(overlay,b)
  add(panel,size(overlay,width or 770,52)):SetPadding({Left=0,Top=2,Right=8,Bottom=2})
@@ -56,7 +58,7 @@ local function dependency()
 end
 local function marker(value)local f=io.open(root..'/native-menu-open.txt','w');if f then f:write(value);f:close()end end
 function M.isOpen()return view~=nil end
-function M.close()
+function M.close(returnToGame)
  local old=view;view=nil;if not old then return end
  retireButtons(old)
  if AI.valid(old.backClick)then old.backClick:ClearSelection();old.backClick:SetIsInteractionEnabled(false);old.backClick:SetIsEnabled(false)end
@@ -64,8 +66,12 @@ function M.close()
  Input.release(old.lease)
  if AI.valid(old.parent)then pcall(function()
   old.parent.bIsBackHandler=old.parentBack;old.parent:SetIsEnabled(old.parentEnabled)
-  old.library:SetInputMode_GameAndUIEx(old.pc,old.parent,0,false,true);old.parent:SetUserFocus(old.pc)
+  if returnToGame then old.parent:ResumeGame()
+  else old.library:SetInputMode_GameAndUIEx(old.pc,old.parent,0,false,true);old.parent:SetUserFocus(old.pc)end
  end)end
+ if returnToGame and not cls('/Script/Engine.Default__GameplayStatics'):IsGamePaused(old.pc)then
+  old.library:SetInputMode_GameOnly(old.pc,true);old.pc.bShowMouseCursor=false
+ end
  marker('0')
 end
 -- Pure batch reduction: completion belongs to the request returned by this menu,
@@ -98,13 +104,40 @@ local function latestCopy(v,state)
  for i=#(state.pending or {}),1,-1 do local m=state.pending[i];if m.characterId==selected.id and not v.dismissing[m.id]then return m end end
  for i=#state.members,1,-1 do local m=state.members[i];if m.characterId==selected.id and not v.dismissing[m.id]then return m end end
 end
+local function updateAppearance(v)
+ if not v.appearanceRows then return end
+ for _,item in ipairs(v.appearanceRows)do
+  local color=v.selection and Appearance.get(v.selection.id,item.appearance)or Appearance.palette[1]
+  text(item.label,color.label)
+  item.picker:SetRenderOpacity(v.selection and 1 or .4)
+  for _,control in ipairs(item.controls)do enabled(control,v.selection~=nil);control.arrow:SetRenderOpacity(v.selection and 1 or .4)end
+ end
+ if v.appearanceReset then enabled(v.appearanceReset,v.selection~=nil and Appearance.selected(v.selection.id))end
+ if v.appearanceNote then text(v.appearanceNote,v.selection and 'Saved for this character and all summoned copies.'or 'Select a character to choose their colours.')end
+end
 local function showSelection(v)
  if v.selection then describe(v.selection.name,v.selection.help)else describe('Choose your companions','Select a character on the left, then choose Summon. Dismiss removes the newest copy of that character. Use Party to choose a specific copy.')end
  for _,b in ipairs(v.buttons)do if b.characterId then b.active=v.selection and b.characterId==v.selection.id or false end end
+ updateAppearance(v)
+end
+local function changeAppearance(v,channel,direction)
+ if not v.selection then return end
+ local ok,color=pcall(Appearance.cycle,v.selection.id,channel,direction)
+ if ok then v.message=channel..' colour: '..color.label;v.touched=os.time()else v.message='Could not save colour: '..tostring(color)end
+ updateAppearance(v);v.refreshAt=0
 end
 local function refresh(v,state)
  local loading=state.queued or 0;for _,m in ipairs(state.members)do if m.loading then loading=loading+1 end end
  text(v.summary,#state.members..' in party · '..loading..' loading')
+ if v.page=='Horde'then
+  local run=Horde.view();local phase=run.phase or 'idle'
+  local status=run.active and ('Wave '..tostring(run.level or 0)..' / '..tostring(run.levels or 10)..' · '..tostring(run.alive or 0)..' of '..tostring(run.total or 0)..' enemies remaining')or (phase=='complete'and 'All waves cleared' or phase=='ended'and 'Run ended' or 'No horde running')
+  if run.active and (run.level or 0)==0 then status='Preparing the first wave'end
+  if phase=='rest'then status='Level '..tostring(run.level)..' cleared · next wave in '..tostring(run.restSeconds or 0)..' s'end
+  text(v.hordeStatus,status);text(v.hordeDetail,run.message or '')
+  enabled(v.hordeStart,not run.active);enabled(v.hordeEnd,run.active)
+ end
+ if v.page=='Settings'then for _,b in ipairs(v.buttons)do if b.setting then text(b.value,Settings.label(b.setting));if b.setting.id=='AncaRomance'or b.setting.id=='LacraRomance'then enabled(b,Settings.effective(b.setting.id)==Settings.values[b.setting.id])end end end end
  if v.page~='Summon'then if v.feedback then text(v.feedback,v.message or '')end;return end
  enabled(v.summonButton,v.selection~=nil);enabled(v.dismissButton,latestCopy(v,state)~=nil)
  local batch=M.batch(v.requests,state)
@@ -122,34 +155,37 @@ local function refresh(v,state)
 end
 local function bindingLabels(v)
  for _,b in ipairs(v.buttons)do if b.binding then
-  text(b.label,b.binding.label..'     '..(v.capture==b.binding.id and '[ Press a key… ]'or Settings.bindings[b.binding.id]))
+  text(b.bindingValue,v.capture==b.binding.id and '[ Press a key… ]'or Settings.bindings[b.binding.id])
  end end
 end
 local render
 local function page(name)view.page=name;view.capture=nil;view.focus=1;view.dirty=true;view.touched=os.time();view.autoClose=nil end
 local function back()
  if view.capture then view.capture=nil;view.message='Binding unchanged';bindingLabels(view)
+ elseif view.page=='Horde'or view.page=='Settings'then M.close(true)
  elseif view.page~='Summon'then page('Summon')else M.close()end
 end
 local function changeSetting(s,delta)
  Settings.change(s.id,delta)
  for _,b in ipairs(view.buttons)do if b.setting==s then text(b.value,Settings.label(s))end end
  for _,slider in ipairs(view.sliders)do if slider.setting==s then
-  slider.value=Settings.values[s.id];slider.widget:SetValue(slider.value)
+  slider.value=Settings.values[s.id]
+  local position=(slider.value-s.min)/(s.max-s.min)
+  slider.widget:SetValue(position);slider.fill:SetPercent(position)
  end end
 end
 render=function()
- local v=view;retireButtons(v);v.content:ClearChildren();v.textCache={};v.progressValue=nil;v.buttons={};v.sliders={};v.dirty=false;v.hover=nil;v.feedback=nil
+ local v=view;retireButtons(v);v.content:ClearChildren();v.textCache={};v.progressValue=nil;v.buttons={};v.sliders={};v.appearanceRows=nil;v.appearanceReset=nil;v.appearanceNote=nil;v.dirty=false;v.hover=nil;v.pointerMode=false;v.feedback=nil
  local tabs=new('HorizontalBox');add(v.content,tabs)
- for _,name in ipairs({'Summon','Party','Settings','Controls','Help'})do local item=button(tabs,name,function()page(name)end,300);item.active=v.page==name end
+ for _,name in ipairs({'Summon','Party','Horde','Settings','Controls','Help'})do local item=button(tabs,name,function()page(name)end,250);item.active=v.page==name end
  add(v.content,size(art('horizontal'),1580,3)):SetPadding({Left=0,Top=14,Right=0,Bottom=24})
  local columns=new('HorizontalBox');add(v.content,columns)
  local left=new('VerticalBox');add(columns,size(left,790,710))
  add(columns,size(art('vertical'),24,710)):SetPadding({Left=18,Top=0,Right=26,Bottom=0})
- local detailScroll=new('ScrollBox');Theme.scroll(detailScroll,v.theme);add(columns,size(detailScroll,710,710)):SetPadding({Left=20,Top=4,Right=0,Bottom=0})
+ local detailScroll=new('ScrollBox');v.detailScroll=detailScroll;Theme.scroll(detailScroll,v.theme);add(columns,size(detailScroll,710,710)):SetPadding({Left=20,Top=4,Right=0,Bottom=0})
  local detail=new('VerticalBox');add(detailScroll,detail)
- v.detailTitle=caption('',32);add(detail,v.page=='Summon'and size(v.detailTitle,670,82)or v.detailTitle)
- v.detailBody=caption('',24);add(detail,v.page=='Summon'and size(v.detailBody,670,160)or v.detailBody):SetPadding({Left=0,Top=12,Right=8,Bottom=0})
+ v.detailTitle=caption('',32);add(detail,v.page=='Summon'and size(v.detailTitle,670,60)or v.detailTitle)
+ v.detailBody=caption('',24);add(detail,v.page=='Summon'and size(v.detailBody,670)or v.detailBody):SetPadding({Left=0,Top=8,Right=8,Bottom=14})
  local model=Party.view();local list=new('ScrollBox');Theme.scroll(list,v.theme);v.list=list
  if not v.trackingInitialized then
   v.trackingInitialized=true;local names={};for _,c in ipairs(model.characters)do names[c.id]=c.name end
@@ -159,17 +195,63 @@ render=function()
  if v.page=='Summon'then
   local groups=new('HorizontalBox');add(left,groups)
   for _,category in ipairs({'story','combat'})do
-   local item=button(groups,category=='story'and 'Characters'or 'Creatures & combatants',function()v.category=category;v.selection=nil;v.focus=6;v.dirty=true;v.touched=os.time()end,category=='story'and 300 or 470)
+   local item=button(groups,category=='story'and 'Characters'or 'Creatures & combatants',function()v.category=category;v.focus=6;v.dirty=true;v.touched=os.time()end,category=='story'and 300 or 470)
    item.label:SetAutoWrapText(false);item.active=category==(v.category or 'story')
   end
   add(left,size(list,790,632)):SetPadding({Left=0,Top=14,Right=0,Bottom=0})
+  local firstChoice,matchingChoice
   for _,c in ipairs(model.characters)do if c.category==(v.category or 'story')then
    local choice={id=c.id,name=c.id=='marat'and 'Crake'or c.id=='matriarch'and 'Bakr-Erga'or c.name,
-    help=c.chat==false and 'Combat-only companion. Follows and fights using native abilities. Cannot join conversations. Large creatures need open terrain.'or 'Talk through text or voice, alone or in a group. Follows and fights using native abilities. Copies share this character’s conversation history.'}
+    help=c.chat==false and 'Follows and fights. Cannot join conversations. Large creatures need open terrain.'or c.protectIfNoncombatant and 'Travels and joins conversations. Non-fighters are protected from enemies. Copies share conversation history.'or 'Follows, fights and joins conversations. Copies share this character’s conversation history.'}
+   firstChoice=firstChoice or choice;if v.selection and v.selection.id==choice.id then matchingChoice=choice end
    local item=button(list,choice.name,function()v.selection=choice;v.message='';showSelection(v);refresh(v,Party.view())end)
    item.characterId=choice.id
   end end
-  local actions=new('HorizontalBox');add(detail,actions):SetPadding({Left=0,Top=12,Right=0,Bottom=8})
+  v.selection=matchingChoice or firstChoice
+  add(detail,caption('APPEARANCE',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=4})
+  v.appearanceRows={}
+  for _,channel in ipairs(Appearance.channels)do
+   local shell=new('Overlay');add(detail,size(shell,656,54))
+   local background=art('selection');background:SetRenderOpacity(0);background:SetVisibility(0);fill(add(shell,background))
+   local row=new('HorizontalBox');fill(add(shell,row))
+   local title=caption(channel.label,24);title:SetAutoWrapText(false)
+   local titleBox=size(title,280,52);title.Slot:SetVerticalAlignment(2);title.Slot:SetPadding({Left=0,Top=0,Right=8,Bottom=0});add(row,titleBox)
+   local surface=new('Overlay');add(row,size(surface,376,52))
+   local picker=v.library:Create(v.pc,Theme.asset('/Game/_Dawnwalker/UI/_Unified/Settings/WBP_Settings_Control_Picker.WBP_Settings_Control_Picker_C'),v.pc)
+   assert(AI.valid(picker),'Native appearance picker unavailable')
+   fill(add(surface,picker))
+   -- Use the actual settings picker artwork/layout. Its stock input writes to
+   -- RebelGameUserSettings, so route our own hit targets to character presets.
+   -- No game setting entry is borrowed or modified.
+   picker['Is Updating']=true;picker:SetVisibility(3)
+   picker.Slider:SetVisibility(2);picker.IndicatorBox:SetVisibility(1)
+   picker.ArrowLeft:SetVisibility(2);picker.ArrowRight:SetVisibility(2)
+   -- The blueprint refreshes its stock value after construction. Keep its
+   -- native picker artwork, but own the value text and arrow hit targets.
+   picker.Label:SetVisibility(2)
+   local value=caption('',24);value:SetAutoWrapText(false);value:SetJustification(1)
+   local valueBox=size(value,260,52);value.Slot:SetVerticalAlignment(2)
+   local valueSlot=add(surface,valueBox);valueSlot:SetHorizontalAlignment(2);valueSlot:SetVerticalAlignment(2)
+   local item={appearance=channel.id,controls={},label=value,picker=picker,background=background,row=shell,focusIndex=#v.buttons+1}
+   for _,direction in ipairs({-1,1})do
+    local target=new('Overlay');local paint=new('Border');paint:SetBrushColor({R=0,G=0,B=0,A=0});fill(add(target,paint))
+    local arrow=caption(direction==-1 and '<'or '>',30);arrow:SetAutoWrapText(false);arrow:SetJustification(1)
+    local arrowBox=size(arrow,58,52);arrow.Slot:SetVerticalAlignment(2);fill(add(target,arrowBox))
+    local click=clickLayer(target,paint)
+    local slot=add(surface,size(target,58,52));slot:SetHorizontalAlignment(direction==-1 and 1 or 3);slot:SetVerticalAlignment(0)
+    local control={widget=paint,click=click,arrow=arrow,action=function()changeAppearance(v,channel.id,direction)end,enabled=true,appearance=channel.id,scroll=detailScroll,nativePicker=item}
+    v.buttons[#v.buttons+1]=control;item.controls[#item.controls+1]=control
+   end
+   v.appearanceRows[#v.appearanceRows+1]=item
+  end
+  v.appearanceReset=button(detail,'Restore original colours',function()
+   if not v.selection then return end
+   local ok,why=pcall(Appearance.reset,v.selection.id)
+   v.message=ok and 'Original colours selected' or 'Could not save colours: '..tostring(why)
+   updateAppearance(v);v.touched=os.time()
+  end,656)
+  v.appearanceNote=caption('',20);add(detail,size(v.appearanceNote,670,46)):SetPadding({Left=0,Top=3,Right=0,Bottom=3})
+  local actions=new('HorizontalBox');add(detail,actions):SetPadding({Left=0,Top=5,Right=0,Bottom=5})
   v.summonButton=button(actions,'Summon',function()
    if not v.selection then return end
    local ok,id=pcall(Party.enqueue,'spawn',v.selection.id)
@@ -197,24 +279,79 @@ render=function()
   add(left,size(list,790,710));describe('Your travelling party','Select a companion to dismiss that copy. Fallen companions return automatically after combat. Health bars stay hidden.')
   for _,m in ipairs(model.members)do local id=m.id;local item=button(list,m.name..' · '..m.status,function()Party.enqueue('dismiss',id);v.message='Dismissal queued';v.refreshAt=0 end,nil,'Dismiss this copy from your party.');item.memberId=id end
   if #model.members>0 then button(list,'Dismiss everyone',function()Party.enqueue('dismiss_all');v.refreshAt=0 end)else add(list,caption('No companions summoned yet.'))end
+ elseif v.page=='Horde'then
+  v.hordeContext=true
+  add(left,size(list,790,710));describe('Horde run','Fight through ten waves of increasingly varied enemies. Clear every enemy to advance after a short rest. Retreat or choose End horde to finish the run. Start horde resumes the game for loading; this menu closes when the full wave is ready. Esc returns to gameplay.')
+  add(list,caption('WAVES',32)):SetPadding({Left=0,Top=0,Right=0,Bottom=12})
+  local ok,waves=pcall(function()return Horde.levels and Horde.levels()or {}end)
+  if ok and type(waves)=='table'and #waves>0 then
+   for i,wave in ipairs(waves)do
+    -- Explicit wrap width gives Slate a stable desired height on its first
+    -- prepass. Let each body fit its actual lines instead of reserving blank rows.
+    local card=new('VerticalBox')
+    local title=caption(tostring(i)..'. '..tostring(wave.name or 'Wave '..i),26);title:SetAutoWrapText(false)
+    add(card,size(title,748,40))
+    local enemies=caption(wave.enemies or wave.description or '',22);enemies.WrapTextAt=730
+    add(card,size(enemies,748))
+    local boss=caption('Boss: '..tostring(wave.bosses or ''),22);boss.WrapTextAt=730
+    add(card,size(boss,748)):SetPadding({Left=0,Top=5,Right=0,Bottom=0})
+    add(list,size(card,764)):SetPadding({Left=0,Top=4,Right=0,Bottom=22})
+   end
+  else add(list,caption('Ten waves with varied enemies and rising difficulty.',24))end
+  add(detail,caption('STATUS',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=8})
+  v.hordeStatus=caption('',26);add(detail,size(v.hordeStatus,670,52))
+  v.hordeDetail=caption('',23);add(detail,size(v.hordeDetail,670,100)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
+  v.hordeStart=button(detail,'Start horde',function()
+   local succeeded,started,message=pcall(Horde.start,v.pc)
+   v.message=succeeded and (message or (started and 'Horde ready. Unpause to begin.'or 'Could not start horde.'))or tostring(started)
+   if succeeded and started then
+    v.hordeCloseId=Horde.view().id
+    if AI.valid(v.parent)then
+     -- Let async population initialize while retaining this loading panel.
+     -- Use the game's resume action so its pause camera and audio restore too.
+     Input.release(v.lease)
+     v.parent.bIsBackHandler=v.parentBack;v.parent:SetIsEnabled(v.parentEnabled)
+     v.parent:ResumeGame();v.parent=nil
+     v.lease=assert(Input.acquire(v.pc,v.library,cls('/Script/Engine.Default__GameplayStatics'),v.host))
+    end
+   end
+   refresh(v,Party.view())
+  end,656);v.hordeStart.prominent=true
+  v.hordeEnd=button(detail,'End horde',function()
+   local succeeded,why=pcall(Horde.stop,'Ended from menu')
+   v.message=succeeded and 'Horde ended' or tostring(why)
+   refresh(v,Party.view())
+  end,656)
  elseif v.page=='Settings'then
-  add(left,size(list,790,710));describe('Companion combat','Adjust damage and attack frequency. Changes save immediately. Native AI chooses attacks and powers. Fallen companions revive automatically once combat ends.')
+  add(left,size(list,790,710));describe('Settings','Changes save immediately. Native AI chooses attacks and powers. Fallen companions revive automatically after combat.\n\nAnca and Lacra have separate romance profile toggles, Off by default. Saved romance history automatically enables the matching profile. You can enable either profile early; memories still follow the loaded save. Horde options apply when a new run starts.')
+  local group
   for _,s in ipairs(Settings.schema)do
+   local section=s.group or 'Companions'
+   if section~=group then local top=group and 18 or 0;group=section;add(list,caption(group,32)):SetPadding({Left=0,Top=top,Right=0,Bottom=8})end
    local item=button(list,s.label,function()changeSetting(s,1)end,nil,s.help);item.setting=s
    local row=new('HorizontalBox');item.widget:SetContent(row)
    -- Button content otherwise defaults to centering its desired width. Toggle
    -- rows are narrower than slider rows, so that default indented their labels.
-   fill(row.Slot):SetPadding({Left=24,Top=0,Right=18,Bottom=0})
+   fill(row.Slot):SetPadding({Left=0,Top=0,Right=18,Bottom=0})
    local label=caption(s.label,26);label:SetAutoWrapText(false)
    local labelBox=size(label,410,52);label.Slot:SetVerticalAlignment(2);add(row,labelBox)
    local control
    if s.max~=1 then
     item.click:SetVisibility(1);item.click:SetIsInteractionEnabled(false);item.widget:SetVisibility(0)
-    local slider=new('Slider');slider:SetMinValue(s.min);slider:SetMaxValue(s.max);slider:SetStepSize(s.step);slider:SetValue(Settings.values[s.id]);Theme.slider(slider,v.theme)
-    control=slider
-    v.sliders[#v.sliders+1]={widget=slider,setting=s,value=Settings.values[s.id],item=item}
+    local surface=new('Overlay')
+    local trackApi={construct=function(path,tree)return StaticConstructObject(cls(path),tree)end,need=function(w,why)return assert(w,why)end}
+    local frame,trackFill=Theme.sliderTrack(v.tree,v.theme,trackApi)
+    local track=add(surface,size(frame,128,6));track:SetHorizontalAlignment(2);track:SetVerticalAlignment(2)
+    local slider=new('Slider');slider.IsFocusable=true;slider.RequiresControllerLock=false;slider.IndentHandle=false
+    slider:SetMinValue(0);slider:SetMaxValue(1);slider:SetStepSize(s.step/(s.max-s.min))
+    local position=(Settings.values[s.id]-s.min)/(s.max-s.min)
+    slider:SetValue(position);Theme.slider(slider,v.theme)
+    slider:SetSliderBarColor({R=1,G=1,B=1,A=0});slider:SetSliderHandleColor({R=1,G=1,B=1,A=0})
+    fill(add(surface,slider));trackFill:SetPercent(position)
+    control=surface;item.slider=slider
+    v.sliders[#v.sliders+1]={widget=slider,fill=trackFill,setting=s,value=Settings.values[s.id],item=item}
    else control=new('Spacer')end
-   add(row,size(control,185,52)):SetPadding({Left=0,Top=0,Right=12,Bottom=0})
+   add(row,size(control,s.max~=1 and 134 or 185,52)):SetPadding({Left=0,Top=0,Right=s.max~=1 and 63 or 12,Bottom=0})
    local value=caption(Settings.label(s),26);value:SetAutoWrapText(false)
    local valueBox=size(value,100,52);value.Slot:SetVerticalAlignment(2)
    add(row,valueBox):SetPadding({Left=10,Top=0,Right=0,Bottom=0});item.value=value
@@ -222,7 +359,12 @@ render=function()
  elseif v.page=='Controls'then
   add(left,size(list,790,710));describe('Keyboard controls','Select an action, then press its new key. Changes save immediately to keybindings.ini.\n\nUse F1–F11, letters, numbers, Home, End, PageUp, PageDown, Insert or Delete. Each action needs a different key. Escape cancels capture.\n\nChoose keys that do not conflict with your game controls. Voice keys toggle recording: press once to speak, and again to finish.')
   for _,s in ipairs(Settings.bindingSchema)do local id=s.id
-   local item=button(list,s.label..'     '..(v.capture==id and '[ Press a key… ]'or Settings.bindings[id]),function()v.capture=id;v.message='Press a new key for '..s.label..'. Esc cancels.';bindingLabels(v)end);item.binding=s
+   local item=button(list,s.label,function()v.capture=id;v.message='Press a new key for '..s.label..'. Esc cancels.';bindingLabels(v)end);item.binding=s
+   local row=new('HorizontalBox');item.widget:SetContent(row);fill(row.Slot):SetPadding({Left=0,Top=0,Right=18,Bottom=0})
+   item.label:SetAutoWrapText(false)
+   local action=size(item.label,470,52);item.label.Slot:SetVerticalAlignment(2);add(row,action)
+   local value=caption(v.capture==id and '[ Press a key… ]'or Settings.bindings[id],26);value:SetAutoWrapText(false)
+   local key=size(value,250,52);value.Slot:SetVerticalAlignment(2);add(row,key);item.bindingValue=value
   end
   if Settings.bindingError then v.message=Settings.bindingError end
  else
@@ -240,7 +382,7 @@ render=function()
    refresh(v,Party.view())
   end);copy.prominent=true
   add(list,caption('Copies recent diagnostic logs to your clipboard and saves support-report.txt. Conversation history and configuration are excluded.',22))
-  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the five shortcuts under Controls.')
+  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the five shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved per character, including copies. Restore original colours returns the game materials.\n\nRomance profiles: Anca and Lacra have separate toggles, Off by default. Completed romance in the loaded save automatically turns the matching profile On. You can also enable one early. This changes conversations only; it does not play cutscenes.\n\nHorde: start a ten-wave run from its page, clear all enemies to advance after each rest, or retreat to end the run.')
  end
  if not v.feedback then v.feedback=caption('',22);add(detail,v.feedback):SetPadding({Left=0,Top=20,Right=0,Bottom=0})end
  v.summary=caption('',23);v.summary:SetAutoWrapText(false);add(v.content,size(v.summary,1580,36)):SetPadding({Left=0,Top=18,Right=0,Bottom=0})
@@ -262,15 +404,19 @@ function M.toggle(pc)
   local border=new('Border');border:SetBrushColor({R=.003,G=.004,B=.006,A=1});border:SetPadding({Left=0,Top=0,Right=0,Bottom=0});border:SetHorizontalAlignment(0);border:SetVerticalAlignment(0);v.tree.RootWidget=border
   local outer=new('Overlay');border:SetContent(outer);fill(add(outer,art('background')))
   local design=new('Overlay');local scale=new('ScaleBox');scale:SetStretch(2);scale:SetContent(size(design,1920,1080));fill(add(outer,scale))
-  v.content=new('VerticalBox');fill(add(design,v.content)):SetPadding({Left=150,Top=92,Right=150,Bottom=88})
+  local leftEdge=150
+  v.content=new('VerticalBox');fill(add(design,v.content)):SetPadding({Left=leftEdge,Top=92,Right=150,Bottom=88})
   -- Persistent footer, independent of scroll content and selected page.
   v.backButton=new('Button');v.backButton.IsFocusable=false
   local label=caption('BACK',21);Theme.button(v.backButton,label,v.theme,false);Theme.font(label,v.theme,21);label:SetAutoWrapText(false)
+  v.backButton.WidgetStyle.NormalPadding={Left=0,Top=0,Right=0,Bottom=0}
+  v.backButton.WidgetStyle.PressedPadding={Left=0,Top=0,Right=0,Bottom=0}
   local footer=new('HorizontalBox');v.backButton:SetContent(footer);fill(footer.Slot):SetPadding({Left=0,Top=0,Right=0,Bottom=0})
-  add(footer,size(art('esc'),36,36)):SetVerticalAlignment(2)
+  local esc=caption('Esc',21);esc:SetAutoWrapText(false)
+  add(footer,size(esc,36,36)):SetVerticalAlignment(2);esc.Slot:SetVerticalAlignment(2)
   local labelSlot=add(footer,label);labelSlot:SetVerticalAlignment(2);labelSlot:SetPadding({Left=10,Top=0,Right=0,Bottom=0})
   local backOverlay=new('Overlay');fill(add(backOverlay,v.backButton));v.backClick=clickLayer(backOverlay,v.backButton)
-  local slot=add(design,size(backOverlay,180,44));slot:SetHorizontalAlignment(1);slot:SetVerticalAlignment(3);slot:SetPadding({Left=150,Top=0,Right=0,Bottom=64})
+  local slot=add(design,size(backOverlay,180,44));slot:SetHorizontalAlignment(1);slot:SetVerticalAlignment(3);slot:SetPadding({Left=leftEdge,Top=0,Right=0,Bottom=64})
   render()
   for _,parent in ipairs(FindAllOf('WBP_PauseMenu_C')or {})do if AI.valid(parent)and parent:IsInViewport()and parent:IsActivated()then
    v.parent=parent;v.parentBack=parent.bIsBackHandler;v.parentEnabled=parent:GetIsEnabled();parent.bIsBackHandler=false;parent:SetIsEnabled(false);break
@@ -292,10 +438,17 @@ function M.input(name)
  if name=='Escape'then back();return end
  if name==Settings.bindings.Menu then M.close();return end
  if name=='Down'or name=='Up'then
-  v.focus=((v.focus-1+(name=='Down'and 1 or -1))%#v.buttons)+1
-  local b=v.buttons[v.focus];pcall(function()v.list:ScrollWidgetIntoView(b.widget,true,0,12)end)
- elseif name=='Enter'then local b=v.buttons[v.focus];if b and b.enabled then b.action()end
- elseif name=='Left'or name=='Right'then local b=v.buttons[v.focus];if b and b.setting then changeSetting(b.setting,name=='Left'and -1 or 1)end end
+  v.pointerMode=false
+  local previous=v.buttons[v.focus];local step=name=='Down'and 1 or -1
+  for _=1,#v.buttons do
+   v.focus=((v.focus-1+step)%#v.buttons)+1
+   local candidate=v.buttons[v.focus]
+   if candidate.enabled and not(previous and previous.nativePicker and candidate.nativePicker==previous.nativePicker)then break end
+  end
+   local b=v.buttons[v.focus];pcall(function()(b.scroll or v.list):ScrollWidgetIntoView(b.widget,true,0,12)end)
+ elseif name=='Enter'then v.pointerMode=false;local b=v.buttons[v.focus];if b and b.enabled then b.action()end
+ elseif name=='Left'or name=='Right'then v.pointerMode=false;local b=v.buttons[v.focus];if b and b.setting then changeSetting(b.setting,name=='Left'and -1 or 1)
+  elseif b and b.appearance then changeAppearance(v,b.appearance,name=='Left'and -1 or 1)end end
 end
 local function readInput(v)
  local f=io.open(root..'/native-menu-input.txt','r');if not f then return end
@@ -310,6 +463,10 @@ end
 function M.tick()
  local v=view;if not v then return end
  if not AI.valid(v.pc)or not AI.valid(v.pc.Pawn)or not AI.same(v.pc.Pawn:GetWorld(),v.world)or not AI.valid(v.host)or not v.host:IsActivated()then M.close();return end
+ local horde=Horde.view()
+ if v.page=='Horde'and horde.active and (horde.phase=='preparing'or horde.phase=='loading')then v.hordeCloseId=horde.id end
+ if v.hordeCloseId and horde.active and horde.id==v.hordeCloseId and horde.released then M.close(true);return end
+ if not horde.active then v.hordeCloseId=nil end
  readInput(v);if view~=v then return end
  if v.previewUntil then
   if os.time()>=v.previewUntil then M.close();return end
@@ -322,23 +479,42 @@ function M.tick()
  -- IsPressed survives Slate routing; PlayerController key polling does not.
  if v.backClick:GetSelected()then v.backClick:ClearSelection();back();return end
  for _,s in ipairs(v.sliders)do
-  local value=s.widget:GetValue();local snapped=math.max(s.setting.min,math.min(s.setting.max,math.floor((value-s.setting.min)/s.setting.step+.5)*s.setting.step+s.setting.min))
+  local setting=s.setting;local value=s.widget:GetValue()
+  local snapped=math.max(setting.min,math.min(setting.max,math.floor(value*(setting.max-setting.min)/setting.step+.5)*setting.step+setting.min))
   if snapped~=s.value then
-   Settings.change(s.setting.id,(snapped-Settings.values[s.setting.id])/s.setting.step);s.value=snapped;text(s.item.value,Settings.label(s.setting));v.touched=os.time()
+   Settings.change(setting.id,(snapped-Settings.values[setting.id])/setting.step);s.value=Settings.values[setting.id]
+   local position=(s.value-setting.min)/(setting.max-setting.min)
+   s.widget:SetValue(position);s.fill:SetPercent(position);text(s.item.value,Settings.label(setting));v.touched=os.time()
   end
  end
+ local buttonHover,hoveredButton={},nil
  for i,b in ipairs(v.buttons)do
-  local hovered=b.setting and b.setting.max~=1 and b.widget:IsHovered()or b.click:IsHovered();local clicked=b.click:GetSelected()
-  if hovered and v.hover~=b then v.touched=os.time();v.hover=b;v.focus=i end
-  local selected=i==v.focus
+  local hovered=b.setting and b.setting.max~=1 and b.widget:IsHovered()or b.click:IsHovered()
+  buttonHover[i]=hovered;if hovered then hoveredButton=i end
+ end
+ local hoveredRow=nil
+ for _,item in ipairs(v.appearanceRows or {})do
+  if item.row:IsHovered()then hoveredRow=item end
+ end
+ -- The picker is display-only. Its native arrows have separate click targets,
+ -- while the full row supplies hover so labels and the value area react too.
+ local pointerTarget=hoveredButton or hoveredRow and hoveredRow.focusIndex
+ if pointerTarget and v.hover~=pointerTarget then
+  v.touched=os.time();v.focus=pointerTarget;v.pointerMode=true
+ end
+ v.hover=pointerTarget
+ for i,b in ipairs(v.buttons)do
+  local hovered=buttonHover[i];local clicked=b.click:GetSelected()
+  local selected=not v.pointerMode and i==v.focus
   -- selectionState writes native brush proxies. Call it only when the visual
   -- state changes; idle ticks should neither invalidate layout nor scan objects.
   local paintedSelected=selected or b.active or (b.prominent and b.enabled)or false
   local visual=paintedSelected and 2 or hovered and 1 or 0
-  if b.visual~=visual then
+  if not b.nativePicker and b.visual~=visual then
    b.visual=visual
    local alpha=Theme.selectionState(b.widget,v.theme,paintedSelected,hovered,false)
    b.widget:SetBackgroundColor({R=1,G=1,B=1,A=alpha})
+   if b.slider then b.slider:SetSliderHandleColor({R=1,G=1,B=1,A=(selected or hovered)and 1 or 0})end
   end
   if selected and b.help then describe(b.title,b.help)end
   -- CommonUI retains even a completed quick click until we consume it. Clear
@@ -346,6 +522,16 @@ function M.tick()
   if clicked then
    b.click:ClearSelection()
    if b.enabled and not v.capture then v.touched=os.time();b.action();return end
+  end
+ end
+ for _,item in ipairs(v.appearanceRows or {})do
+  local focused=not v.pointerMode and v.buttons[v.focus]and v.buttons[v.focus].nativePicker==item
+  local hovered=item.row:IsHovered()
+  local visual=focused and 2 or hovered and 1 or 0
+  if item.visual~=visual then
+   item.visual=visual
+   local alpha=Theme.selectionState(item.background,v.theme,focused,hovered,true)
+   item.background:SetRenderOpacity(alpha)
   end
  end
  if os.time()~=(v.refreshAt or 0)then
@@ -365,14 +551,19 @@ function M.tick()
  end
 end
 function M.preview(pc)
- if view then M.close()end;M.toggle(pc);view.previewUntil=os.time()+5
+ if view then M.close()end;M.toggle(pc)
+ for _,b in ipairs(view.buttons)do if b.characterId=='anca'then b.action();break end end
+ view.previewUntil=os.time()+5
 end
 function M.probe(pc)
  local reports={};local ok,err=pcall(function()
   if view then M.close()end;M.toggle(pc)
-  for _,name in ipairs({'Summon','Party','Settings','Controls','Help'})do
+  for _,name in ipairs({'Summon','Party','Horde','Settings','Controls','Help'})do
    view.page=name;render();assert(view.buttons[1].label.Font.Size==26,'Button theme reset the font size')
-   for _,s in ipairs(view.sliders)do assert(math.abs(s.widget:GetValue()-Settings.values[s.setting.id])<.01,'Slider value mismatch')end
+   for _,s in ipairs(view.sliders)do
+    local position=(Settings.values[s.setting.id]-s.setting.min)/(s.setting.max-s.setting.min)
+    assert(math.abs(s.widget:GetValue()-position)<.01,'Slider value mismatch')
+   end
    reports[#reports+1]=name..': '..#view.buttons..' controls'
   end
   view.page='Summon';view.category='combat';render();reports[#reports+1]='Combat roster: '..#view.buttons..' controls'

@@ -10,6 +10,7 @@ local Formation=require('party_formation')
 local FormationNative=require('formation_native')
 local Damage=require('companion_damage')
 local Settings=require('companion_settings')
+local Appearance=require('companion_appearance')
 local Tuning=require('companion_tuning')
 local Protection=require('companion_protection')
 local nativeCommands={};local nativeSequence=0
@@ -156,6 +157,39 @@ local function friendly(m,a,b)
  a:SetAttitudeTowards(b,1,false) -- ERebelAIAttitude::Friendly in the captured dump.
  m.attitudes[#m.attitudes+1]={source=a,target=b,old=old}
 end
+-- Civilian protection is scoped to summoned copies, never campaign actors.
+local function protectCivilian(m,enemies,now)
+ if not m.civilian or not ready(m)then return end
+ m.actor.bCanBeDamaged=false;m.board.bCanFight=false
+ if now<(m.civilianCheckAt or 0)then return end;m.civilianCheckAt=now+750
+ m.civilianRelations=m.civilianRelations or {}
+ for key,lease in pairs(m.civilianRelations)do
+  if not AI.board(lease.source)or not AI.board(lease.target)then m.civilianRelations[key]=nil end
+ end
+ local function protect(a,b)
+  if not AI.board(a)or not AI.board(b)or same(a,b)then return end
+  local key=tostring(a:GetAddress())..'>'..tostring(b:GetAddress())
+  local old=a:GetAttitudeTowards(b)
+  if old~=1 then
+   m.civilianRelations[key]=m.civilianRelations[key]or {source=a,target=b,old=old}
+   a:SetAttitudeTowards(b,1,false)
+  end
+ end
+ for i=1,math.min(#enemies,64)do local enemy=enemies[i]
+  protect(enemy,m.stub);protect(m.stub,enemy)
+  local board=AI.board(enemy)
+  if board and same(board:GetForcedTarget(),m.stub)then board:SetForcedTarget(nil,0.0)end
+ end
+end
+local function releaseCivilian(m)
+ for _,lease in pairs(m.civilianRelations or {})do pcall(function()
+  if AI.board(lease.source)and AI.board(lease.target)and lease.source:GetAttitudeTowards(lease.target)==1 then
+   lease.source:SetAttitudeTowards(lease.target,lease.old,false)
+  end
+ end)end
+ m.civilianRelations=nil;m.civilianCheckAt=nil
+ if m.civilian and valid(m.actor)and m.actor.bCanBeDamaged==false and m.originalDamageable~=nil then m.actor.bCanBeDamaged=m.originalDamageable end
+end
 restoreEnemies=function(m)
  for _,a in ipairs(m.enemyAttitudes or {})do pcall(function()
   if AI.board(a.source)and AI.board(a.target)and a.source:GetAttitudeTowards(a.target)==3 then a.source:SetAttitudeTowards(a.target,a.old,false)end
@@ -163,6 +197,7 @@ restoreEnemies=function(m)
  m.enemyAttitudes={};m.enemyPairs={}
 end
 local function enemyPair(m,a,b)
+ if m.civilian then return false end
  m.enemyAttitudes=m.enemyAttitudes or {};m.enemyPairs=m.enemyPairs or {}
  local key=a:GetFullName()..'>'..b:GetFullName()
  if m.enemyPairs[key]then return true end
@@ -174,7 +209,10 @@ local function enemyPair(m,a,b)
  return true
 end
 local function dismiss(m,reason)
+ releaseCivilian(m)
  summonStage(m,'failed',reason)
+ local restored,restoreError=pcall(Appearance.release,m)
+ if not restored then log('Appearance cleanup: '..tostring(restoreError))end
  local unmarked,unmarkError=pcall(Protection.unmark,m)
  if not unmarked then log('Source marker cleanup: '..tostring(unmarkError))end
  AI.releaseSpawnAnchor(m.anchorLease)
@@ -198,7 +236,7 @@ local function resetParty(reason,preserve)
   end end
   table.sort(saved,function(a,b)return a.ordinal<b.ordinal end)
  end
- if beforeReset then beforeReset()end -- Drop selected-actor references before native destruction.
+ if beforeReset then beforeReset('party-reset')end -- Drop selected-actor references before native destruction.
  if not preserve then nativeCommands={}end
  formation=Formation.new();formationFrame=formation.frame;partyDeparture=false;partyPositions={}
  updateCursor=0;lastFollowWake=nil;lastPartyCatchup=nil;lastReconnectPoll=nil;lastDiagnosticTick=nil;lastAnchorUpdate=nil;travelHeading=nil;playerStub=nil
@@ -498,9 +536,15 @@ local function attach(m,actor)
  board.Follower.bIsPlayerInFollowArea=true;board.Follower.bReturnToAP=false
  board:StopAllActions() -- One goal reset after the clone becomes friendly.
  m.originalCanFight=board.bCanFight
+ local nativeDefinition=s:GetAIDefinition()
+ -- Inspected family definitions use PlayerFollower/Civilian; Pieter has a
+ -- dedicated combat definition. A generic board's fight flag alone is insufficient.
+ m.civilian=m.definition.protectIfNoncombatant==true and (not valid(nativeDefinition)or not nativeDefinition:GetFullName():find('/Combat/',1,true))
+ m.originalDamageable=actor.bCanBeDamaged
+ if m.civilian then actor.bCanBeDamaged=false end
  -- Changing the clone's gate does not grant attacks; native AI still needs a
  -- combat definition and weapons. No shared NPC/config CDO is modified.
- m.combatDefinition=valid(s:GetAIDefinition()) and s:GetAIDefinition():IsA(AI.find('/Script/RebelAI.RebelAIDef'))
+ m.combatDefinition=not m.civilian and valid(s:GetAIDefinition()) and s:GetAIDefinition():IsA(AI.find('/Script/RebelAI.RebelAIDef'))
  m.healthComponent=component(actor,'/Script/DogwoodCombat.CombatComponentBase')
  m.asc=s:GetAbilitySystemComponent()
  measured('protect player',Protection.ensure,player,playerStub)
@@ -559,7 +603,7 @@ local function reconnect(m,now)
  end
  if state~='reattach'then Recovery.reconnectCandidate(m,nil,now)end
  if state=='reattach'then
-  releaseCombatMovement(m);releaseTravelIdle(m);releaseFollowPace(m);restoreRetreat(m);restoreEnemies(m);restoreAttitudes(m);releaseHold(m)
+  releaseCivilian(m);releaseCombatMovement(m);releaseTravelIdle(m);releaseFollowPace(m);restoreRetreat(m);restoreEnemies(m);restoreAttitudes(m);releaseHold(m)
   m.combat=nil;m.combatTarget=nil;m.issuedTarget=nil;m.instigator=nil
   m.followPaceSpeed=nil;m.followSpeedOwned=nil;m.followSpeedRestore=nil;m.followRunning=nil;m.followDistance=nil
   m.travelPose=nil;m.travelGait=nil;m.poseOwned=nil;m.poseRestore=nil;m.weaponStowed=nil;m.handSetup=nil;m.stowState=nil
@@ -1024,6 +1068,13 @@ local function update(m,now,enemies,selected)
  if m.missingAt then if measured('reconnect '..m.name,reconnect,m,now)=='replace'then replaceMissingMember(m,now)end;return end
  if m.stableSince and now-m.stableSince>=10000 then m.reconnectAttempts=nil;m.stableSince=nil;m.candidateKey=nil;m.candidateAt=nil end
  if m.board.bIsDead then releaseCombatMovement(m);releaseTravelIdle(m);m.defeated=true;m.status='Defeated';return end
+ if now>=(m.appearanceRetryAt or 0)and (Appearance.selected(m.characterId)or m.appearanceRevision~=nil)then
+  local ok,why=pcall(Appearance.apply,m,now)
+  if not ok then
+   m.appearanceRetryAt=now+10000;m.appearanceNote='Colour change unavailable: '..tostring(why)
+  else m.appearanceRetryAt=nil end
+ end
+ protectCivilian(m,enemies,now)
  if m.playerEpoch~=playerEpoch then friendly(m,m.stub,playerStub);friendly(m,playerStub,m.stub);m.playerEpoch=playerEpoch end
  local allegianceBlocked=Tuning.guardAllegiance(m,playerStub,ownedStubs,now)
  if allegianceBlocked then

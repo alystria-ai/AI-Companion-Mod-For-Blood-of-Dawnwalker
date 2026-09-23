@@ -1,7 +1,15 @@
-local M={revision=0,respawnDelay=8} -- Automatic quiet period, not a user setting.
+local M={revision=0,respawnDelay=3} -- Automatic quiet period, not a user setting.
 M.schema={
  {id='DamagePercent',label='Companion damage',default=250,min=0,max=500,step=10,suffix='%',help='Scales each summoned companion’s normal physical strength, including attacks against NPCs. Special abilities can use separate damage rules.'},
  {id='AttackFrequency',label='Attack frequency',default=180,min=50,max=250,step=10,suffix='%',help='Uses the native attack-speed attribute. Higher values shorten attacks; native AI still chooses when and what to attack. This is not a forced attack timer.'},
+ {id='AncaRomance',label='Anca romance profile',group='Conversations',default=0,min=0,max=1,step=1,help='Off by default. Automatically On when the loaded save confirms romance with Anca. Enable manually to use the romantic conversation profile earlier. This does not change quests or play a cutscene.'},
+ {id='LacraRomance',label='Lacra romance profile',group='Conversations',default=0,min=0,max=1,step=1,help='Off by default. Automatically On when the loaded save confirms romance with Lacra. Enable manually to use the romantic conversation profile earlier. This does not change quests or play a cutscene.'},
+ {id='FirstPersonCamera',label='First-person camera',group='Camera',default=0,min=0,max=1,step=1,help='Experimental head-height gameplay camera. Dialogue, menus and cutscenes take priority. Turn Off to restore the normal camera.'},
+ {id='HordeStartEnemies',label='Starting enemies',group='Horde',default=8,min=1,max=20,step=1,help='Regular enemies in the first horde, in addition to bosses. Changes apply to your next run.'},
+ {id='HordeEnemyGrowth',label='Enemies added per level',group='Horde',default=2,min=0,max=4,step=1,help='Adds this many regular enemies with each cleared level.'},
+ {id='HordeLevels',label='Horde levels',group='Horde',default=10,min=1,max=10,step=1,help='Number of the ten curated levels to play. Later levels introduce tougher enemy types and bosses.'},
+ {id='HordeBosses',label='Bosses per level',group='Horde',default=1,min=0,max=4,step=1,help='Additional bosses per level, chosen from that level’s enemy theme. Story companions are excluded.'},
+ {id='HordeTimeout',label='Horde timeout',group='Horde',default=10,min=3,max=60,step=1,suffix=' s',help='Rest between cleared levels. The countdown pauses with the game and yields its subtitle bubble to conversations.'},
 }
 M.values={};for _,s in ipairs(M.schema)do M.values[s.id]=s.default end
 local root=require('runtime_path');local lastRead,lastText=0,nil
@@ -14,18 +22,24 @@ function M.poll()
  local f=io.open(directory()..'/config.ini','r');if not f then return end
  local text=f:read('*a');f:close();if text==lastText then return end;lastText=text
  local values={};for k,v in text:gmatch('([%w_]+)%s*=%s*([%d%.%-]+)')do values[k]=tonumber(v)end
- for _,s in ipairs(M.schema)do local v=values[s.id];if v and v==v then M.values[s.id]=math.max(s.min,math.min(s.max,v))end end
+ for _,s in ipairs(M.schema)do local v=values[s.id];if v and v==v then M.values[s.id]=math.max(s.min,math.min(s.max,s.min+math.floor((v-s.min)/s.step+.5)*s.step))end end
  M.revision=M.revision+1
 end
+local romanceStory={}
+function M.setRomanceStory(anca,lacra)
+ romanceStory={AncaRomance=anca==true,LacraRomance=lacra==true}
+end
+function M.effective(id)return romanceStory[id]and 1 or M.values[id]end
 function M.change(id,delta)
+ if romanceStory[id]then return end
  for _,s in ipairs(M.schema)do if s.id==id then
-  M.values[id]=s.max==1 and (1-M.values[id])or math.max(s.min,math.min(s.max,M.values[id]+delta*s.step))
+  M.values[id]=(s.min==0 and s.max==1)and (1-M.values[id])or math.max(s.min,math.min(s.max,M.values[id]+delta*s.step))
   local f=assert(io.open(directory()..'/config.ini','w'));f:write('[Companions]\n')
   for _,item in ipairs(M.schema)do f:write(item.id..' = '..M.values[item.id]..'\n')end
   f:close();lastText=nil;lastRead=0;M.poll();return
  end end
 end
-function M.label(s)local v=M.values[s.id];return s.max==1 and (v==1 and 'On'or 'Off')or tostring(v)..(s.suffix or '')end
+function M.label(s)local v=M.effective(s.id);return (s.min==0 and s.max==1)and (v==1 and 'On'or 'Off')or tostring(v)..(s.suffix or '')end
 -- These bindings are shared with the desktop input helper. Keep one file for
 -- both editors; gameplay settings must never overwrite keyboard preferences.
 M.bindings={Menu='F5',SingleText='F6',SingleVoice='F7',GroupText='F8',GroupVoice='F9'}

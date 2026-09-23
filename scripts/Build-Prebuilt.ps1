@@ -24,10 +24,10 @@ try {
  }else{& (Join-Path $PSScriptRoot 'Build-WebView.ps1') -OutputName ConvaiHost.distribution.exe}
  if($LASTEXITCODE -ne 0){throw 'Helper build failed'}
  Copy-Item -LiteralPath (Join-Path $taskRoot 'bridge/native/ConvaiHost.distribution.exe') -Destination (Join-Path $taskPayload 'bridge/native/ConvaiHost.exe')
- foreach($taskName in @('companion_native_v9.dll','companion_assets_v2.dll','companion_protection_v2.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $taskRoot ('bridge/native/'+$taskName)) -Destination (Join-Path $taskPayload 'bridge/native')}
+ foreach($taskName in @('companion_native_v9.dll','companion_assets_v2.dll','companion_protection_v2.dll','background_launcher_v1.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $taskRoot ('bridge/native/'+$taskName)) -Destination (Join-Path $taskPayload 'bridge/native')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'bridge') -Filter '*.mjs' -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'bridge')}
  foreach($taskDir in @('bridge/public','bridge/fonts','mod/Scripts')){Get-ChildItem -LiteralPath (Join-Path $taskRoot $taskDir) -File | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $taskPayload $taskDir)}}
- foreach($taskName in @('companion-config.json','companion-lore.json','quest-knowledge.json','combat-roster.json')){Copy-Item -LiteralPath (Join-Path $taskRoot ('characters/'+$taskName)) -Destination (Join-Path $taskPayload 'characters')}
+ foreach($taskName in @('companion-config.json','companion-lore.json','quest-knowledge.json','combat-roster.json','romance-config.json')){Copy-Item -LiteralPath (Join-Path $taskRoot ('characters/'+$taskName)) -Destination (Join-Path $taskPayload 'characters')}
  Copy-Item -LiteralPath (Join-Path $taskRoot 'scripts/Start-Background.ps1') -Destination (Join-Path $taskPayload 'scripts')
  $taskNode=(Get-Content -LiteralPath (Join-Path $taskRoot 'runtime/node-path.txt') -Raw).Trim()
  Copy-Item -LiteralPath $taskNode -Destination (Join-Path $taskPayload 'node/node.exe')

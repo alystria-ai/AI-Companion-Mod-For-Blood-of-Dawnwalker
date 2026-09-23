@@ -8,26 +8,23 @@ export function voicePosition(sample:SpatialSample|null|undefined,generation:num
  const p=sample.position;
  return Array.isArray(p)&&p.length===3&&p.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1000)?p:null;
 }
-// Listener stays at the Web Audio origin, looking down -Z. Lua supplies the
-// character's camera-relative coordinates in metres, so camera rotation and
-// movement affect both live audio and already-buffered speech at playback time.
+// Ordinary centred playback. Distance only changes level very gently; there is
+// no panner, filter, convolution, channel remapping or JavaScript resampling.
+export function speechGain(position:VoicePosition|null):number{
+ if(!position)return 1;
+ const distance=Math.hypot(...position);
+ if(!Number.isFinite(distance))return 1;
+ return 1-0.15*Math.min(1,Math.max(0,(distance-4)/26));
+}
 export class SpatialOutput {
- readonly input:PannerNode;private previous='';
+ readonly input:GainNode;private previous=1;
  constructor(private context:BaseAudioContext){
-  // Equal-power panning changes channel levels, not the voice's spectrum. HRTF
-  // convolution can sound hollow/phasey, especially through speakers or an
-  // output device that already applies its own spatial processing.
-  const p=this.input=context.createPanner();p.panningModel='equalpower';p.distanceModel='inverse';
-  p.refDistance=2;p.maxDistance=60;p.rolloffFactor=0.65;
-  p.coneInnerAngle=360;p.coneOuterAngle=360;p.coneOuterGain=1;
-  p.positionZ.value=-2;p.connect(context.destination);
+  this.input=context.createGain();this.input.gain.value=1;this.input.connect(context.destination);
  }
  setPosition(position:VoicePosition|null){
-  const values=position||[0,0,-2],key=values.join(',');if(key===this.previous)return;this.previous=key;
+  const level=speechGain(position);if(Math.abs(level-this.previous)<.001)return;this.previous=level;
   const at=this.context.currentTime;
-  [this.input.positionX,this.input.positionY,this.input.positionZ].forEach((p,i)=>{
-   p.cancelScheduledValues(at);p.setTargetAtTime(values[i],at,0.045);
-  });
+  this.input.gain.cancelScheduledValues(at);this.input.gain.setTargetAtTime(level,at,.15);
  }
  destroy(){this.input.disconnect();}
 }

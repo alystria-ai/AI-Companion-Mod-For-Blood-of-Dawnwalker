@@ -156,6 +156,15 @@ static int inspectDefinition(FILE *reply,const wchar_t *path){
 /* Separate diagnostic DLL: only typed, read-only exports are reachable. It
  * never replaces the v5 DLL that owns the live population registry. */
 static int auditObject(FILE *reply,const wchar_t *path,const wchar_t *kind){
+    if(!wcscmp(kind,L"cinematic")){
+        void *o=resolveObject(path,L"/Script/CoreUObject.Object");if(!o)return 0;
+        const wchar_t *keys[]={L"Nodes",L"LevelSequences",L"CachedData",L"DialogueMovieSet",L"StreamingMarkers",L"PlaybackRootOverride",L"Sequence",L"PlaybackRange",L"TickResolution",L"SectionRange"};
+        for(unsigned i=0;i<sizeof(keys)/sizeof(keys[0]);i++)if(findProperty(o,keys[i])){
+            char label[96];WideCharToMultiByte(CP_UTF8,0,keys[i],-1,label,sizeof(label),NULL,NULL);
+            if(!exportField(reply,o,keys[i],label))return 0;
+        }
+        return 1;
+    }
     if(!wcscmp(kind,L"snapshot")){
         void *o=resolveObject(path,L"/Script/CoreUObject.Object");if(!o)return 0;
         /* Fixed read-only fields; missing fields are normal across actor types. */

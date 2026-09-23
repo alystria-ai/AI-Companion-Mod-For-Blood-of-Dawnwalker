@@ -30,30 +30,23 @@ def main():
     config['characterId'] = overlay['characterId']
     config.pop('apiKey', None)
     config.pop('endUserId', None)
-    notes = '''AI Companion Manager 0.30.9 — Multilingual voices
+    version = json.loads((ROOT / 'package.json').read_text())['version']
+    notes = f"""LLM NPC Companions System {version} - Multilingual voices
 
-This optional pack changes conversation profiles and voices. English users can keep the normal mod.
-All 26 cloud conversation profiles have separate multilingual Convai copies, with their original
-biographies, relationships and game knowledge. The voices use Azure multilingual speech.
+This optional pack replaces {len(replacements)} conversation profile IDs with multilingual
+copies and Azure voices. It keeps the normal biographies, relationships and game context.
 
-The copied profiles keep English selected while their language restriction is turned off in the
-owner's Convai dashboard. All 26 profiles replied in Russian in testing. Spanish and French
-spoken replies were also tested on Anca; the owner tested Arabic in the dashboard. Other
-languages may work, but have not all been checked. Microphone input still needs an in-game test.
+1. Install the matching Complete ZIP, or both Scripts and Runtime ZIPs.
+2. Close the game.
+3. Copy this archive's Dawnwalker folder into the game folder and overwrite the file.
+4. Launch the game. The game and mod menu keep their existing language.
 
-Install:
-1. Install the main 0.30.9 Complete ZIP, or both matching Scripts and Runtime ZIPs.
-2. Close the game and the helper if it is running.
-3. Copy this archive's Dawnwalker folder into the game installation folder and overwrite the file.
-4. Start the game. The F5 menu and companion combat stay the same.
+To return to English Kokoro voices, reinstall the matching Runtime or Complete ZIP.
+Reapply this optional pack after updating the main mod. These profile IDs have separate
+conversation histories from their English counterparts.
 
-To return to the original English Kokoro voices, reinstall the normal 0.30.9 Runtime or Complete
-ZIP and overwrite the configuration file. After updating the main mod, install the matching
-multilingual pack again. Conversation history and cloud memory for these new character IDs begin
-separately from the English profiles. This pack does not translate the game or mod menu.
-
-Contents: one JSON configuration file and this text file. No executable, DLL, API key, or script.
-'''
+Contents: one JSON configuration file and this note. No executable, DLL, script or API key.
+"""
     data = (json.dumps(config, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     args.output_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.output_zip, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
@@ -63,7 +56,7 @@ Contents: one JSON configuration file and this text file. No executable, DLL, AP
         assert sorted(verify.namelist()) == sorted([CONFIG, 'README-MULTILINGUAL.txt'])
         assert verify.read(CONFIG) == data
         assert b'apiKey' not in data and b'endUserId' not in data
-    print('Built', args.output_zip.name, 'with 26 multilingual character IDs')
+    print('Built', args.output_zip.name, 'with', len(replacements), 'multilingual character IDs')
     print('SHA256:', hashlib.sha256(args.output_zip.read_bytes()).hexdigest())
 
 if __name__ == '__main__':

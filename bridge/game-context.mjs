@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-export const ACTIONS=['Follow','Stop Walking','Look At Player','Leave'];
+export const ACTIONS=['Follow','Stop Walking','Look At Player','Leave','Romance'];
 export function parseQuests(raw,now=Date.now()){
   const [stamp,journal,...lines]=raw.split(/\r?\n/);
   if(!journal?.startsWith('Journal /Engine/Transient.')||Math.abs(now-Number(stamp)*1000)>25000)throw Error('Quest snapshot unavailable or stale');

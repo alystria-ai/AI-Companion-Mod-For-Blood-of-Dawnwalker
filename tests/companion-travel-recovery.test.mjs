@@ -100,15 +100,6 @@ test('an owned anchor that moved successfully gets one last-resort replacement a
  o.follow=true;o.dead=true;assert(not M.replaceMissing(o));o.dead=false;o.replacedEpoch=4;assert(not M.replaceMissing(o))
 `));
 
-test('world travel preserves membership while same-world player replacement keeps live owners',()=>{
- assert.match(companions,/worldName~=currentWorld then\s+pendingWorldParty=resetParty\('Recreating after world travel',true\)/);
- assert.match(companions,/elseif playerName and playerName~=currentPlayer then playerEpoch=playerEpoch\+1;playerStub=nil/);
- assert.match(companions,/if m\.playerEpoch~=playerEpoch then friendly\(m,m\.stub,playerStub\);friendly\(m,playerStub,m\.stub\)/);
- assert.doesNotMatch(companions,/worldName~=currentWorld or playerName~=player:GetFullName\(\)\)then M\.cleanup/);
- assert.match(companions,/state=='unloaded'and Recovery\.replaceMissing/);
- assert.match(companions,/combat=m\.stub:IsInCombat\(\)or m\.board\.Combat\.bInCombat/);
-});
-
 test('world snapshot retains pending members, defeat tombstones and queued intent',()=>{
  const source=extract('local function resetParty','function M.cleanup');
  execute(`

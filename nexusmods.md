@@ -1,4 +1,4 @@
-# Dawnwalker Convai 0.30.9 Preview
+# LLM NPC Companions System 0.5.0 - page draft
 
 Talk to the people of The Blood of Dawnwalker through text or voice, with spoken replies, subtitles and lipsync. You can also summon named characters, enemies and creatures as travelling companions. They follow Coen, join fights and use the game's native AI, attacks and abilities.
 
@@ -6,19 +6,24 @@ This is a preview release. The core conversation, menu, loading and companion sy
 
 ## Features
 
-**New in 0.30.9:** fixes repeated companion cleanup errors and stuttering after loading a save, including after dismissing the entire party. The fix has been confirmed in game. Update Runtime as well as Scripts, or use Complete.
+**New in 0.5.0:** appearance colours, romance-aware Anca and Lacra conversations, Coen’s family and additional combat variants. Install both matching packages or use Complete. This draft is for the forthcoming release.
 
 - Text and microphone conversations with nearby supported characters.
-- Voiced replies, subtitles, facial animation and spatial audio.
+- Voiced replies, subtitles and facial animation, with gentle distance-based volume.
 - Single-character and group conversations with up to three distinct speakers.
 - Character-specific biographies, speaking rules and relationships, with curated quest knowledge based on detected journal progress.
 - Relevant location, time and environmental context when the game exposes it; shared conversation sessions for duplicate copies of a character.
-- Native F5 menu with Summon, Party, Settings, Controls and Help pages.
-- 15 conversation-capable named characters and 86 additional combat-only character, enemy, boss and creature definitions.
+- Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages.
+- 21 named-character summon entries, including both Lunka forms, and 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons, without an artificial party cap.
 - Native following and combat behavior rather than generated attack commands.
 - Adjustable companion damage and attack frequency.
-- Automatic post-combat recovery for fallen companions.
+- Eye, hair and armour colour selectors with visible left/right arrows, saved preferences and an original-colour reset.
+- Optional first-person gameplay camera, with priority given to native dialogue and cinematics.
+- Ten curated horde levels with enemy-count, growth, boss-count and rest settings. Companions can join the fight; the rest countdown yields to conversation subtitles.
+- Separate Anca and Lacra romance profile toggles, Off by default and automatically On when the loaded save confirms the matching romance. Manual early activation is also available; relationship memories follow the save.
+- Protected travelling family members when their native definition has no combat AI.
+- Automatic recovery for fallen companions after 3 seconds out of combat.
 - Spaced party formations, catch-up while travelling and party restoration across supported world-travel transitions.
 - Remappable menu, text and voice shortcuts.
 - Built-in **Copy logs** support report with sensitive values removed.

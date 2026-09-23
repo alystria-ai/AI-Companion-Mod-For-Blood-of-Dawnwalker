@@ -9,6 +9,7 @@ local function finite(n)return type(n)=='number'and n==n and math.abs(n)<10000 e
 local function equal(a,b)return finite(a)and finite(b)and math.abs(a-b)<.001 end
 function M.apply(m,playerStub)
  if not AI.board(m.stub,m.board)or m.board.bIsDead then return end
+ if m.civilian then m.actor.bCanBeDamaged=false;return end
  local asc,attrs=attributes(m.stub)
  local playerAsc=playerStub:GetAbilitySystemComponent()
  assert(AI.valid(playerAsc)and not AI.same(asc,playerAsc),'Refusing to tune player attributes')
@@ -34,7 +35,7 @@ function M.apply(m,playerStub)
   end
  end
  assert(found,'Companion attack frequency attribute missing')
- m.actor.bCanBeDamaged=true
+ m.actor.bCanBeDamaged=not m.civilian
  m.tuningNote=name..'='..tostring(attrs[name].CurrentValue);m.tuningRevision=Settings.revision
  return changed
 end

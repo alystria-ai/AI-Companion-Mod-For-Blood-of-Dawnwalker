@@ -301,7 +301,72 @@
         "Isbrand",
         "NPCDef_Isbrand_Base"
       ]
+    },
+    {
+      "key": "lunka",
+      "id": "05a686a6-b763-11f1-a7e4-42010a7be02f",
+      "name": "Lunka",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "lunka",
+        "Lunka",
+        "NPCDef_Lunka",
+        "lunka-turned",
+        "Lunka (Turned)",
+        "NPCDef_Lunka_turned"
+      ]
+    },
+    {
+      "key": "yanna",
+      "id": "0f2b9716-b763-11f1-a679-42010a7be02f",
+      "name": "Yanna",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "yanna",
+        "Yanna",
+        "NPCDef_Yanna"
+      ]
+    },
+    {
+      "key": "mirto",
+      "id": "158e7c5e-b763-11f1-ad3f-42010a7be02f",
+      "name": "Mirto",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "mirto",
+        "Mirto",
+        "NPCDef_Mirto"
+      ]
+    },
+    {
+      "key": "pieter",
+      "id": "1b849a94-b763-11f1-beec-42010a7be02f",
+      "name": "Pieter",
+      "kind": "main",
+      "gender": "MALE",
+      "aliases": [
+        "pieter",
+        "Pieter",
+        "NPCDef_Pieter",
+        "NPCDef_Pieter_armed"
+      ]
+    },
+    {
+      "key": "esme",
+      "id": "2155d2e4-b763-11f1-a049-42010a7be02f",
+      "name": "Esme",
+      "kind": "main",
+      "gender": "FEMALE",
+      "aliases": [
+        "esme",
+        "Esme",
+        "NPCDef_Esme_new1",
+        "NPCDef_Esme"
+      ]
     }
   ],
-  "profileRevision": "f46c7593eaf42be9"
+  "profileRevision": "1dce7061bf78c1f6"
 }

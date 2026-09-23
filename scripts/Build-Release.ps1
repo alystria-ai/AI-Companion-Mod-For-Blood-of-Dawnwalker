@@ -11,12 +11,15 @@ try{
  & ./scripts/Build-CompanionNative.ps1
  & ./scripts/Build-CompanionNative.ps1 -AssetLoader
  & ./scripts/Build-CompanionNative.ps1 -Protection
+ & ./scripts/Build-BackgroundLauncher.ps1
  & ./scripts/Build-Prebuilt.ps1 -BundleSharedKey -StableNames
 }finally{
  $taskConfig=$null
  if(Test-Path runtime/convai-config.json){Remove-Item -LiteralPath (Join-Path $taskRoot 'runtime/convai-config.json')}
 }
 $taskVersion=(Get-Content package.json -Raw|ConvertFrom-Json).version
+python scripts/package-multilingual.py "dist/DawnwalkerConvai-$taskVersion-Runtime.zip" "dist/DawnwalkerConvai-$taskVersion-Multilingual.zip"
+if($LASTEXITCODE){throw 'Multilingual package failed'}
 $taskSource=Join-Path $taskRoot 'dist/Source'
 New-Item -ItemType Directory -Force $taskSource | Out-Null
 foreach($taskFile in (& git ls-files)){
@@ -36,4 +39,5 @@ try{
  }
 }finally{$taskSourceArchive.Dispose()}
 Get-ChildItem dist -Filter '*.zip' -File | Sort-Object Name | ForEach-Object {((Get-FileHash $_.FullName).Hash.ToLower()+'  '+$_.Name)} | Set-Content dist/SHA256SUMS.txt -Encoding ascii
-Copy-Item docs/RELEASE-0309.md dist/RELEASE-NOTES.md
+$taskNotes=Join-Path $taskRoot ('docs/RELEASE-'+$taskVersion.Replace('.','')+'.md')
+Copy-Item -LiteralPath $taskNotes -Destination (Join-Path $taskRoot 'dist/RELEASE-NOTES.md')

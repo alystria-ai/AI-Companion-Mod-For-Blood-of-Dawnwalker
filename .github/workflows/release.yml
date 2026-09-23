@@ -84,5 +84,5 @@ jobs:
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $files = @(Get-ChildItem dist -Filter '*.zip' -File | ForEach-Object FullName)
-          gh release create "v$version" @files dist/SHA256SUMS.txt --draft --title "AI Companion Manager $version" --notes-file dist/RELEASE-NOTES.md --target $env:GITHUB_SHA
+          gh release create "v$version" @files dist/SHA256SUMS.txt --draft --title "LLM NPC Companions System $version" --notes-file dist/RELEASE-NOTES.md --target $env:GITHUB_SHA
           if ($LASTEXITCODE) { throw 'Draft release creation failed' }

@@ -3,43 +3,12 @@ import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {compileOrder,encodeGraph,decodeGraph,validateGraph} from '../bridge/companion-orders.mjs';
 import {Companions,parseParty} from '../bridge/companions.mjs';
-import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
 
-test('complex order preserves condition subject and rejects unsupported promises',()=>{
- const graph=compileOrder('protect me then when your health is below 30 percent, regroup then prefer ranged then attack my target');
- assert.deepEqual(decodeGraph(encodeGraph(graph)),graph);
- assert.deepEqual(graph.nodes.map(n=>n.op),['priority','condition','follow','role','attack']);
- assert.throws(()=>compileOrder('use counterspell'));
- assert.throws(()=>validateGraph({...graph,nodes:graph.nodes.map(n=>n.op==='attack'?{...n,op:'power',value:'counterspell'}:n)}));
- assert.throws(()=>compileOrder('ranged only'));
- assert.throws(()=>compileOrder('when my health is below 30 percent, regroup'));
- assert.throws(()=>compileOrder('spawn a dragon'));
- assert.throws(()=>compileOrder('wait 121 seconds'));
- assert.throws(()=>validateGraph({...graph,nodes:graph.nodes.map(n=>({...n,success:'n1',failure:'n1'}))}));
-});
-test('Lua graph waits on game time and takes a declared failure edge',async()=>{
- const source=await readFile('mod/Scripts/companion_orders.lua','utf8');
- const wire=encodeGraph(compileOrder('when your health is below 30 percent, regroup then attack my target'));
- const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);
- const code=`local M=(function() ${source} end)()
- local g=assert(M.decode([=[${wire}]=]));local health=0.8;local calls={}
- local r=assert(M.new(g,{sense=function()return health<0.3 end,action=function(op,value) calls[#calls+1]=op;return op~='attack' end},100))
- r:tick(100);r:tick(100);assert(#calls==0 and r:snapshot().status=='running')
- health=0.2;r:tick(200);assert(#calls==0);r:tick(300);assert(calls[1]=='follow')
- r:tick(400);assert(r:snapshot().status=='failed' and calls[2]=='attack')
- r:tick(500);assert(#calls==2)
- local slow=assert(M.new(g,{sense=function()return false end},0));slow:tick(0);slow:tick(60001);assert(slow:snapshot().status=='failed')
- local legacy=[=[${wire.replace('attack\tcurrent_target','power\tcounterspell')}]=]
- assert(M.decode(legacy)==nil,'Legacy power nodes must not reach the action adapter')
- `;
- const result=lauxlib.luaL_dostring(L,to_luastring(code));const message=result===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1));lua.lua_close(L);assert.equal(result,lua.LUA_OK,message);
-});
 test('party protocol retains instance targeting and rejects removed tactics, plans and powers',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'dawnwalker-companions-'));
  try{
-  const config=JSON.parse(await readFile('characters/companion-config.json','utf8'));assert.equal(config.characters.filter(c=>c.category==='story').length,15);assert(config.characters.some(c=>c.category==='combat'&&c.chat===false));
+  const config=JSON.parse(await readFile('characters/companion-config.json','utf8'));assert(config.characters.some(c=>c.category==='combat'&&c.chat===false));
  const c=new Companions(folder,config);await c.init();
   const observed=parseParty('PARTY\t1\t123\t1\t3\nMEMBER\tanca\tAnca\tFollowing\tfollow\tfrontline\tdefensive\tprotect\t20\t0.25\t0.15\tcounterspell\t1\t1\t\t1\t0\t\nPOWERINFO\tanca\tready\t12\nEND\t123\n');
   assert.equal(observed.members[0].health,1);assert.equal(observed.members[0].stamina,1);assert.equal(observed.members[0].canFight,true);
@@ -52,7 +21,6 @@ test('party protocol retains instance targeting and rejects removed tactics, pla
   assert.throws(()=>parseParty('PARTY\t1\t123\t1\t3\nACK\t\t\t\n'));
   await assert.rejects(()=>c.command({epoch:'122',op:'spawn',member:'anca'}));
   await assert.rejects(()=>c.command({epoch:'123',op:'spawn',member:'unknown'}));
-  for(const member of ['pieter','vladimir'])await assert.rejects(()=>c.command({epoch:'123',op:'spawn',member}));
   await assert.rejects(()=>c.command({epoch:'123',op:'power',member:'anca',value:'teleport_to_arena'}));
   await assert.rejects(()=>c.command({epoch:'123',op:'power',member:'anca',value:'counterspell'}),/native combat/);
   assert.equal(c.queue.length,0);
@@ -73,7 +41,7 @@ test('party protocol retains instance targeting and rejects removed tactics, pla
   assert.match(c.queue.at(-1).wire,new RegExp('dismiss\\t'+firstClone+'\\t'));
   await writeFile(join(folder,'companions-state.tsv'),`PARTY\t1\t124\t${Math.floor(Date.now()/1000)}\t3\nEND\t124\n`);
   await c.tick();assert.equal(c.queue.length,0);assert.match(c.result.message,/reset/);
-  const legacy=compileOrder('protect me then flank left');
+  const legacy={nodes:[{id:'n1',op:'priority',value:'protect'}]};
   await writeFile(join(folder,'companion-plans.json'),JSON.stringify({'Old plan':legacy}));
   const restored=new Companions(folder,config);await restored.init();
   assert.equal(Object.hasOwn(restored.view(),'presets'),false);

@@ -1,5 +1,5 @@
 type StorageLike={getItem(key:string):string|null;setItem(key:string,value:string):void};
-type Fact={id:string;text:string;stage?:string;endingHash?:string};
+type Fact={id:string;text:string;stage?:string;endingHash?:string;counter?:number};
 type Manager={addMemories(memories:string[]):Promise<unknown>};
 // One cloud end-user represents the player across all characters. Convai already
 // partitions memory by character. Local quest/conversation timelines still branch
@@ -19,6 +19,7 @@ export class QuestMemory {
       const current=next[id];if(!current)return true;
       if(typeof old==='string')return current.text!==old; // Conservative migration from v0.24 ledger.
       if(current.text===old.text)return false;
+      if(Number.isFinite(old.counter)&&Number.isFinite(current.counter))return current.counter!<old.counter!;
       // Active -> success/failure is ordinary progress. A missing quest,
       // reverted state, changed completed ending, or policy change branches.
       if(old.stage&&current.stage&&!terminal(old.stage)&&terminal(current.stage))return false;
