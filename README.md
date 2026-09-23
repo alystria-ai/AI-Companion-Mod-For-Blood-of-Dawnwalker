@@ -75,6 +75,7 @@ Group chat gives up to three distinct characters a turn. Character profiles incl
 
 - **F5 → Settings:** adjust companion damage and attack frequency. Fallen companions recover automatically after combat.
 - **F5 → Controls:** remap the five shortcuts. You can also edit `keybindings.ini` in the mod folder.
+- **Multilingual voices:** the optional pack switches all 26 conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
 - **Conversation actions:** try “Follow me,” “Stop walking” or “Look at me.” Use the menu to dismiss a companion.
 - **Custom characters and voices:** advanced users can change their own Convai profiles and mappings. See [character customization](docs/DEVELOPER-GUIDE.md#character-customization).
 
