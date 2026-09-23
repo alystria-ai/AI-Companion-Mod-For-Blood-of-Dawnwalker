@@ -1,12 +1,12 @@
 # LLM NPC Companions System 0.5.0 - page draft
 
-Talk to the people of The Blood of Dawnwalker through text or voice, with spoken replies, subtitles and lipsync. You can also summon named characters, enemies and creatures as travelling companions. They follow Coen, join fights and use the game's native AI, attacks and abilities.
+Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync, including romantic conversations with Anca and Lacra. Play in first-person POV, customise eye, hair and armour colours, or fight waves of enemies and bosses in Horde mode. No Convai account or command-line setup is needed.
 
 This is a preview release. The core conversation, menu, loading and companion systems are working, but every roster entry, scripted power and friendly-fire path has not been validated in gameplay.
 
 ## Features
 
-**New in 0.5.0:** appearance colours, romance-aware Anca and Lacra conversations, Coen’s family and additional combat variants. Install both matching packages or use Complete. This draft is for the forthcoming release.
+The next release adds first-person POV, Horde mode, custom eye, hair and armour colours, and romantic conversations with Anca and Lacra. The current release candidate is withdrawn while a Horde issue is fixed.
 
 - Text and microphone conversations with nearby supported characters.
 - Voiced replies, subtitles and facial animation, with gentle distance-based volume.
@@ -14,7 +14,7 @@ This is a preview release. The core conversation, menu, loading and companion sy
 - Character-specific biographies, speaking rules and relationships, with curated quest knowledge based on detected journal progress.
 - Relevant location, time and environmental context when the game exposes it; shared conversation sessions for duplicate copies of a character.
 - Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages.
-- 21 named-character summon entries, including both Lunka forms, and 101 combat-only character, enemy, boss and creature definitions.
+- 21 named-character summon entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, and 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons, without an artificial party cap.
 - Native following and combat behavior rather than generated attack commands.
 - Adjustable companion damage and attack frequency.
@@ -22,7 +22,6 @@ This is a preview release. The core conversation, menu, loading and companion sy
 - Optional first-person gameplay camera, with priority given to native dialogue and cinematics.
 - Ten curated horde levels with enemy-count, growth, boss-count and rest settings. Companions can join the fight; the rest countdown yields to conversation subtitles.
 - Separate Anca and Lacra romance profile toggles, Off by default and automatically On when the loaded save confirms the matching romance. Manual early activation is also available; relationship memories follow the save.
-- Protected travelling family members when their native definition has no combat AI.
 - Automatic recovery for fallen companions after 3 seconds out of combat.
 - Spaced party formations, catch-up while travelling and party restoration across supported world-travel transitions.
 - Remappable menu, text and voice shortcuts.

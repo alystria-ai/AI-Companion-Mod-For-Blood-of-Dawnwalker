@@ -1,6 +1,6 @@
 # LLM NPC Companions System for The Blood of Dawnwalker
 
-Build your own travelling party in Vale Sangora. Summon characters to follow you and fight alongside Coen, talk to them beyond their scripted dialogue, customise their appearance, and take on waves of enemies together. No Convai account or command-line setup is needed.
+Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync, including romantic conversations with Anca and Lacra. Play in first-person POV, customise eye, hair and armour colours, or fight waves of enemies and bosses in Horde mode. No Convai account or command-line setup is needed.
 
 ## Features
 
@@ -11,7 +11,7 @@ Build your own travelling party in Vale Sangora. Summon characters to follow you
 - Romantic conversations with Anca and Lacra through separate profile toggles, Off by default and automatically On for each character whose romance is confirmed in the loaded save; you can also enable either profile early.
 - Optional multilingual pack switches conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
 - Character-specific biographies, speaking rules and relationships, with quest knowledge based on detected journal progress and relevant location, time and environmental context.
-- 21 conversation-capable named-character entries, including Lunka, Lunka (Turned), Yanna, Mirto, Pieter and Esme, plus 101 combat-only character, enemy, boss and creature definitions; family members without combat AI travel as protected companions.
+- 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons without an artificial party cap; queue more summons while others load, and share conversation history between copies of a character.
 - Native following, combat and abilities, adjustable companion damage and attack frequency, and automatic recovery after 3 seconds out of combat.
 - Spaced party formations, catch-up while travelling and party restoration across supported world-travel transitions.
@@ -19,7 +19,9 @@ Build your own travelling party in Vale Sangora. Summon characters to follow you
 - Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages, plus remappable menu, text and voice shortcuts.
 - Built-in Copy logs support report with sensitive values removed.
 
-Windows · Game 1.05 · Latest release: 0.5.0
+Windows · Game 1.05
+
+**Download status:** the 0.5 release has been withdrawn while a Horde issue is fixed. The features above describe the current development version; the previous release, 0.30.9, remains available below.
 
 [![Watch the AI Companion Manager demo](https://img.youtube.com/vi/K1X4xf-1i_8/hqdefault.jpg)](https://youtu.be/K1X4xf-1i_8)
 
@@ -31,10 +33,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.30.9/DawnwalkerConvai-0.30.9-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 
