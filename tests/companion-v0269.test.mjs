@@ -130,7 +130,7 @@ test('asset readiness waits for serialization and never treats a data asset as a
  local M=(function() ${native} end)()
  EObjectFlags={RF_NeedInitialization=0x200,RF_NeedLoad=0x400,RF_NeedPostLoad=0x1000,RF_NeedPostLoadSubobjects=0x2000,RF_BeginDestroyed=0x8000,RF_FinishDestroyed=0x10000}
  local flags=0;local live=true
- local asset={IsValid=function()return live end,HasAnyFlags=function(_,mask)return (flags&mask)~=0 end,GetCDO=function()error('Data asset has no CDO')end}
+ local asset={GetFullName=function()return 'DataAsset /profile'end,IsValid=function()return live end,HasAnyFlags=function(_,mask)return (flags&mask)~=0 end,GetCDO=function()error('Data asset has no CDO')end}
  StaticFindObject=function()return asset end
  assert(M.loadedAsset('/profile')==asset)
  for _,flag in pairs(EObjectFlags)do flags=flag;assert(M.loadedAsset('/profile')==nil)end

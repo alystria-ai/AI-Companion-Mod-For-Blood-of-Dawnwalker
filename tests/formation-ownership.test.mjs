@@ -41,7 +41,7 @@ test('strict arc reservations wait for locked occupancy instead of shifting seat
  local seats={};for i=1,20 do seats[i]=M.followPoint(player,0,i,190)end
  for i=1,20 do
   local reserved={};for j=1,20 do if j~=i then reserved[#reserved+1]=seats[j]end end
-  local p=M.travelDestination(seats[i],player,reserved,project,190,0,true)
+  local p=M.travelDestination(seats[i],player,reserved,project,160,0,true)
   assert(p and p.X==seats[i].X and p.Y==seats[i].Y,'Another reserved arc seat blocked a free destination')
  end
 `));

@@ -12,6 +12,8 @@ test('party cleanup clears conversation references before native destruction and
  local Companions={};local published='';local function write(_,value)published=value end;local function clean(s)return tostring(s)end
  local M=Companions;local members={one={},two={}};local destroyed=0
  local Formation={new=function()return {frame={}}end};local Native={stopAll=function()assert(selected==nil);return true end}
+ local Combat={battles={reset=function()end}};local function releaseGaze()end
+ local AI={clearFindCache=function()end};Native.clearAssetCache=function()end
  local protected=true;local Protection={cleanup=function()assert(destroyed==2);protected=false end}
  local function dismiss(m)assert(selected==nil and speechLayer==nil and attention==nil and inputLease==nil);destroyed=destroyed+1 end
  ${party.slice(party.indexOf('local beforeReset=nil'),party.indexOf('local function readAbilities'))}

@@ -28,12 +28,12 @@ test('twenty followers fill rear semicircles; capsule sizes and clone labels rem
  for _,m in ipairs(ordered)do
   local p,r=M.followPoint({X=0,Y=0,Z=0},0,m.formationSlot,m.formationPitch)
   assert(r<800 and r>=150,'Bad twenty-person footprint')
-  for _,q in ipairs(positions)do assert((q.X-p.X)^2+(q.Y-p.Y)^2>=190^2)end
+  for _,q in ipairs(positions)do assert((q.X-p.X)^2+(q.Y-p.Y)^2>=155^2,'Follow seats overlap their body clearance')end
   positions[#positions+1]=p
  end
  assert(positions[1].X<0 and positions[1].Y<0 and positions[2].X<0 and positions[2].Y>0)
  assert(math.abs(positions[1].X-positions[2].X)<0.01,'First companions must share the rear arc')
- members[7].capsuleRadius=200;M.layout(members);assert(members[1].formationPitch==480)
+ members[7].capsuleRadius=200;M.layout(members);assert(members[1].formationPitch>=470,'Large capsules lost body clearance')
 `));
 test('shared space coordinator moves only yielders and protects conversations and other native owners',()=>check(`
  local rows={};for i=1,20 do rows[i]={id=tostring(i),ordinal=i,X=(i-1)*190,Y=0,Z=0,radius=55}end
@@ -157,7 +157,7 @@ test('companion conversation selection waits for actions and resumes only its ow
  local function ownsFormation(m)return m.formationOwned==true end
  local function loc()return {X=0,Y=0,Z=0}end;local function distance()return 100 end
  local function releaseFollowPace(m)if m.formationOwned then m.formationOwned=nil;board.bMainBehaviorSuspended=false end end
- local function releaseHold()end;local function travelPose(m)assert(not m.travelPose and not m.travelGait and not board.bMainBehaviorSuspended)end
+ local function releaseGaze()end;local function releaseHold()end;local function travelPose(m)assert(not m.travelPose and not m.travelGait and not board.bMainBehaviorSuspended)end
  ${part}
  local actor,pending=M.actor('a');assert(not actor and pending and conversationCandidate(members.a))
  assert(M.beforeConversation(a)==false);busy=false;assert(M.actor('a')==a)

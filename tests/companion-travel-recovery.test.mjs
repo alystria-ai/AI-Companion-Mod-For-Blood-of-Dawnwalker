@@ -110,6 +110,8 @@ test('world snapshot retains pending members, defeat tombstones and queued inten
   local lastFollowWake,lastPartyCatchup,lastReconnectPoll,lastDiagnosticTick,lastAnchorUpdate,travelHeading,playerStub=true,true,true,true,true,true,true
   local Formation={new=function()return {frame={}}end};local Native={stopAll=function()return true end}
   local Protection={cleanup=function()end}
+  local Combat={battles={reset=function()end}};local Appearance={capture=function(_,p)return p or {}end}
+  local function releaseGaze()end;local AI={clearFindCache=function()end};Native.clearAssetCache=function()end
   local function ready(m)return m.id=='live'end;members.live.board={bIsDead=false}
   local function dismiss(m)members[m.id]=nil end
   ${source}
@@ -126,6 +128,7 @@ test('world restoration advances one member per tick and keeps defeated members 
  execute(`
   local pendingWorldParty={entries={{id='dead',characterId='lacra',ordinal=1,mode='stop',spawnSlot=1,defeated=true,peaceSince=25},{id='live',characterId='anca',ordinal=2,mode='follow',spawnSlot=2}},retryAt=0}
   local members={};local spawns=0;local travelEpoch=9;local note='';local logs={}
+  local Appearance={capture=function(_,p)return p or {}end}
   local byId={lacra={name='Lacra',archetype='lacra'},anca={name='Anca',archetype='anca'}}
   local Recovery={layout=function()end};local function log(v)logs[#logs+1]=v end;local function clean(v)return tostring(v)end
   local function spawn(character,now,id)spawns=spawns+1;members[id]={id=id,characterId=character,ordinal=99,mode='follow',spawnSlot=99}end

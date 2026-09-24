@@ -194,9 +194,9 @@ test('native hold and companion transitions preserve idle and restore owned stat
  board.GetForcedTarget=function(self)return self.forced end
  board.SetForcedTarget=function(self,target,duration)assert(target==enemy and duration==2);self.assist=target end
  StaticFindObject=function(path)
-   if path:find('CombatBlueprint',1,true)then return {IsValid=valid,HasAnyFlags=noFlags,StartCombatBehaviors=function()combats=combats+1;return true end}end
-   if path:find('BoardBlueprint',1,true)then return {IsValid=valid,HasAnyFlags=noFlags,GetIsInFollowerMode=function(_,s)return s.AIBoard.Follower.bFollowerModeEnabled end}end
-   return {IsValid=valid,HasAnyFlags=noFlags,GetAIStub=function(_,a)return a==player and playerStub or stub end}
+   if path:find('CombatBlueprint',1,true)then return {GetFullName=function()return 'Object '..path end,IsValid=valid,HasAnyFlags=noFlags,StartCombatBehaviors=function()combats=combats+1;return true end}end
+   if path:find('BoardBlueprint',1,true)then return {GetFullName=function()return 'Object '..path end,IsValid=valid,HasAnyFlags=noFlags,GetIsInFollowerMode=function(_,s)return s.AIBoard.Follower.bFollowerModeEnabled end}end
+   return {GetFullName=function()return 'Object '..path end,IsValid=valid,HasAnyFlags=noFlags,GetAIStub=function(_,a)return a==player and playerStub or stub end}
  end
  local logs={};local function log(s)logs[#logs+1]=s end
  local held=M.begin(actor,log)

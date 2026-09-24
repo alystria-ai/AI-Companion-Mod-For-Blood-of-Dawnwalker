@@ -55,10 +55,10 @@ const boundary=`
  local actor={GetWorld=function()return world end,K2_GetActorLocation=function()return {X=0,Y=0,Z=0}end}
  local m={actor=actor,stub=stub,board=b,controller=c};local goal={point={X=500,Y=0,Z=0},distance=500,mode='Rear arc'}
 `;
-test('native destination moves continuously without repeated commands; combat releases actor and flags',()=>run(`${boundary}
+test('changed native destinations refresh at most once per second; combat releases actor and flags',()=>run(`${boundary}
  assert(N.update(m,goal,0));local owned=marker
  for now=250,4000,250 do goal.point={X=500+now*.1,Y=0,Z=0};assert(N.update(m,goal,now))end
- assert(marker==owned and calls==1,'Moving the destination restarted the task or created another actor')
+ assert(marker==owned and calls==5,'Changed seats must reuse their actor and refresh at most once per second')
  assert(N.owns(m.formationLease,stub,b)and not b.bMainBehaviorSuspended)
  b.Combat.bInCombat=true;assert(not N.update(m,goal,4250))
  assert(stops==1 and destroyed==1 and b.Follower.bFollowerModeEnabled and not bb.values.target)

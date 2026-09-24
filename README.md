@@ -17,7 +17,8 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 - 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons without an artificial party cap; queue more summons while others load, and share conversation history between copies of a character.
 - Native following, combat and abilities, adjustable companion damage and attack frequency, and automatic recovery after 3 seconds out of combat.
-- Spaced follow formations, off-screen following and distance-based catch-up speed that also works when you slow down or stop. Companions settle on arrival instead of repeatedly adjusting their positions while you approach. Idle followers face generally toward you, with the closest looking more directly at you. Fast-travel recovery remains available, but loading a save clears the summoned party.
+- Companion haste lets followers run faster to stay with Coen during fast-paced exploration, with extra catch-up speed when they fall far behind, even after you slow down or stop.
+- Spaced follow formations and off-screen following. Companions settle on arrival instead of repeatedly adjusting their positions while you approach. Idle followers face generally toward you, with the closest looking more directly at you. Fast-travel recovery remains available, but loading a save clears the summoned party.
 - Conversation actions such as “Follow me,” “Stop walking” and “Look at me,” with individual or whole-party dismissal through the menu.
 - Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages, plus remappable menu, text and voice shortcuts.
 - Built-in Copy logs support report with sensitive values removed.

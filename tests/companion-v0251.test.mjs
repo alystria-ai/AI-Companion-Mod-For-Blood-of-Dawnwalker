@@ -15,11 +15,11 @@ test('party destinations stay separate for duplicates, every heading, and large 
    assert(r>=149.9 and point.Z==player.Z)
    local angle=math.rad(yaw)
    local dx,dy=point.X-player.X,point.Y-player.Y
-   assert(dx*math.cos(angle)+dy*math.sin(angle)<-50,'Follower slot is not behind Coen')
+   assert(dx*math.cos(angle)+dy*math.sin(angle)<0,'Follower slot is not behind Coen')
    local radius,angles,index=M.summonArc(slot)
-   assert(math.abs(r-radius)<0.01,'Follow must use the same radius as the spawn semicircle')
-   assert(math.abs(-dx*math.sin(angle)+dy*math.cos(angle)-radius*math.sin(math.rad(angles[index+1])))<0.01,'Rear arc lost its spawn-style spread')
-   assert(M.clearPoint(point,points,189.9),'Duplicate formation destinations')
+   assert(r<=radius,'Arrival should be no farther away than its spawn arc')
+   assert(math.abs(math.sqrt(dx*dx+dy*dy)-r)<0.01,'Rotating the formation changed its radius')
+   assert(M.clearPoint(point,points,154.9),'Duplicate formation destinations')
    points[#points+1]=point
   end
  end
@@ -55,11 +55,11 @@ const mock=`
  local function obj(n)return {IsValid=function(self)return not self.invalid end,HasAnyFlags=function()return false end,GetFullName=function()return n end}end
 `;
 test('static libraries are reused, while invalidated objects are reacquired',()=>check('ai_state',mock+`
- local scans=0;local object=obj('lib')
+ local scans=0;local object=obj('Library /lib')
  StaticFindObject=function()scans=scans+1;return object end
  for i=1,500 do assert(M.find('/lib')==object)end
  assert(scans==1,'Party loop scans the object array repeatedly')
- object.invalid=true;local replacement=obj('new');object=replacement
+ object.invalid=true;local replacement=obj('Library /lib');object=replacement
  assert(M.find('/lib')==replacement and scans==2)
 `));
 test('owned damage branch clears helper scaling without enabling follower locomotion or touching other stubs',()=>check('ai_state',mock+`

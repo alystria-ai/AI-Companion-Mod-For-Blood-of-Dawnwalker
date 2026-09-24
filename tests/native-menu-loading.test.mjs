@@ -33,6 +33,7 @@ test('rapid requests reserve distinct IDs before any game tick, including a fail
  local nativeCommands,nativeSequence,summons,members={},0,{},{};local byId={anca={}};local lastFault
  local function clean(s)return tostring(s)end;local function log()end;local function same()return false end
  local fail=false;local spawned={}
+ local Appearance={capture=function(_,p)return p or {}end}
  local function spawn(id,now,request)if fail then error('No walkable point')end;spawned[#spawned+1]=request end
  local function dismiss()end
  ${queueCode}
