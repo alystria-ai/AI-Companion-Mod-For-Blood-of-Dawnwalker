@@ -5,16 +5,16 @@ import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
 const path=process.env.DAWNWALKER_LUA||'mod/Scripts';
 const [recovery,planner,companions]=await Promise.all(['companion_recovery','party_formation','companions'].map(n=>readFile(`${path}/${n}.lua`,'utf8')));
 function run(s){const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);try{const rc=lauxlib.luaL_dostring(L,to_luastring(`local R=(function()${recovery}end)()\n${s}`));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}}
-test('streamed-out registered companions keep their journey and resume the rear seat after reattachment',()=>run(`
+test('streamed-out registered companions keep their journey and resume their formation seat after reattachment',()=>run(`
  local require=function()return R end;local P=(function()${planner}end)();local f=P.new()
- local row={id='crake',ordinal=1,slot=1,pitch=190,radius=55,position={X=200,Y=0,Z=0}};local registered={crake=true}
+ local row={id='crake',ordinal=1,slot=1,count=1,pitch=190,radius=55,position={X=200,Y=0,Z=0}};local registered={crake=true}
  f:update({row},{X=0,Y=0,Z=0},0,0,0,registered)
  f:update({row},{X=1000,Y=0,Z=0},0,480,1000,registered)
  f:update({},{X=2000,Y=0,Z=0},0,480,2000,registered)
  f:update({},{X=2000,Y=0,Z=0},0,0,3000,registered)
  assert(f.seats.crake,'Streaming was mistaken for dismissal')
  local g=f:update({row},{X=2000,Y=0,Z=0},0,0,3250,registered).crake
- assert(g.mode=='Rear arc'and g.point.X>1700,'Reattachment parked the old pawn far behind Coen')
+ assert(g.mode=='Walking group'and g.point.X==2000 and g.point.Y<0,'Reattachment parked the old pawn instead of resuming its side position')
  f:update({},{X=2000,Y=0,Z=0},0,0,3500,{});assert(not f.seats.crake,'Dismissal retained its seat')
 `));
 test('nearby regrouped companions can rejoin a current battle while circling, with no lingering combat block',()=>run(`

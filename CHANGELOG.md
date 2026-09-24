@@ -2,6 +2,15 @@
 
 Player-facing history for LLM NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.3: September 25, 2026
+
+[Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.3)
+
+- One to four companions form a closer walking group beside and just behind Coen, start after a shorter departure when he walks away, and refresh moving destinations sooner. Approaching a stationary companion retains the larger movement tolerance; Narrow formation keeps its behind-the-player layout.
+- Side positions align with Coen's shoulders and compensate for movement-path delay with a short, bounded forward prediction. Small walking gaps close at a brisk walk; the prediction clears when Coen stops.
+- Fixed automatic helper startup when Windows reuses a previous helper process ID, without touching the unrelated process. Corrected the Narrow formation toggle definition so Mod Settings can display the options.
+- Companions match walking and running pace during ordinary exploration instead of sprinting across short gaps. Distant followers retain haste, then slow as they approach their formation position. Slow walking continues to update the formation destination. Speed adjustments use private travel profiles and release for native combat and scripted actions.
+
 ## 0.5.2: September 25, 2026
 
 [Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.2)

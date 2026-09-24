@@ -82,16 +82,23 @@ function M.followPace(gap,playerSpeed,wasRunning,spacing,wasSprinting)
  -- Native follow restarts only after a meaningful departure. Pace can still
  -- rise promptly on an existing path when Coen begins running.
  local start=stop+250
- local enter=stop+120
- local running=gap>=enter or (gap>stop+35 and playerSpeed>=180)
- if wasRunning and gap>stop+65 then running=true end
- local sprinting=running and (playerSpeed>=320 or gap>stop+400 or wasSprinting and gap>stop+120)
  local excess=math.max(0,gap-stop)
- -- A distant follower must catch up even after Coen slows or stops. Ease the
- -- private travel profile back down near its seat instead of dropping the
- -- boost as soon as the player's sprint ends.
- local targetSpeed=sprinting and (playerSpeed>=450 or excess>400)and excess>80
-  and math.min(4000,math.max(590,playerSpeed*1.05)+math.min(900,excess*.6))or nil
+ local enter=stop+500
+ -- Small formation corrections should be walked, even after a sprint.
+ -- Separate velocity and distance hysteresis keeps a walking player from
+ -- repeatedly triggering the old run/sprint thresholds at every short gap.
+ local running=excess>=500 or playerSpeed>=260
+  or wasRunning and (excess>250 or playerSpeed>=220)
+ local sprinting=running and (excess>=1200 or playerSpeed>=550
+  or wasSprinting and (excess>700 or playerSpeed>=480))
+ local targetSpeed
+ if sprinting then
+  targetSpeed=math.min(4000,math.max(590,playerSpeed*1.05)+math.min(900,math.max(0,excess-700)*.35))
+ elseif running then
+  targetSpeed=playerSpeed>=220 and math.min(550,math.max(280,playerSpeed+math.min(60,excess*.1)))or 360
+ else
+  targetSpeed=playerSpeed>=40 and math.min(260,math.max(140,playerSpeed+math.min(70,excess*.25)))or 140
+ end
  return {stop=stop,start=start,running=running,sprinting=sprinting,enum=sprinting and 2 or running and 1 or 0,runAt=enter,targetSpeed=targetSpeed}
 end
 function M.new(ops)

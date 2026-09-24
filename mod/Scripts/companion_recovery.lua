@@ -21,7 +21,7 @@ function M.layout(members,settings)
  table.sort(ordered,function(a,b)return a.ordinal<b.ordinal end)
  local seen={};local largest=55
  for _,m in ipairs(ordered)do largest=math.max(largest,m.capsuleRadius or 55)end
- local compact=#ordered>=2 and #ordered<=5
+ local compact=#ordered>=1 and #ordered<=5
  local pitch=compact and math.max(150,largest*2+40)or math.max(180,largest*2+70)
  pitch=math.max(largest*2+(compact and 35 or 60),pitch*((settings and settings.PartySpacing or 100)/100))
  local depth=100/(settings and settings.FollowerCloseness or 100)
@@ -50,21 +50,22 @@ function M.layout(members,settings)
  end
  return ordered
 end
--- Keep a settled party's frame fixed while Coen approaches somebody. A real
--- travel leg begins after three metres; stopping captures one final destination.
+-- Keep a settled party's frame fixed while Coen approaches somebody. Small
+-- groups depart sooner when he walks away; stopping captures a final destination.
 -- Camera turns and short sidesteps never rotate everyone's assigned slot.
-function M.formationFrame(state,p,yaw,speed,now,count)
+function M.formationFrame(state,p,yaw,speed,now,count,approaching)
  local function capture()
   state.point={X=p.X,Y=p.Y,Z=p.Z};state.yaw=yaw
  end
  if not state.point then capture();state.epoch=0;return state end
  local gap=(p.X-state.point.X)^2+(p.Y-state.point.Y)^2
- local depart=count and count>=2 and count<=5 and 180 or 300
+ local small=count and count>=1 and count<=4
+ local depart=small and (approaching and 180 or 90)or count==5 and 180 or 300
  if not state.moving and gap>=depart^2 then
   state.moving=true;state.epoch=state.epoch+1;state.lastMoving=now
  end
  if state.moving then
-  if speed>=180 then capture();state.lastMoving=now
+  if speed>=40 then capture();state.lastMoving=now
   elseif now-(state.lastMoving or now)>=750 then
    -- Retain the direction of actual travel when the player stops/turns.
    state.point={X=p.X,Y=p.Y,Z=p.Z};state.moving=false
@@ -241,7 +242,14 @@ function M.reconnectCandidate(m,key,now)
  return key~=nil and now-(m.candidateAt or now)>=1000
 end
 function M.followOffset(slot,pitch,count,narrow)
- if count==1 then return math.max(145,(pitch or 190)-45),0 end
+ if count and count>=1 and count<=4 and not narrow then
+  -- Friends beside Coen, with the remaining pair just behind. Scale the
+  -- layout by capsule-derived pitch; closeness still respects clearance.
+  local step=pitch or 150
+  if slot<=2 then return 0,(slot==1 and -1 or 1)*step*.9 end
+  return step*1.25,count==3 and 0 or (slot==3 and -1 or 1)*step*.5
+ end
+ if count==1 then return math.max(130,(pitch or 190)-45),0 end
  if narrow and count and count>1 then
   -- A compact depth-biased group, not a fixed two-column queue. Growing the
   -- width with sqrt(party size) keeps large parties from trailing indefinitely.

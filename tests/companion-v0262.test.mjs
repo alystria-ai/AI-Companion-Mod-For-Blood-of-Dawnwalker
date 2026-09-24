@@ -7,19 +7,22 @@ async function check(module,body){
  const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);
  try{const rc=lauxlib.luaL_dostring(L,to_luastring(`local M=(function() ${source} end)()\n${body}`));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
 }
-test('sprint begins as Coen sprints, closes larger gaps and has a distinct exit threshold',()=>check('companion_combat',`
- local p=M.followPace(230,425,false,180,false);assert(p.running and p.sprinting and p.enum==2)
- assert(M.followPace(610,0,false,180,false).enum==2)
- assert(M.followPace(400,0,true,180,true).enum==2)
- assert(M.followPace(280,0,true,180,true).enum==1)
- assert(M.followPace(180,0,true,180,true).enum==0)
+test('sprinting is reserved for fast Coen or real separation and eases into a walking arrival',()=>check('companion_combat',`
+ assert(M.followPace(230,425,false,180,false).enum==1,'Ordinary run became a sprint')
+ assert(M.followPace(230,600,false,180,false).enum==2,'Fast Coen left followers walking')
+ assert(M.followPace(610,0,false,180,false).enum==0)
+ assert(M.followPace(1500,0,false,180,false).enum==2)
+ assert(M.followPace(1000,0,true,180,true).enum==2)
+ assert(M.followPace(800,0,true,180,true).enum==1)
+ assert(M.followPace(400,0,true,180,true).enum==0)
  local far=M.followPace(2500,0,false,180,false)
- assert(far.targetSpeed and far.targetSpeed>590,'Stationary player disabled distant catch-up boost')
- local closing=M.followPace(800,0,true,180,true)
- assert(closing.targetSpeed<far.targetSpeed,'Boost did not ease as the gap closed')
- assert(M.followPace(280,0,true,180,true).targetSpeed==nil,'Boost remained active beside player')
+ assert(far.targetSpeed>590,'Stationary player disabled distant catch-up')
+ assert(M.followPace(1000,0,true,180,true).targetSpeed<far.targetSpeed)
+ assert(M.followPace(280,0,true,180,true).targetSpeed==140,'Arrival retained fast pace')
+ assert(M.followPace(280,180,false,180,false).targetSpeed>=180,'Walking pace could not keep up')
  assert(M.followPace(6000,5000,false,180,false).targetSpeed==4000,'Travel speed was not bounded')
 `));
+
 test('a distant old encounter regroups even when a different enemy is now beside the player',()=>check('companion_recovery',`
  local m={};local o={follow=true,encounter=true,now=0,gap=4200,spacing=180,speed=600,awaySpeed=0,combat=true,threatDistance=500,fightDistance=5000,x=0,y=0}
  assert(not M.retreat(m,o));o.now=1750;o.speed=0;assert(not M.retreat(m,o))
@@ -75,10 +78,13 @@ test('travel leases a native faster profile once, repairs native enum drift and 
  combat=true;assert(not M.travelPace(s,b,lease,movement,profile,2));assert(pops==1)
  M.releaseTravelProfile(lease);assert(pops==1,'Profile popped twice')
 `));
-test('native faster profiles are preserved and detached or busy pawns cannot acquire a travel override',()=>check('ai_state',ai+`
- current.MovementConfig.MaxSpeed=900;assert(M.travelPace(s,b,lease,movement,profile,2));assert(pushes==0)
- current.MovementConfig.MaxSpeed=140;busy=true;assert(not M.travelPace(s,b,lease,movement,profile,2));assert(pushes==0)
- busy=false;s.AIBoard=nil;assert(not M.travelPace(s,b,lease,movement,profile,2));assert(pushes==0)
- s.AIBoard=b;M.travelPace(s,b,lease,movement,profile,2);assert(pushes==1)
- assert(M.travelPace(s,b,lease,movement,profile,0));assert(pops==1 and b.Follower.FollowerSpeed==0)
+test('walking replaces a faster travel profile and yields immediately to native combat or busy actions',()=>check('ai_state',ai+`
+ current.MovementConfig.MaxSpeed=900;profile.MovementConfig.MaxSpeed=140
+ assert(M.travelPace(s,b,lease,movement,profile,0));assert(pushes==1,'Native fast travel prevented walking')
+ for i=1,20 do M.travelPace(s,b,lease,movement,profile,0)end
+ assert(pushes==1,'Unchanged walking profile was repeatedly pushed')
+ busy=true;assert(not M.travelPace(s,b,lease,movement,profile,0));assert(pops==1)
+ busy=false;s.AIBoard=nil;assert(not M.travelPace(s,b,lease,movement,profile,0));assert(pushes==1)
+ s.AIBoard=b;M.travelPace(s,b,lease,movement,profile,0);assert(pushes==2)
+ combat=true;assert(not M.travelPace(s,b,lease,movement,profile,0));assert(pops==2)
 `));

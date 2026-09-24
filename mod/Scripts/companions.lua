@@ -500,9 +500,9 @@ local function followMovement(m,now)
  travelPose(m,pace.running)
  if not ready(m)then releaseFormation(m);return end
  m.paceLease=m.paceLease or {}
- local suffix=pace.sprinting and 'Sprinter'or 'Runner'
+ local suffix=pace.sprinting and 'Sprinter'or pace.running and 'Runner'or 'Walker'
  local path='/Game/_Dawnwalker/NPC/BasicNPC/MovementProfiles/DA_Follower_'..suffix..'_MovementProfile.DA_Follower_'..suffix..'_MovementProfile'
- AI.travelPace(m.stub,m.board,m.paceLease,m.actor:GetMovementComponent(),pace.running and AI.find(path)or nil,pace.enum,nil,pace.targetSpeed,now)
+ AI.travelPace(m.stub,m.board,m.paceLease,m.actor:GetMovementComponent(),AI.find(path),pace.enum,nil,pace.targetSpeed,now)
  local active,why=FormationNative.update(m,goal,now)
  m.wakeNote=why;m.formationPathStatus=valid(m.controller)and m.controller:GetMoveStatus()or nil
  m.travelRequestAt=m.formationLease and m.formationLease.issuedAt
@@ -1526,7 +1526,7 @@ function M.tick(pc,selected)
     or m.combat and m.combat.phase~='travel'
    partyPositions[#partyPositions+1]=p
   end end
-  formation:update(partyPositions,playerPoint,heading,playerSpeed,now,members)
+  formation:update(partyPositions,playerPoint,heading,playerSpeed,now,members,playerVelocity)
   measured('attention',updateGaze,pc,now,selected)
   travelHeading=formationFrame.yaw
   local ordered;ordered,updateCursor=Recovery.updateOrder(members,updateCursor)

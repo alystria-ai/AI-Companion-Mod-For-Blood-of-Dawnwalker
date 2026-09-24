@@ -312,12 +312,14 @@ function M.travelPace(stub,expected,state,movement,profile,speed,formation,targe
  end
  -- Check the live value; a cached request is not proof the native task kept it.
  if b.Follower.FollowerSpeed~=speed then b.Follower.FollowerSpeed=speed end
- if speed==0 or not M.valid(movement)or not M.valid(profile)then M.releaseTravelProfile(state);return true end
- -- Match fast travel on foot with a private copy of the authored locomotion
- -- profile. Shared NPC assets and combat/attack animation speed are untouched.
+ if not M.valid(movement)or not M.valid(profile)then M.releaseTravelProfile(state);return true end
+ -- Match walking as well as fast travel with a private authored profile.
+ -- Slower requested gaits must replace our sprint lease too. Shared NPC
+ -- assets and combat/attack animation speed are untouched.
  local baseSpeed=profile.MovementConfig.MaxSpeed
- if targetSpeed and baseSpeed>0 and targetSpeed>baseSpeed+75 then
-  local desired=math.floor(targetSpeed/100+.5)*100
+ local step=speed==2 and 100 or 25
+ if targetSpeed and baseSpeed>0 and math.abs(targetSpeed-baseSpeed)>=step*.5 then
+  local desired=math.max(step,math.floor(targetSpeed/step+.5)*step)
   if not M.valid(state.boostProfile)or not M.same(state.boostSource,profile)or not M.same(state.boostOwner,movement)then
    local copy=StaticConstructObject(profile:GetClass(),movement,0,0,0,false,false,profile)
    if M.valid(copy)and not M.same(copy,profile)then
@@ -326,7 +328,7 @@ function M.travelPace(stub,expected,state,movement,profile,speed,formation,targe
    end
   end
   if M.valid(state.boostProfile)and M.same(state.boostSource,profile)and M.same(state.boostOwner,movement)then
-   if not state.boostSpeed or math.abs(desired-state.boostSpeed)>=100 and (now or 0)-(state.boostAt or 0)>=500 then
+   if not state.boostSpeed or math.abs(desired-state.boostSpeed)>=step and (now or 0)-(state.boostAt or 0)>=500 then
     M.releaseTravelProfile(state)
     state.boostProfile.MovementConfig.MaxSpeed=desired
     state.boostProfile.MovementConfig.RootSpeedScale=profile.MovementConfig.RootSpeedScale*desired/baseSpeed
@@ -338,7 +340,7 @@ function M.travelPace(stub,expected,state,movement,profile,speed,formation,targe
  if state.handle~=nil and (not M.same(state.movement,movement)or not M.same(state.profile,profile))then M.releaseTravelProfile(state)end
  if state.handle==nil then
   local current=movement:GetCurrentMovementProfile()
-  if M.valid(current)and current.MovementConfig.MaxSpeed>=profile.MovementConfig.MaxSpeed then return true end
+  if M.same(current,profile)then return true end
   local h=movement:PushMovementProfile(profile)
   if type(h)=='number'and h>=0 then state.handle=h;state.movement=movement;state.profile=profile;state.stub=stub;state.board=expected end
  end

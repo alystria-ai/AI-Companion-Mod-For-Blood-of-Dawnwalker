@@ -6,9 +6,28 @@ local function copy(p)return {X=p.X,Y=p.Y,Z=p.Z}end
 local function gap(a,b)return math.sqrt((a.X-b.X)^2+(a.Y-b.Y)^2)end
 function M.new()
  local self={frame={},seats={},goals={}}
- function self:update(rows,player,yaw,speed,now,registered)
-  R.formationFrame(self.frame,player,yaw,speed,now,#rows)
+ function self:update(rows,player,yaw,speed,now,registered,velocity)
+  -- A small party should leave promptly when Coen walks away, without
+  -- retreating from him when he approaches its nearest stationary member.
+  local approaching=false
+  if not self.frame.moving and self.frame.point and #rows<=4 then
+   local nearest,before=math.huge,0
+   for _,row in ipairs(rows)do
+    local d=gap(row.position,player)
+    if d<nearest then nearest=d;before=gap(row.position,self.frame.point)end
+   end
+   approaching=nearest<before-25
+  end
+  R.formationFrame(self.frame,player,yaw,speed,now,#rows,approaching)
   local frame=self.frame;local present={};local locked={};local assigned={}
+  local origin=frame.point
+  -- Native paths pursue a sampled destination, not a continuously tracked
+  -- actor. Lead by the refresh/response time so beside does not become behind.
+  -- Use actual velocity, cap the lead, and remove it immediately on stopping.
+  if frame.moving and #rows<=4 and speed>=40 and velocity then
+   local lead=math.min(.65,180/math.max(1,speed))
+   origin={X=origin.X+velocity.X*lead,Y=origin.Y+velocity.Y*lead,Z=origin.Z}
+  end
   table.sort(rows,function(a,b)return a.ordinal<b.ordinal end)
   for _,row in ipairs(rows)do
    present[row.id]=true
@@ -27,7 +46,7 @@ function M.new()
    if not row.locked and s.parked then
     locked[#locked+1]={id=row.id,position=s.parked,radius=row.radius}
    end
-   assigned[row.id]=s.parked or R.followPoint(frame.point,frame.yaw,row.slot,s.pitch,row.count,s.distanceScale,s.narrow)
+   assigned[row.id]=s.parked or R.followPoint(origin,frame.yaw,row.slot,s.pitch,row.count,s.distanceScale,s.narrow)
   end
   -- Streaming can remove the pawn without dismissing its companion instance.
   -- Preserve that journey/seat so reattachment is not mistaken for a new spawn.
@@ -43,12 +62,12 @@ function M.new()
    return true
   end
   for _,row in ipairs(rows)do if not row.locked then
-   local desired=assigned[row.id];local goal=desired;local mode=self.seats[row.id].parked and 'Parked'or self.seats[row.id].narrow and 'Narrow rows'or 'Rear arc'
+   local desired=assigned[row.id];local goal=desired;local mode=self.seats[row.id].parked and 'Parked'or self.seats[row.id].narrow and 'Narrow rows'or #rows<=4 and 'Walking group'or 'Rear arc'
    if not self.seats[row.id].parked and not clear(goal,row)then
     goal=nil
     -- A locked actor may occupy a seat. Search only nearby angles on that arc,
     -- with a little outward clearance; never collapse everyone onto Coen.
-    local center=frame.point;local radius=gap(desired,center)
+    local center=origin;local radius=gap(desired,center)
     local angle=math.atan(desired.Y-center.Y,desired.X-center.X)
     for _,degrees in ipairs({-12,12,-24,24,-36,36})do
      local a=angle+math.rad(degrees)
@@ -59,7 +78,7 @@ function M.new()
     if not goal then goal=copy(row.position);mode='Waiting for seat'end
    end
    committed[row.id]=goal
-   goals[row.id]={point=copy(goal),distance=gap(row.position,goal),mode=mode,moving=frame.moving==true,epoch=frame.epoch}
+   goals[row.id]={point=copy(goal),distance=gap(row.position,goal),mode=mode,moving=frame.moving==true,epoch=frame.epoch,smallParty=#rows<=4}
   end end
   self.goals=goals;return goals
  end

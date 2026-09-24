@@ -20,13 +20,19 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 - 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons without an artificial party cap; queue more summons while others load, and share conversation history between copies of a character.
 - Native following, combat and abilities, adjustable companion damage and attack frequency, and automatic recovery after 3 seconds out of combat.
-- Companion haste lets followers run faster to stay with Coen during fast-paced exploration, with extra catch-up speed when they fall far behind, even after you slow down or stop.
-- Spaced follow formations and off-screen following. Companions settle on arrival instead of repeatedly adjusting their positions while you approach. Idle followers face generally toward you, with the closest looking more directly at you. Fast-travel recovery remains available, but loading a save clears the summoned party.
+- Companions match Coen's walking and running pace during ordinary exploration. Haste helps them catch up during fast-paced travel or when far behind, then eases back to a walk near their formation position.
+- Spaced follow formations and off-screen following. Small parties walk beside and just behind Coen and start following sooner when he walks away. Companions settle on arrival instead of repeatedly adjusting their positions while you approach. Idle followers face generally toward you, with the closest looking more directly at you. Fast-travel recovery remains available, but loading a save clears the summoned party.
 - Conversation actions such as “Follow me,” “Stop walking” and “Look at me,” with individual or whole-party dismissal through the menu.
 - Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages, plus remappable menu, text and voice shortcuts.
 - Built-in Copy logs support report with sensitive values removed.
 
 ## Changelog
+
+### What changed in 0.5.3
+
+- Companions walk with Coen during ordinary exploration, run when he runs, and reserve sprinting and haste for fast travel or real separation. They slow down as they catch up.
+- One to four companions use closer positions beside and just behind Coen, begin following sooner when he walks away, and anticipate his movement to reduce trailing. Narrow formation keeps the group behind him when enabled.
+- Fixed F5 and chat failing to start when Windows reuses an old helper process ID. Fixed the Narrow formation definition that prevented Mod Settings from displaying the options.
 
 ### What changed in 0.5.2
 
@@ -58,7 +64,7 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.2](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.2)
+Windows · Game 1.05 · [Latest release: 0.5.3](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.3)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
 
@@ -68,10 +74,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.3/DawnwalkerConvai-0.5.3-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.3/DawnwalkerConvai-0.5.3-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.3/DawnwalkerConvai-0.5.3-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.3/DawnwalkerConvai-0.5.3-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 

@@ -27,14 +27,18 @@ test('latched retreat survives near-player combat and waits for a settled reunio
  m.returning=true;o.follow=false;assert(not M.retreat(m,o),'Stop failed to cancel returning mode')
 `));
 
-test('follow starts promptly and runs across a small gap with gait hysteresis',()=>check('companion_combat',`
+test('nearby walking and short stationary corrections do not trigger running',()=>check('companion_combat',`
  local p=M.followPace(210,0,false);assert(p.stop==180 and p.start==430 and not p.running)
- assert(M.followPace(230,300,false).running,'Follower waited while Coen jogged away')
- assert(M.followPace(310,0,false).running,'Follower walked across a large gap')
- assert(M.followPace(280,0,true).running);assert(not M.followPace(240,0,true).running)
- assert(not M.followPace(470,0,false,470).running)
- assert(M.followPace(520,350,false,470).running,'Later party members did not run promptly')
+ for _,v in ipairs({0,140,180,210})do
+  for _,gap in ipairs({210,310,420})do assert(M.followPace(gap,v,false,180,false).enum==0,'Short gap triggered a run')end
+ end
+ assert(M.followPace(230,300,false).enum==1,'Jogging did not start promptly')
+ assert(M.followPace(800,140,false).enum==1,'Large walking gap did not permit a jog')
+ assert(M.followPace(480,0,true).enum==1);assert(M.followPace(400,0,true).enum==0)
+ assert(M.followPace(470,0,false,470).enum==0,'Outer formation seat triggered catch-up')
+ assert(M.followPace(520,350,false,470).enum==1)
 `));
+
 test('native combat exit is acknowledged before following, retries are spaced and target churn cannot abort it',()=>check('companion_combat',`
  local starts,stops,following,busy=0,0,true,false
  local c=M.new({enter=function()following=false;return true end,target=function()return true end,start=function()starts=starts+1;return true end,

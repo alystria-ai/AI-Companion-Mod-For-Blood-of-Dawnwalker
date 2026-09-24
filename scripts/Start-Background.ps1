@@ -18,7 +18,15 @@ try {
         $taskHostId=0
         if([int]::TryParse((Get-Content -LiteralPath $taskPidFile -Raw).Trim(),[ref]$taskHostId)){
             $taskHostProcess=Get-Process -Id $taskHostId -ErrorAction SilentlyContinue
-            if($taskHostProcess -and $taskHostProcess.Path -ne $taskHost){throw 'Cannot verify the recorded helper process from this account'}
+            if($taskHostProcess -and $taskHostProcess.Path -ne $taskHost){
+                # Windows can reuse the PID after a previous game session.
+                # Discard the stale record; never stop its unrelated owner.
+                if(!$taskHostProcess.Path -and $taskHostProcess.ProcessName -eq 'ConvaiHost'){
+                    throw 'Cannot verify the recorded helper process from this account'
+                }
+                $taskHostProcess=$null
+                Remove-Item -LiteralPath $taskPidFile -ErrorAction SilentlyContinue
+            }
         }
     }
     $taskHeartbeat=0L

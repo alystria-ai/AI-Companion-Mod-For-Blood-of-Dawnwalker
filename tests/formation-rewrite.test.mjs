@@ -26,18 +26,33 @@ test('whole-party arrival seats stay compact and separated, remain fixed during 
   assert(p.goals['1'].point.X==before.X and p.goals['1'].point.Y==before.Y,'Camera/approach shuffled the party')
   table.remove(rows);p:update(rows,{X=1150,Y=50,Z=0},180,0,3250);assert(not p.seats[tostring(count)],'Dismissed member retained its seat')
  end
- for _,count in ipairs({2,6,20,40})do
+ for _,count in ipairs({1,2,3,4,6,20,40})do
   local members={};for i=1,count do members[i]={ordinal=i,characterId='a',baseName='A',capsuleRadius=55}end
   for _,narrow in ipairs({0,1})do for _,closeness in ipairs({50,100,150})do for _,spacing in ipairs({75,100,175})do
    local ordered=R.layout(members,{FollowerCloseness=closeness,PartySpacing=spacing,NarrowFormation=narrow});local points={}
    for i,m in ipairs(ordered)do
     local q=R.followPoint({X=0,Y=0,Z=0},0,i,m.formationPitch,count,m.formationDistanceScale,m.formationNarrow)
-    assert(q.X<0 and q.X*q.X+q.Y*q.Y>=130^2-0.01,'Closeness overlapped Coen')
+    assert(q.X<=0 and q.X*q.X+q.Y*q.Y>=130^2-0.01,'Closeness overlapped Coen')
     for _,v in ipairs(points)do assert((q.X-v.X)^2+(q.Y-v.Y)^2>=145^2-0.01,'Following controls overlapped seats')end
     points[#points+1]=q
    end
   end end end
  end
+ for count=1,4 do
+  local frame={};R.formationFrame(frame,{X=0,Y=0,Z=0},0,0,0,count)
+  R.formationFrame(frame,{X=100,Y=0,Z=0},0,140,1000,count,false)
+  assert(frame.moving,'Small group waited too long to follow')
+  frame={};R.formationFrame(frame,{X=0,Y=0,Z=0},0,0,0,count)
+  R.formationFrame(frame,{X=100,Y=0,Z=0},0,140,1000,count,true)
+  assert(not frame.moving,'Approaching a friend moved the small party')
+ end
+ local group=P.new()
+ local friend={{id='a',ordinal=1,slot=1,count=1,pitch=150,radius=55,position={X=0,Y=-135,Z=0}}}
+ group:update(friend,{X=0,Y=0,Z=0},0,0,0)
+ group:update(friend,{X=200,Y=0,Z=0},0,140,1000,nil,{X=140,Y=0})
+ assert(group.goals.a.point.X>200 and group.goals.a.point.Y==-135,'Moving side destination did not compensate for path lag')
+ group:update(friend,{X=200,Y=0,Z=0},0,0,2000,nil,{X=0,Y=0})
+ assert(group.goals.a.point.X==200,'Stopping retained the forward lead or placed the friend behind')
 `));
 test('combat and conversations retain their space while a blocked rear seat yields on its own arc',()=>run(`${planning}
  local p=P.new();local rows={}

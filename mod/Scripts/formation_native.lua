@@ -87,7 +87,8 @@ function M.update(m,goal,now)
  -- chasing that last fraction of a metre once the group has arrived. Keep
  -- the owned follower flag off so the fallback does not immediately restart.
  -- A wider exit tolerance prevents turn-in-place root motion from waking it.
- if not goal.moving and (goal.distance<=100 or goal.distance<=145 and c:GetMoveStatus()==0)then
+ local arrival=goal.smallParty and 55 or 100
+ if not goal.moving and (goal.distance<=arrival or goal.distance<=(goal.smallParty and 90 or 145)and c:GetMoveStatus()==0)then
   c:AIStopFollowing();c:StopMovement()
   s.settled=true;s.settledEpoch=goal.epoch;s.sample=nil;s.failures=0
   return true,'Settled; native idle'
@@ -101,8 +102,9 @@ function M.update(m,goal,now)
  -- The native branch does not track the final stopping point on its own.
  -- Refresh a changed seat once even after the player stops. Compare seats,
  -- not the compensating marker, so approach-angle changes cannot churn paths.
- local seat=s.issuedSeat;local threshold=goal.moving and 150 or 35
- if seat and goal.distance>60 and now-(s.issuedAt or 0)>=1000
+ local seat=s.issuedSeat;local threshold=goal.moving and (goal.smallParty and 75 or 150)or 35
+ local refresh=goal.moving and goal.smallParty and 500 or 1000
+ if seat and goal.distance>60 and now-(s.issuedAt or 0)>=refresh
   and ((goal.point.X-seat.X)^2+(goal.point.Y-seat.Y)^2>=threshold^2 or math.abs(goal.point.Z-seat.Z)>60)then
   c:AIMoveToActor(s.marker,true,true,false);s.issuedAt=now;s.issuedPoint={X=p.X,Y=p.Y,Z=p.Z}
   s.issuedSeat={X=goal.point.X,Y=goal.point.Y,Z=goal.point.Z}
