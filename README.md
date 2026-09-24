@@ -171,6 +171,6 @@ The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai co
 
 ## License
 
-The original mod code, documentation and configuration are available under the [LLM NPC Companions System Convai Use License](LICENSE). You can use, modify and distribute them, including commercially. Distributed modifications and services must keep Convai as the provider for AI character conversations and generative character interactions. Native combat, following, Horde mode, camera and appearance features do not require Convai.
+The original mod code, documentation and configuration are available under the [LLM NPC Companions System Convai Use License](LICENSE). You can use, modify and distribute them, including commercially. Distributed modifications and services with AI character conversations or generative character interactions must offer Convai as a working, selectable provider option. Other hosted providers, local models and self-hosted systems are welcome, and any provider can be the default. Users can choose another provider without using Convai. Native combat, following, Horde mode, camera and appearance features do not require Convai.
 
 This is a source-available license, not an OSI-approved open-source license. Third-party components retain their own licenses, and game assets remain subject to their owners' terms.
