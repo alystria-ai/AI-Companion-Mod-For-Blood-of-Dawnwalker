@@ -1,4 +1,5 @@
-import {GroupChat} from './group-chat.mjs';
+import {GroupChat,chooseSpeakers} from './group-chat.mjs';
+import {parseFollowUpQuestions,conversationContext} from './conversation-context.mjs';
 const group=new GroupChat();
 import http from 'node:http';
 import {readFile, writeFile, rename, mkdir} from 'node:fs/promises';
@@ -35,6 +36,23 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const romanceVariants=JSON.parse(await readFile(resolve(root,'characters/romance-config.json'),'utf8').catch(()=>'{}'));
 const bundledConfig=JSON.parse(process.env.DAWNWALKER_DEFAULT_CONFIG||'{}');delete process.env.DAWNWALKER_DEFAULT_CONFIG;
 const runtime = process.env.DAWNWALKER_RUNTIME || resolve(root, 'runtime');
+let followUpQuestions=true;
+async function readConversationSettings(){
+ try{
+  const directory=(await readFile(resolve(runtime,'mod-directory.txt'),'utf8').catch(()=>resolve(root,'mod'))).trim();
+  followUpQuestions=parseFollowUpQuestions(await readFile(resolve(directory,'config.ini'),'utf8'));
+ }catch{/* Keep the last setting if an editor temporarily holds the file. */}
+}
+await readConversationSettings();
+function conversationFor(view,index){
+ const active=view&&view.stage!=='done';
+ // Voice starts generating before its transcript creates the group round.
+ // Predict the number of distinct eligible speakers so that first reply does
+ // not ask Coen a question ahead of the remaining companions.
+ const count=active?view.count:target.mode==='group'
+  ?chooseSpeakers(target,Date.now()-companions.state.updated<5000?companions.state.members:[],'',hasSharedRomance(relationships)).length:1;
+ return conversationContext(followUpQuestions,target.mode,index??(active?view.index:0),count);
+}
 await mkdir(runtime, {recursive:true});
 const companions=new Companions(runtime,JSON.parse(await readFile(resolve(root,'characters/companion-config.json'),'utf8')));
 await companions.init();setInterval(()=>companions.tick(),500);
@@ -70,6 +88,7 @@ setInterval(async () => {
     if(Date.now()-lastSpatialRead>=80){lastSpatialRead=Date.now();spatialRaw=await readFile(resolve(runtime,'spatial.txt'),'utf8').catch(()=>'');}
     if(Date.now()-lastQuestRead>1000){
       lastQuestRead=Date.now();
+      await readConversationSettings();
       const horde=(await readFile(resolve(runtime,'horde-state.tsv'),'utf8').catch(()=>'')).trim().split('\t');
       const fresh=horde[0]==='HORDE'&&horde[1]==='1'&&Math.abs(Date.now()/1000-Number(horde[2]))<4;
       const remaining=Number(horde[7]),level=Number(horde[5])+1,levels=Number(horde[6]);
@@ -119,9 +138,9 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='GET' && path==='/group-context') {
       const params=new URL(req.url,origin).searchParams,view=group.view(target),next=view?.upcoming?.find(s=>s.token===params.get('token'));
       if(!target.active||view?.stage!=='reply'||params.get('token')!==next?.token||params.get('room')!==target.room){res.writeHead(409).end('Group selection changed');return;}
-      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({token:next.token,questMemory:knowledge(questMemory,next.characterId),environment:environmentContext(environmentRaw,target)}));return;
+      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({token:next.token,conversation:conversationFor(view,view.index+1+view.upcoming.indexOf(next)),questMemory:knowledge(questMemory,next.characterId),environment:environmentContext(environmentRaw,target)}));return;
     }
-    if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
+    if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,conversation:conversationFor(group.view(target)),relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
     if(req.method==='POST' && path==='/microphone'){
       let body='';for await(const chunk of req){body+=chunk;if(body.length>1024){res.writeHead(413).end();return;}}
       const value=JSON.parse(body);

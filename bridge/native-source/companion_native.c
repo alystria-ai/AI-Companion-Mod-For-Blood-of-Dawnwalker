@@ -156,6 +156,19 @@ static int inspectDefinition(FILE *reply,const wchar_t *path){
 /* Separate diagnostic DLL: only typed, read-only exports are reachable. It
  * never replaces the v5 DLL that owns the live population registry. */
 static int auditObject(FILE *reply,const wchar_t *path,const wchar_t *kind){
+    if(!wcscmp(kind,L"gaze")){
+        void *o=resolveObject(path,L"/Script/Dawnwalker.DawnwalkerCommonCharacterBase");
+        return o&&exportField(reply,o,L"LookAtTargets","targets");
+    }
+    if(!wcscmp(kind,L"face")){
+        void *o=resolveObject(path,L"/Script/Engine.AnimInstance");if(!o)return 0;
+        const wchar_t *keys[]={L"AnimGraphNode_ModifyCurve_5",L"AnimGraphNode_ModifyCurve_6",L"AnimGraphNode_ModifyCurve_7",L"AnimGraphNode_FaceIdle",L"AnimGraphNode_FaceIdle_1",L"AnimGraphNode_CinematicIdle",L"CustomControlValues",L"ParamsByType"};
+        for(unsigned i=0;i<sizeof(keys)/sizeof(keys[0]);i++)if(findProperty(o,keys[i])){
+            char label[96];WideCharToMultiByte(CP_UTF8,0,keys[i],-1,label,sizeof(label),NULL,NULL);
+            if(!exportField(reply,o,keys[i],label))return 0;
+        }
+        return 1;
+    }
     if(!wcscmp(kind,L"animationbudget")){
         void *o=resolveObject(path,L"/Script/AnimationBudgetAllocator.SkeletalMeshComponentBudgeted");if(!o)return 0;
         void *prop=findProperty(o,L"bAutoRegisterWithBudgetAllocator");
@@ -286,6 +299,9 @@ cleanup: frameClose(&load);frameClose(&reference);return ok;
 #endif
 #ifdef COMPANION_SIMULATION
 #include "companion_simulation.h"
+#endif
+#ifdef COMPANION_GAZE
+#include "companion_gaze.h"
 #endif
 static int objectPath(void *p,const void *value,void *parent,wchar_t *destination){
     FString text={0};exportValue(p,&text,value,NULL,parent,0,NULL);int ok=0;
@@ -440,6 +456,10 @@ __declspec(dllexport) int companion_native_run(void *unusedLuaState){
 #ifdef COMPANION_READ_ONLY_AUDIT
         if(!wcscmp(lines[1],L"audit")&&count==4)ok=auditObject(reply,lines[2],lines[3]);
         else fail("Read-only diagnostic DLL");
+#elif defined(COMPANION_GAZE)
+        if(!wcscmp(lines[1],L"gazeinspect")&&count==3)ok=inspectGaze(reply,lines[2]);
+        else if(!wcscmp(lines[1],L"gazeadd")&&count==4)ok=addCameraGaze(reply,lines[2],lines[3]);
+        else fail("Unsupported gaze operation");
 #elif defined(COMPANION_SIMULATION)
         if(!wcscmp(lines[1],L"animationbudget")&&count==4)ok=simulationBudget(reply,lines[2],lines[3]);
         else fail("Simulation helper accepts only animationbudget");

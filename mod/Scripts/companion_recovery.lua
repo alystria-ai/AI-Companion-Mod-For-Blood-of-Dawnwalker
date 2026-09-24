@@ -13,7 +13,7 @@ function M.updateOrder(members,cursor)
 end
 -- Stable instance IDs never change. Labels depend on the CURRENT population.
 -- Shared rear arcs instead of an ever-longer single-file tail.
-function M.layout(members)
+function M.layout(members,settings)
  local ordered,counts={},{}
  for _,m in pairs(members)do
   ordered[#ordered+1]=m;counts[m.characterId]=(counts[m.characterId]or 0)+1
@@ -23,12 +23,30 @@ function M.layout(members)
  for _,m in ipairs(ordered)do largest=math.max(largest,m.capsuleRadius or 55)end
  local compact=#ordered>=2 and #ordered<=5
  local pitch=compact and math.max(150,largest*2+40)or math.max(180,largest*2+70)
+ pitch=math.max(largest*2+(compact and 35 or 60),pitch*((settings and settings.PartySpacing or 100)/100))
+ local depth=100/(settings and settings.FollowerCloseness or 100)
+ local narrow=settings and settings.NarrowFormation==1 or false
+ local points={}
+ for i,m in ipairs(ordered)do
+  local back,side=M.followOffset(i,pitch,#ordered,narrow);points[i]={back=back,side=side}
+  -- Closeness compresses rear depth, not lateral space. Clamp the requested
+  -- depth using capsule clearance so the two controls cannot overlap seats.
+  local playerClearance=(m.capsuleRadius or 55)+75
+  if math.abs(back)>1 and side*side<playerClearance^2 then
+   depth=math.max(depth,math.sqrt(playerClearance^2-side*side)/math.abs(back))
+  end
+  for j=1,i-1 do
+   local x,y=back-points[j].back,side-points[j].side
+   local clearance=(m.capsuleRadius or 55)+(ordered[j].capsuleRadius or 55)+35
+   if math.abs(x)>1 and y*y<clearance^2 then depth=math.max(depth,math.sqrt(clearance^2-y*y)/math.abs(x))end
+  end
+ end
  for i,m in ipairs(ordered)do
   seen[m.characterId]=(seen[m.characterId]or 0)+1
   m.label=m.baseName..(counts[m.characterId]>1 and ' #'..seen[m.characterId]or '')
-  m.formationSlot=i;m.formationPitch=pitch;m.formationCount=#ordered
-  local back,side=M.followOffset(i,pitch,#ordered)
-  m.followSpacing=math.sqrt(back*back+side*side)+15
+  m.formationSlot=i;m.formationPitch=pitch;m.formationCount=#ordered;m.formationDistanceScale=depth;m.formationNarrow=narrow
+  local back,side=M.followOffset(i,pitch,#ordered,narrow)
+  m.followSpacing=math.sqrt((back*depth)^2+side*side)+15
  end
  return ordered
 end
@@ -222,8 +240,18 @@ function M.reconnectCandidate(m,key,now)
  if key~=m.candidateKey then m.candidateKey=key;m.candidateAt=key and now or nil;return false end
  return key~=nil and now-(m.candidateAt or now)>=1000
 end
-function M.followOffset(slot,pitch,count)
+function M.followOffset(slot,pitch,count,narrow)
  if count==1 then return math.max(145,(pitch or 190)-45),0 end
+ if narrow and count and count>1 then
+  -- A compact depth-biased group, not a fixed two-column queue. Growing the
+  -- width with sqrt(party size) keeps large parties from trailing indefinitely.
+  local columns=math.max(2,math.ceil(math.sqrt(count/1.5)))
+  local index=math.max(0,(slot or 1)-1);local row=math.floor(index/columns)
+  local column=index%columns;local inRow=math.min(columns,count-row*columns)
+  local clearance=math.max(145,(pitch or 180)-25)
+  local back=math.max(145,clearance,(columns-1)*clearance*.6)+row*clearance*1.1+(column%2)*clearance*.25
+  return back,(column-(inRow-1)/2)*clearance
+ end
  if count and count>=2 and count<=5 and slot and slot<=count then
   -- One compact rear fan for a small group, including the fifth companion.
   -- Keep chord clearance tied to capsule size, not just a fixed radius.
@@ -250,8 +278,8 @@ function M.followOffset(slot,pitch,count)
  local angle=math.rad(angles[index+1])
  return math.cos(angle)*radius,math.sin(angle)*radius
 end
-function M.followPoint(player,yaw,slot,pitch,count)
- local back,side=M.followOffset(slot,pitch,count);local angle=math.rad(yaw)
+function M.followPoint(player,yaw,slot,pitch,count,distanceScale,narrow)
+ local back,side=M.followOffset(slot,pitch,count,narrow);back=back*(distanceScale or 1);local angle=math.rad(yaw)
  return {X=player.X-math.cos(angle)*back-math.sin(angle)*side,Y=player.Y-math.sin(angle)*back+math.cos(angle)*side,Z=player.Z},math.sqrt(back*back+side*side)
 end
 -- A blocked lane yields to the native direct route, with a quiet interval.

@@ -120,7 +120,7 @@ public sealed class ConvaiHost : Form {
             companions=new CompanionPanel(Path.Combine(root,"runtime"),auth,dialogue.CloseForCompanions);
             Hide();
             File.WriteAllText(Runtime("background-host.pid"),Process.GetCurrentProcess().Id.ToString());
-            File.WriteAllText(Runtime("background-status.txt"),"WebView2 v0.5.1 ready: companion menu, conversation HUD and camera controls.");
+            File.WriteAllText(Runtime("background-status.txt"),"WebView2 v0.5.2 ready: companion menu, conversation HUD and camera controls.");
             supportReport=new SupportReport(Path.Combine(root,"runtime"));
             revision=File.GetLastWriteTimeUtc(Path.Combine(root,"bridge","public","client.js"));
             timer=new System.Windows.Forms.Timer();timer.Interval=1000;

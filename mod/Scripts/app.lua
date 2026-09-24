@@ -1,4 +1,5 @@
 local UE = require('UEHelpers')
+local AI = require('ai_state')
 local config = require('config')
 local root = require('runtime_path')
 local Targeting = require('targeting')
@@ -15,6 +16,7 @@ local lastRelationshipRead=0
 local combatTrace=nil
 local UiInput=require('ui_input')
 local speechLayer=nil
+local partyChat=false
 local conversationMode='single';local conversationRoom='';local speakerTurn=''
 local requestId=0
 local identity={}
@@ -80,7 +82,7 @@ end
 local function forgetConversation(message)
     -- Unloading/destroyed objects cannot safely restore face layers, focus or
     -- input leases. Only discard Lua state here; publish uses cached strings.
-    selected=nil;bindings={};speechLayer=nil;attention=nil;engagement=nil
+    selected=nil;bindings={};speechLayer=nil;attention=nil;engagement=nil;partyChat=false
     activeController=nil;composeController=nil;inputLease=nil;groupOrigin=nil;lookingAwaySince=nil
     previewEnd=0;conversationRoom='';speakerTurn='';identity={};selectedName='';selectedClass=''
     generation=generation+1;status=message or 'Conversation unloaded';publish()
@@ -93,8 +95,11 @@ local function neutral()
     if speechLayer then pcall(function()FaceGraph.applyWeights(speechLayer,{})end)end
     for _,b in ipairs(bindings) do if valid(b.mesh) then pcall(function() b.mesh:SetMorphTarget(FName(b.name),b.original or 0.0,true) end) end end
 end
-local function releaseConversation()
-    Engagement.releaseAttention(attention);attention=nil
+local function releaseConversation(keepAttention)
+    if keepAttention and engagement and engagement.attention then
+        Engagement.releaseAttention(attention)
+        attention=engagement.attention;engagement.attention=nil
+    elseif not keepAttention then Engagement.releaseAttention(attention);attention=nil end
     Engagement.finish(engagement);engagement=nil
     if selected then Companions.afterConversation(selected)end
 end
@@ -109,7 +114,7 @@ local function releaseCompletedReply(data)
     if key==lastReplyRelease then return end
     lastReplyRelease=key
     if engagement and engagement.following then return end
-    releaseConversation();log('Single reply complete; conversation movement released')
+    releaseConversation(true);log('Single reply complete; movement released, attention retained')
 end
 -- Group membership is chosen within twelve metres of the player. Preserve
 -- this shared origin across speaker handoffs: facing the original addressee
@@ -123,13 +128,15 @@ local function conversationWalkedAway(a,forward,b,following)
     return Targeting.walkedAway(a,forward,b,config.MaxDistance,following)
 end
 local function stop(message,quiet)
+    local previousActor=selected
     lookingAwaySince=nil
     if not quiet then groupOrigin=nil end
     restoreFocusPause()
     releaseConversation();activeController=nil
     neutral();bindings={};selected=nil;previewEnd=0;generation=generation+1;status=message or 'Conversation ended';if not quiet then publish()end;log(status)
     local layer=speechLayer;speechLayer=nil
-    if layer then FaceGraph.restoreLayer(layer)end
+    partyChat=false
+    if layer and not Companions.returnChatFace(previousActor,layer)then FaceGraph.restoreLayer(layer)end
 end
 if RegisterModCleanup then RegisterModCleanup(function()FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
 local function trace(nearest)
@@ -318,9 +325,14 @@ local function inspectMetadata(actor)
     write('face-api-diagnostics.txt',table.concat(report,'\n'))
     log('Face metadata inspection complete; no runtime property values read')
 end
-local function inspect(actor,detailed)
+local function inspect(actor,detailed,inheritedFace)
     if detailed then inspectMetadata(actor);return end
     if config.UseFaceLayer then
+        if inheritedFace then
+            speechLayer=inheritedFace;speechLayer.log=log;bindings={}
+            log('Conversation inherited idle face; animation and blink state retained')
+            return
+        end
         local graph=FaceGraph.capture(actor,log,true)
         speechLayer=FaceGraph.linkSpeechLayer(graph,log)
         FaceGraph.beginJaw(speechLayer,actor,os.time()) -- Capture original input for restoration.
@@ -382,17 +394,41 @@ local function toggle(mode,actorOverride)
     local actor,reason=actorOverride,nil
     if not actor then actor,reason=trace(conversationMode=='group')end
     if not actor then status=reason;publish();log(reason);return end
-    local pawnClass=StaticFindObject('/Script/Engine.Pawn')
+    local pawnClass=AI.find('/Script/Engine.Pawn')
     if not actor:IsA(pawnClass) then status='Hit is not a Pawn: '..actor:GetFullName()..'. F8 records it for adaptation.';publish();log(status);return end
-    local canTalk,why=Companions.beforeConversation(actor)
+    local canTalk,why,idleFace=Companions.selectForChat(actor,config.UseFaceLayer)
+    local idleAttention
+    partyChat=canTalk~=nil
+    if not partyChat then canTalk,why,idleFace,idleAttention=Companions.beforeConversation(actor,config.UseFaceLayer,config.FaceAndHold)end
     if canTalk==false then status=why;publish();return end
-    inspect(actor);cacheSelection(actor);selected=actor;generation=generation+1;identity=Companions.identity(actor)or Targeting.identify(actor)
+    attention=idleAttention -- Own transferred handles even if face setup fails.
+    inspect(actor,false,idleFace);cacheSelection(actor);selected=actor;generation=generation+1;identity=Companions.identity(actor)or Targeting.identify(actor)
     activeController=cachedController
     selectedAt=os.time()
-    if config.FaceAndHold then engagement=Engagement.begin(actor,log) end
+    if config.FaceAndHold and not partyChat then engagement=Engagement.begin(actor,log,attention);attention=nil end
     if engagement and engagement.blocked then stop(engagement.reason or 'Character is busy');return end
     status='Selected '..actor:GetFName():ToString()..(speechLayer and '; Convai JawOpen -> Lua JawOpenAlpha' or ('; mouth morphs matched: '..#bindings))
     publish();log(status)
+end
+local function reuseConversation(actor)
+    -- New request/room identity, same live actor and facial/attention ownership.
+    -- Revalidate native ownership instead of relinking the face on every key.
+    if not valid(selected)or selected:GetFullName()~=actor:GetFullName()or not FaceGraph.isCurrent(speechLayer)then return false end
+    if engagement and not Engagement.canReuseHold(engagement)then return false end
+    if not valid(cachedController)or not valid(cachedController.Pawn)then return false end
+    if config.FaceAndHold and not partyChat and not engagement then
+        local allowed,_,_,idleAttention=Companions.beforeConversation(actor,false,true)
+        if allowed==false then return false end
+        local inherited=attention or idleAttention
+        if attention and idleAttention and attention~=idleAttention then Engagement.releaseAttention(idleAttention)end
+        attention=nil;engagement=Engagement.begin(actor,log,inherited)
+        if engagement.blocked then stop(engagement.reason or 'Character is busy');return true end
+    end
+    restoreFocusPause();activeController=cachedController
+    requestId=0;generation=generation+1;selectedAt=os.time();lookingAwaySince=nil;groupOrigin=nil
+    status='Ready to speak with '..(identity.name or actor:GetFName():ToString())
+    publish();log('Conversation request renewed; face and attention retained')
+    return true
 end
 local lastAction=''
 local function applyAction()
@@ -733,7 +769,7 @@ local function groupCommand()
     if endToken then
         lastGroupCommand=command
         if conversationMode=='group'and conversationRoom==endRoom and generation==tonumber(endGeneration)and selected then
-            releaseConversation();log('Group replies complete; conversation movement released')
+            releaseConversation(true);log('Group replies complete; movement released, attention retained')
         end
         return
     end
@@ -780,10 +816,12 @@ local function uiCommand()
         -- destroy a working chat; every key press chooses from current positions.
         local actor,reason=trace(group)
         if not actor then write('ui-ready.txt',command..'\n'..(reason or 'No nearby conversation target'));return end
-        if selected then stop('Selecting conversation')else restoreFocusPause()end
         conversationMode=group and 'group'or 'single'
         conversationRoom=command:match(':([%w%-]+)')or '';speakerTurn=''
-        toggle('compose',actor)
+        if not reuseConversation(actor)then
+            if selected then stop('Selecting conversation')else restoreFocusPause()end
+            toggle('compose',actor)
+        end
         if not selected then write('ui-ready.txt',command..'\n'..(status or 'Conversation target unavailable'));return end
         if command:match('^compose%-')and not composeController then
             local pc=activeController
@@ -817,7 +855,7 @@ if config.AutoStartConvai then LoopAsync(1000,function()
     end
     return false
 end)end
-safe(function() status='v0.5.1: companions, conversations and horde mode';publish();log(status) end)
+safe(function() status='v0.5.2: companions, conversations and horde mode';publish();log(status) end)
 -- One dispatcher owns camera and application work. A lost UE4SS callback must
 -- not leave either path permanently marked pending.
 local partyElapsed,workElapsed=0,0
@@ -826,13 +864,14 @@ LoopAsync(16,function()
     partyElapsed=partyElapsed+16;workElapsed=workElapsed+16
     local partyDue=partyElapsed>=250;local workDue=workElapsed>=33
     local cameraDue=Settings.values.FirstPersonCamera==1 or FirstPerson.active()
+    local faceDue=workDue and FaceGraph.hasAmbientFaces()
     local ordinaryDue=workDue and (selected~=nil or partyDue or NativeMenu.isOpen())
-    if not cameraDue and not ordinaryDue then return false end
+    if not cameraDue and not ordinaryDue and not faceDue then return false end
     idleSecond=os.time()
     if pending and os.time()-dispatchAt<2 then return false end
     pending=true;dispatchAt=os.time();dispatchSerial=dispatchSerial+1
     local ticket=dispatchSerial
-    if ordinaryDue then workElapsed=workElapsed%33 end
+    if ordinaryDue or faceDue then workElapsed=workElapsed%33 end
     if ordinaryDue and partyDue then partyElapsed=0 end
     local queued,queueError=pcall(ExecuteInGameThread,function()
         if ticket~=dispatchSerial then return end
@@ -840,7 +879,8 @@ LoopAsync(16,function()
             if partyDue then Settings.poll()end
             -- Text/voice chat owns input, not the viewpoint. Keep first person
             -- throughout single/group chat; native scenes still yield inside tick.
-            FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())
+            if cameraDue or partyDue then FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())end
+            if faceDue then FaceGraph.tickAmbient()end
             if not ordinaryDue then return end
             if partyDue then Horde.tick(false)end
             NativeMenu.tick()
@@ -891,7 +931,6 @@ LoopAsync(16,function()
                 else lookingAwaySince=nil end
             end
             updateCount=updateCount+1
-            if updateCount%150==0 then pcall(function()write('ai-inspection.txt',Engagement.inspect(selected))end)end
             if updateCount%6==0 then applyAction();if not selected then return end end
             if engagement and engagement.following then
                 if updateCount%30==0 then
@@ -902,7 +941,7 @@ LoopAsync(16,function()
                 Engagement.face(engagement,a,pc.Pawn)
                 if engagement.blocked then stop('Conversation yielded to native AI');return end
             end
-            if config.FaceAndHold and not engagement and updateCount%3==0 then attention=Engagement.attend(attention,selected,pc.Pawn,log,false)end
+            if config.FaceAndHold and not partyChat and not engagement and updateCount%3==0 then attention=Engagement.attend(attention,selected,pc.Pawn,log,false)end
             if previewEnd>0 then
                 if os.time()>=previewEnd then stop('Six-second test finished; NPC controls and morph weights restored');return end
                 previewTick=previewTick+1

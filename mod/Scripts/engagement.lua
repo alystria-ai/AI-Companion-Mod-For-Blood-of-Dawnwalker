@@ -1,6 +1,9 @@
 local M = {}
 local AI=require('ai_state')
 local valid=AI.valid
+-- Native controller targets live for three seconds and may be emitted every
+-- frame. 256 is a normal count at high frame rates, not evidence of corruption.
+local maxHeadTargets=4096
 local function stubFor(actor)
     local lib=AI.find('/Script/RebelAI.Default__RebelAIBlueprintFunctionLibrary')
     if valid(lib)then return lib:GetAIStub(actor)end
@@ -36,8 +39,134 @@ local function sideFocus(a,p,degrees)
     local angle=math.rad(degrees);local x,y=p.X-a.X,p.Y-a.Y
     return {X=a.X+x*math.cos(angle)-y*math.sin(angle),Y=a.Y+x*math.sin(angle)+y*math.cos(angle),Z=p.Z+65}
 end
+-- Controller focus drives locomotion aim, but does not register a native head
+-- tracking target. Ask RebelAI to build its own actor/socket tracking data;
+-- capture only handles added by this call so other AI look targets stay intact.
+local function headTargets(actor)
+    local targets=actor.LookAtTargets
+    assert(#targets<=maxHeadTargets,'Unexpected native look target count')
+    local handles={}
+    for i=1,#targets do
+        local handle=targets[i].LookAtTargetHandle
+        assert(type(handle)=='number','Invalid native look target handle')
+        handles[handle]=true
+    end
+    return handles,#targets
+end
+local function releaseHeadTracking(state)
+    if valid(state.actor)then
+        for handle in pairs(state.headHandles or {})do
+            local ok,err=pcall(function()state.actor:RemoveLookAtTarget(handle)end)
+            if not ok then state.log('Head tracking restore: '..tostring(err))end
+        end
+    end
+    state.headHandles=nil
+    state.headCamera=nil
+end
+local function trackHead(state,held)
+    -- Distant idle followers keep their more relaxed side glance. The speaking
+    -- character and nearby direct-attention followers track the player's eyes.
+    if not held and state.sideAngle~=0 then return end
+    local now=os.clock()
+    if now<(state.nextHeadCheck or 0)then return end
+    state.nextHeadCheck=now+1
+    local ok,err=pcall(function()
+        if not AI.board(state.stub,state.board)then return end
+        local camera=require('first_person_camera').gazeTarget(state.player)
+        if (camera or state.headCamera)and not AI.same(camera,state.headCamera)then
+            releaseHeadTracking(state);state.headReported=nil
+        end
+        local current,count=headTargets(state.actor)
+        for handle in pairs(state.headHandles or {})do
+            if current[handle]then return end
+            state.headHandles[handle]=nil
+        end
+        if count>=maxHeadTargets then return end
+        if camera then
+            local result,why=require('companion_native').cameraGaze(state.actor,camera)
+            local handle=result and tonumber(result.handle)
+            assert(handle and handle>=0,why or 'Camera look target rejected')
+            state.headHandles={[handle]=true};state.headCamera=camera
+            if not state.headReported then
+                state.headReported=true;state.log('Native head tracking acquired; first-person camera target, owned handle only')
+            end
+            return
+        end
+        local targetStub=stubFor(state.player)
+        if not AI.board(targetStub)then return end
+        state.board:AddLookAtTarget(targetStub)
+        local after=headTargets(state.actor)
+        state.headHandles=state.headHandles or {}
+        local added=0
+        for handle in pairs(after)do if not current[handle]then state.headHandles[handle]=true;added=added+1 end end
+        if added>0 and not state.headReported then
+            state.headReported=true;state.log('Native head tracking acquired; player face/socket target, owned handles only')
+        end
+        if added==0 then state.nextHeadCheck=now+5 end
+    end)
+    if not ok then
+        state.nextHeadCheck=now+5
+        if state.headError~=tostring(err)then state.headError=tostring(err);state.log('Native head tracking unavailable: '..state.headError)end
+    end
+end
+local function releaseIdleSmile(state)
+    local face=state.idleFace;state.idleFace=nil
+    if face and valid(state.actor)then
+        local ok,err=pcall(function()require('face_graph').restoreLayer(face)end)
+        if not ok then state.log('Idle expression restore: '..tostring(err))end
+    end
+end
+function M.takeIdleFace(state)
+    -- Transfer the whole lease, including its original layer and blink clock.
+    -- The conversation becomes its only writer and restores it when finished.
+    if not state then return nil end
+    local face=state.idleFace
+    if not face or face.restored or not valid(state.actor)or not valid(face.main)or not valid(face.instance)then return nil end
+    state.idleFace=nil
+    return face
+end
+function M.canTransferAttention(state,actor)
+    if not state or not state.focusOwned or not state.lookHandle or not state.rotationHandle
+        or not AI.same(state.actor,actor)or state.sideAngle~=0 then return false end
+    local ok,ready=pcall(function()
+        local v=actor:GetVelocity()
+        return valid(state.controller)and valid(state.movement)and AI.board(state.stub,state.board)~=nil and ownsAttentionFocus(state)
+            and v.X*v.X+v.Y*v.Y+v.Z*v.Z<1 and state.controller:GetMoveStatus()==0
+    end)
+    return ok and ready
+end
+local function trackIdleSmile(state,held)
+    if held or not state.idleSmile or state.sideAngle~=0 then return end
+    local ok,err=pcall(function()
+        local Face=require('face_graph')
+        if not state.idleFace then
+            if state.smileAttempted then return end
+            state.smileAttempted=true
+            local graph=Face.capture(state.actor,state.log,true)
+            if not graph then return end
+            state.idleFace=Face.linkSpeechLayer(graph,state.log)
+            Face.beginJaw(state.idleFace,state.actor,os.time())
+            state.smileStarted=os.clock()
+        end
+        local strength=1-math.exp(-math.max(0,os.clock()-state.smileStarted)/.5)
+        local weights={CTRL_expressions_jawOpen=0}
+        for _,side in ipairs({'L','R'})do
+            weights['CTRL_expressions_mouthCornerPull'..side]=.21*strength
+            weights['CTRL_expressions_mouthCornerUp'..side]=.075*strength
+            weights['CTRL_expressions_mouthDimple'..side]=.04*strength
+            weights['CTRL_expressions_eyeCheekRaise'..side]=.10*strength
+        end
+        Face.applyWeights(state.idleFace,weights)
+    end)
+    if not ok then
+        releaseIdleSmile(state)
+        if state.smileError~=tostring(err)then state.smileError=tostring(err);state.log('Idle expression unavailable: '..state.smileError)end
+    end
+end
 function M.releaseAttention(state)
     if not state then return end
+    releaseIdleSmile(state)
+    releaseHeadTracking(state)
     local function attempt(fn)local ok,e=pcall(fn);if not ok then state.log('Attention restore: '..tostring(e))end end
     if valid(state.actor)and valid(state.movement)then
         if state.lookHandle then attempt(function()state.movement:PopLookAtMode(state.lookHandle)end)end
@@ -56,8 +185,9 @@ end
 local attentionRetry={}
 function M.attend(state,actor,player,log,held,options)
     local sideAngle=options and options.sideAngle or 0
+    local idleSmile=options and options.idleSmile==true or false
     local range=options and options.range or 450
-    if state and (not AI.same(state.actor,actor)or not AI.same(state.player,player)or state.sideAngle~=sideAngle)then
+    if state and (not AI.same(state.actor,actor)or not AI.same(state.player,player))then
         M.releaseAttention(state);state=nil
     end
     local key=valid(actor)and actor:GetFullName()or ''
@@ -68,19 +198,35 @@ function M.attend(state,actor,player,log,held,options)
         if not board or board.bIsDead or stub:IsInCombat()or board.Combat.bInCombat or stub:IsInCinematicMode()or board:HasAnyUnbreakableActiveAction()or (board.bMainBehaviorSuspended and not held)then return false end
         local p,a=player:K2_GetActorLocation(),actor:K2_GetActorLocation()
         local velocity=actor:GetVelocity()
-        if not held and ((p.X-a.X)^2+(p.Y-a.Y)^2+(p.Z-a.Z)^2>range^2 or velocity.X^2+velocity.Y^2>25^2)then return false end
+        if not held and ((p.X-a.X)^2+(p.Y-a.Y)^2+(p.Z-a.Z)^2>range^2 or velocity.X^2+velocity.Y^2>(state and 40 or 25)^2)then return false end
         if state then
             if not valid(state.controller)or not valid(state.movement)then return false end
             if not ownsAttentionFocus(state)then attentionRetry[key]=os.time()+2;return false end
+            if state.idleSmile~=idleSmile then
+                if not idleSmile then releaseIdleSmile(state)end
+                state.idleSmile=idleSmile;state.smileAttempted=nil
+            end
+            if state.sideAngle~=sideAngle then
+                state.sideAngle=sideAngle
+                if sideAngle~=0 then releaseIdleSmile(state)end
+                state.smileAttempted=nil
+                if sideAngle==0 then state.focusPoint=nil;state.controller:K2_SetFocus(player)
+                else
+                    state.focusPoint=sideFocus(a,p,sideAngle);state.controller:K2_SetFocalPoint(state.focusPoint)
+                    if not held then releaseHeadTracking(state)end
+                end
+            end
             if sideAngle~=0 then
                 local q=sideFocus(a,p,sideAngle);local old=state.focusPoint
                 if (q.X-old.X)^2+(q.Y-old.Y)^2+(q.Z-old.Z)^2>=50^2 then
                     state.controller:K2_SetFocalPoint(q);state.focusPoint=q
                 end
             end
+            trackHead(state,held)
+            trackIdleSmile(state,held)
             return true
         end
-        state={actor=actor,player=player,stub=stub,board=board,sideAngle=sideAngle,changes={},controller=actor:GetController(),movement=actor:GetMovementComponent(),log=log}
+        state={actor=actor,player=player,stub=stub,board=board,sideAngle=sideAngle,idleSmile=idleSmile,changes={},controller=actor:GetController(),movement=actor:GetMovementComponent(),log=log}
         assert(valid(state.controller)and valid(state.movement),'Native attention controls unavailable')
         change(state,function()return actor end,'bUseControllerRotationYaw',false)
         change(state,function()return state.movement end,'bOrientRotationToMovement',false)
@@ -98,6 +244,8 @@ function M.attend(state,actor,player,log,held,options)
         assert(type(state.rotationHandle)=='number'and state.rotationHandle>=0,'Native rotation lease rejected')
         state.lookHandle=state.movement:PushLookAtMode(4,50)
         assert(type(state.lookHandle)=='number'and state.lookHandle>=0,'Native look lease rejected')
+        trackHead(state,held)
+        trackIdleSmile(state,held)
         log('Native attention: KeepInFOV / FaceDirection; animation owns body turning')
         return true
     end)
@@ -108,8 +256,18 @@ function M.attend(state,actor,player,log,held,options)
     end
     return state
 end
-function M.begin(actor,log)
-    local state={actor=actor,changes={},log=log}
+function M.canReuseHold(state)
+    if not state or state.blocked or state.following or not valid(state.actor)then return false end
+    local ok,ready=pcall(function()
+        return AI.board(state.stub,state.board)~=nil and state.board.bMainBehaviorSuspended
+            and not state.board.bIsDead and not state.stub:IsInCombat()and not state.board.Combat.bInCombat
+            and not state.stub:IsInCinematicMode()and not state.board:HasAnyUnbreakableActiveAction()
+            and valid(state.movement)and valid(state.controller)
+    end)
+    return ok and ready
+end
+function M.begin(actor,log,inheritedAttention)
+    local state={actor=actor,changes={},log=log,attention=inheritedAttention}
     local ok,err=pcall(function()
         state.controller=actor:GetController();state.movement=actor:GetMovementComponent()
         local found,stub=pcall(stubFor,actor)
@@ -122,12 +280,20 @@ function M.begin(actor,log)
                 state.blocked=true;state.reason='NPC is busy with combat, a cinematic, or another behavior hold';return
             end
             change(state,function()return state.board end,'bMainBehaviorSuspended',true)
-            -- Cancel the running RebelAI goal, including action-owned locomotion
-            -- montages. Disabling an ordinary BrainComponent did not stop these.
-            state.board:StopPlayingMontagesByActions()
-            state.board:StopAllActions()
+            -- A settled actor with no live action has nothing to cancel. This
+            -- preserves idle/turn animation; moving or busy actors still stop.
+            local inspected,idle=pcall(function()
+                local v=actor:GetVelocity()
+                return #state.board.ActiveActions==0 and v.X*v.X+v.Y*v.Y+v.Z*v.Z<1
+                    and valid(state.controller)and state.controller:GetMoveStatus()==0
+            end)
+            state.alreadyIdle=inspected and idle
+            if not state.alreadyIdle then
+                state.board:StopPlayingMontagesByActions()
+                state.board:StopAllActions()
+            end
         end
-        if valid(state.controller)then state.controller:StopMovement()end
+        if valid(state.controller)and not state.alreadyIdle then state.controller:StopMovement()end
         change(state,function()return actor end,'bUseControllerRotationYaw',false)
         local movement=state.movement
         if valid(movement)and (movement.MovementMode==1 or movement.MovementMode==2)then
@@ -140,15 +306,15 @@ function M.begin(actor,log)
             -- physics enabled so root-motion turn/stop animations can move feet.
             local previousInput=movement:GetOverrideInputSize()
             assert(type(previousInput)=='number','Native movement input unavailable')
-            state.changes[#state.changes+1]=function()
+            if previousInput~=0 then state.changes[#state.changes+1]=function()
                 if valid(state.actor)and (not state.stub or AI.board(state.stub,state.board))and valid(movement)and movement:GetOverrideInputSize()==0 then
                     -- Reset writes the native -1 sentinel. The ordinary setter
                     -- clamps negative values to zero, so Set(-1) freezes travel.
                     if previousInput<0 then movement:ResetOverrideInputSize()
                     else movement:SetOverrideInputSize(previousInput)end
                 end
-            end
-            movement:StopMovementImmediately();movement:SetOverrideInputSize(0)
+            end;movement:SetOverrideInputSize(0)end
+            if not state.alreadyIdle then movement:StopMovementImmediately()end
         end
         log('Conversation hold: native behavior suspended; body idle animation remains running')
     end)
@@ -258,6 +424,7 @@ function M.inspect(actor)
     read('movementMode',function()return actor:GetMovementComponent().MovementMode end)
     read('movementInputOverride',function()return actor:GetMovementComponent():GetOverrideInputSize()end)
     read('lookAtMode',function()return actor:GetMovementComponent().CurrentLookAtMode end)
+    read('headLookTargets',function()return #actor.LookAtTargets end)
     read('rotationMode',function()return actor:GetMovementComponent().CurrentRotationMode end)
     read('turnInPlace',function()return actor.Mesh:GetAnimInstance().bCanTurnInPlace end)
     read('velocity',function()local v=actor:GetVelocity();return math.sqrt(v.X*v.X+v.Y*v.Y)end)

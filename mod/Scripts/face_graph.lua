@@ -1,6 +1,15 @@
 -- Inspect class metadata and linked layers belonging to the selected face only.
 -- Fixed, verified numeric inputs only; no array callbacks or arbitrary property traversal.
 local M={}
+local AI=require('ai_state')
+local ambientFaces={}
+local upperNames={}
+for _,name in ipairs({'eyeBlink','eyeWiden','eyeSquintInner','eyeCheekRaise','browDown','browLateral','browRaiseIn','browRaiseOuter','noseWrinkle'})do
+    for _,side in ipairs({'L','R'})do upperNames[#upperNames+1]='CTRL_expressions_'..name..side end
+end
+local function bounded(value)
+    return type(value)=='number'and value==value and math.max(0,math.min(1,value))or 0
+end
 function M.catalog(log)
     log('NEXT FindObjects animation class metadata')
     local classes=FindObjects(0,'AnimBlueprintGeneratedClass',nil,0,0,false)or{}
@@ -48,6 +57,11 @@ function M.catalog(log)
     log('CATALOG COMPLETE')
 end
 local function valid(o)return o and o:IsValid()end
+function M.isCurrent(state)
+    if not state or state.restored or not valid(state.main)or not valid(state.instance)or not valid(state.desired)then return false end
+    local ok,current=pcall(function()return state.main:GetLinkedAnimLayerInstanceByClass(state.desired,false)end)
+    return ok and valid(current)and current:GetAddress()==state.instance:GetAddress()
+end
 local function each(a,fn)
     for i=1,#a do fn(a[i])end
 end
@@ -185,6 +199,14 @@ local directNames={
 }
 function M.restoreLayer(state)
     if not state or state.restored then return end
+    ambientFaces[state]=nil
+    if state.upper and valid(state.instance)then
+        pcall(function()
+            for _,entry in ipairs(state.upper)do
+                if state.upperMap:Contains(entry.key)then state.upperMap:Find(entry.key):set(entry.original)end
+            end
+        end)
+    end
     if state.directNodes and valid(state.instance)then
         for _,node in ipairs(state.directNodes)do
             local ok,err=pcall(function()
@@ -208,24 +230,86 @@ function M.restoreLayer(state)
     state.restored=true
     state.log('Previous face layers restored')
 end
+local function prepareUpperFace(state)
+    -- Initialize only our newly linked instance, before its first animation tick.
+    -- Never resize arrays or an existing game's curve map during playback.
+    if not state.changed then return end
+    local ok,err=pcall(function()
+        local map=state.instance.AnimGraphNode_ModifyCurve_3.CurveMap
+        local entries={}
+        for _,name in ipairs(upperNames)do
+            local key=FName(name)
+            local original=map:Contains(key)and map:Find(key):get()or 0
+            entries[#entries+1]={key=key,name=name,original=original}
+            if not map:Contains(key)then map:Add(key,0.0)end
+        end
+        state.upperMap=map;state.upper=entries;state.upperWeights={}
+        state.blinkAt=1.2+math.random()*2;state.faceTime=0;state.faceLast=os.clock()
+        ambientFaces[state]=true
+        state.log('Upper face ready: eyelids, cheeks, brows and nose; gaze remains native')
+    end)
+    if not ok then state.log('Upper face unavailable: '..tostring(err))end
+end
+function M.hasAmbientFaces()return next(ambientFaces)~=nil end
+function M.tickAmbient()
+    local now=os.clock()
+    for state in pairs(ambientFaces)do
+        if state.restored or not valid(state.instance)or not valid(state.main)then ambientFaces[state]=nil
+        else
+            local ok,err=pcall(function()
+                local delta=math.max(0,math.min(.08,now-state.faceLast));state.faceLast=now
+                -- The animation clock must stop with the game, including menus.
+                if not state.gameplay then state.gameplay=AI.find('/Script/Engine.Default__GameplayStatics')end
+                if not valid(state.gameplay)or state.gameplay:IsGamePaused(state.main)then return end
+                state.faceTime=state.faceTime+delta
+                local t=state.faceTime-state.blinkAt;local blink=0
+                if t>=0 and t<.28 then
+                    -- Fast closure, brief full closure, softer reopening.
+                    blink=t<.085 and t/.085 or(t<.115 and 1 or 1-(t-.115)/.165)
+                    blink=blink*blink*(3-2*blink)
+                elseif t>=.28 then state.blinkAt=state.faceTime+2.8+math.random()*3.7 end
+                local refresh=now>=(state.upperRefreshAt or 0)
+                if refresh then state.upperRefreshAt=now+1 end
+                for _,entry in ipairs(state.upper)do
+                    local value=bounded(state.upperWeights[entry.name])
+                    if entry.name:find('eyeBlink',1,true)then value=math.max(value,blink)end
+                    -- No Add/Remove here: only existing float storage is updated.
+                    if refresh or not entry.last or math.abs(value-entry.last)>.0001 then
+                        if not state.upperMap:Contains(entry.key)then error('Upper-face map replaced by animation owner')end
+                        state.upperMap:Find(entry.key):set(value);entry.last=value
+                    end
+                end
+            end)
+            if not ok then
+                ambientFaces[state]=nil
+                pcall(function()for _,entry in ipairs(state.upper)do
+                    if state.upperMap:Contains(entry.key)then state.upperMap:Find(entry.key):set(entry.original)end
+                end end)
+                state.log('Upper face stopped: '..tostring(err))
+            end
+        end
+    end
+end
 function M.linkSpeechLayer(graph,log)
     if not graph or not valid(graph.main)then error('Face graph unavailable; refusing layer change')end
     local main=graph.main
-    local desired=StaticFindObject('/Game/_Dawnwalker/Animation_MH/Humans/LinkedLayers/ABP_FaceDefaultLayers.ABP_FaceDefaultLayers_C')
+    local desired=AI.find('/Game/_Dawnwalker/Animation_MH/Humans/LinkedLayers/ABP_FaceDefaultLayers.ABP_FaceDefaultLayers_C')
     if not valid(desired)then error('Verified JALI face layer is not loaded')end
     local state={main=main,desired=desired,previous={},log=log}
     state.instance=main:GetLinkedAnimLayerInstanceByClass(desired,false)
     if valid(state.instance)then log('JALI face layer already attached');return state end
-    local classes=FindObjects(0,'AnimBlueprintGeneratedClass',nil,0,0,false)or{}
     local mainName=main:GetFullName()
-    for _,cls in ipairs(classes)do
-        if valid(cls)then
-            local linked=main:GetLinkedAnimLayerInstanceByClass(cls,false)
-            if valid(linked)and linked:GetFullName()~=mainName then
-                table.insert(state.previous,cls);log('Preserve face layer '..cls:GetFullName())
-            end
+    -- This game's expression layers are in the ungrouped layer set. Enumerate
+    -- only this face's linked instances, never every animation class in memory.
+    local linked={};main:GetLinkedAnimLayerInstancesByGroup(FName('None'),linked)
+    local seen={}
+    for _,instance in ipairs(linked)do
+        if valid(instance)and instance:GetFullName()~=mainName then
+            local cls=instance:GetClass();local name=cls:GetFullName()
+            if not seen[name]then state.previous[#state.previous+1]=cls;seen[name]=true end
         end
     end
+    if #state.previous==0 then error('No owned expression layer found; leaving native face unchanged')end
     -- Anca has exactly one expression class. Multiple overlapping classes need ordering evidence.
     if #state.previous>1 then error('Multiple existing face classes; refusing an ambiguous restore order')end
     local ok,err=pcall(function()
@@ -237,6 +321,7 @@ function M.linkSpeechLayer(graph,log)
         log('Speech layer attached: '..linked:GetFullName())
     end)
     if not ok then M.restoreLayer(state);error(err)end
+    prepareUpperFace(state)
     return state
 end
 function M.beginJaw(state,actor,now)
@@ -263,6 +348,9 @@ function M.tickJaw(test,now)
 end
 function M.applyWeights(state,weights)
     if not state or not valid(state.instance)then error('Face layer unloaded')end
+    if state.upper then
+        for _,entry in ipairs(state.upper)do state.upperWeights[entry.name]=bounded(weights[entry.name])end
+    end
     local jaw=weights.CTRL_expressions_jawOpen or weights.JawOpen or 0
     if type(jaw)~='number'or jaw~=jaw then jaw=0 end
     state.instance.JawOpenAlpha=math.max(0,math.min(1,jaw))
@@ -289,12 +377,6 @@ function M.applyWeights(state,weights)
                 state.directNodes=prepared
                 state.log('Direct numeric lip inputs captured: 129 mouth/jaw/tongue + 4 lip-closure controls')
             end
-            state.directFrames=(state.directFrames or 0)+1
-            if state.directFrames%30==0 then
-                local previous=state.directNodes[1].values[27]
-                local requested=weights.CTRL_expressions_mouthFunnelUL or 0
-                state.log('Lip funnel sample: previous array='..tostring(previous)..'; previous requested='..tostring(state.previousFunnel)..'; incoming='..tostring(requested))
-            end
             for _,node in ipairs(state.directNodes)do
                 if #node.values~=#node.names then error('Curve array changed during playback')end
                 for i,name in ipairs(node.names)do
@@ -303,7 +385,6 @@ function M.applyWeights(state,weights)
                     node.values[i]=math.max(0,math.min(1,value))
                 end
             end
-            state.previousFunnel=weights.CTRL_expressions_mouthFunnelUL or 0
         end)
         if directOK then return end
         state.directDisabled=true;state.mapDisabled=true
@@ -312,7 +393,7 @@ function M.applyWeights(state,weights)
     end
 end
 function M.capture(actor,log,lightweight)
-    local meshes=actor:K2_GetComponentsByClass(StaticFindObject('/Script/Engine.SkeletalMeshComponent'))
+    local meshes=actor:K2_GetComponentsByClass(AI.find('/Script/Engine.SkeletalMeshComponent'))
     local face
     each(meshes,function(mesh)
         if valid(mesh)and mesh:GetFName():ToString():lower():find('face',1,true)then face=mesh end

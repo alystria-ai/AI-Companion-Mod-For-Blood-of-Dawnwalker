@@ -21,9 +21,22 @@ test('whole-party arrival seats stay compact and separated, remain fixed during 
    for j=1,i-1 do local v=g[tostring(j)].point;assert((q.X-v.X)^2+(q.Y-v.Y)^2>=160^2,'Assigned seats overlap')end
   end
   local before=g['1'].point
+  for _,row in ipairs(rows)do row.pitch=300;row.distanceScale=2 end
   p:update(rows,{X=1150,Y=50,Z=0},180,0,3000)
   assert(p.goals['1'].point.X==before.X and p.goals['1'].point.Y==before.Y,'Camera/approach shuffled the party')
   table.remove(rows);p:update(rows,{X=1150,Y=50,Z=0},180,0,3250);assert(not p.seats[tostring(count)],'Dismissed member retained its seat')
+ end
+ for _,count in ipairs({2,6,20,40})do
+  local members={};for i=1,count do members[i]={ordinal=i,characterId='a',baseName='A',capsuleRadius=55}end
+  for _,narrow in ipairs({0,1})do for _,closeness in ipairs({50,100,150})do for _,spacing in ipairs({75,100,175})do
+   local ordered=R.layout(members,{FollowerCloseness=closeness,PartySpacing=spacing,NarrowFormation=narrow});local points={}
+   for i,m in ipairs(ordered)do
+    local q=R.followPoint({X=0,Y=0,Z=0},0,i,m.formationPitch,count,m.formationDistanceScale,m.formationNarrow)
+    assert(q.X<0 and q.X*q.X+q.Y*q.Y>=130^2-0.01,'Closeness overlapped Coen')
+    for _,v in ipairs(points)do assert((q.X-v.X)^2+(q.Y-v.Y)^2>=145^2-0.01,'Following controls overlapped seats')end
+    points[#points+1]=q
+   end
+  end end end
  end
 `));
 test('combat and conversations retain their space while a blocked rear seat yields on its own arc',()=>run(`${planning}
@@ -36,6 +49,20 @@ test('combat and conversations retain their space while a blocked rear seat yiel
  local q=p.goals['1'].point
  assert((q.X-point.X)^2+(q.Y-point.Y)^2>=155^2,'Yielding member moved into a locked actor')
  rows[9].locked=false;p:update(rows,{X=1500,Y=0,Z=0},0,600,3000);assert(p.goals['9'],'Released member never rejoined')
+ -- Approaching a parked companion must reserve its spot even when a later
+ -- arrival's planned destination is exactly there.
+ p=P.new();rows={}
+ for i=1,6 do rows[i]={id=tostring(i),ordinal=i,slot=i,pitch=190,radius=55,position={X=-1000,Y=i*200,Z=0}}end
+ p:update(rows,{X=0,Y=0,Z=0},0,0,0)
+ p:update(rows,{X=1000,Y=0,Z=0},0,600,1000)
+ p:update(rows,{X=1000,Y=0,Z=0},0,0,2000)
+ local occupied=p.goals['2'].point
+ rows[1].position={X=occupied.X,Y=occupied.Y,Z=occupied.Z}
+ p.seats['1'].parked=rows[1].position
+ p:update(rows,{X=1000,Y=0,Z=0},0,0,2250)
+ assert(p.goals['1'].distance==0,'Arriving seat displaced a parked speaker')
+ local arrival=p.goals['2'].point
+ assert((arrival.X-occupied.X)^2+(arrival.Y-occupied.Y)^2>=145^2,'Arrival did not respect the parked speaker')
 `));
 const boundary=`
  local alive=function(o)return o and not o.dead end
@@ -46,7 +73,7 @@ const boundary=`
  local stub={AIBoard=b,IsInCombat=function()return b.Combat.bInCombat end,IsInCinematicMode=function()return false end}
  local bb={values={track=false,follow=false},GetValueAsObject=function(self,k)return self.values[k]end,GetValueAsBool=function(self,k)return self.values[k]or false end,SetValueAsBool=function(self,k,v)self.values[k]=v end}
  local calls,stops,destroyed=0,0,0;local marker
- local c={Blackboard=bb,BrainComponent={},MovementTargetActorBBKey='target',ShouldFollowTargetBBKey='follow',ShouldTrackTargetBBKey='track',StopMovement=function()end}
+ local c={Blackboard=bb,BrainComponent={},MovementTargetActorBBKey='target',ShouldFollowTargetBBKey='follow',ShouldTrackTargetBBKey='track',StopMovement=function()end,GetMoveStatus=function(self)return self.pathStatus or 3 end}
  c.AIMoveToActor=function(self,target,follow,track,fast)assert(not b.bMainBehaviorSuspended and not b.Follower.bFollowerModeEnabled);calls=calls+1;bb.values.target=target;bb.values.follow=follow;bb.values.track=track end
  c.AIStopFollowing=function()stops=stops+1;bb.values.target=nil end
  local world={SpawnActor=function(self,class,p,r)
@@ -74,8 +101,8 @@ test('native ownership preserves a foreign movement target and cleans up detache
 `));
 test('arrival stops the path once and small idle motion does not restart it',()=>run(`${boundary}
  goal.epoch=1;assert(N.update(m,goal,0))
- actor.K2_GetActorLocation=function()return {X=450,Y=0,Z=0}end
- goal.distance=50;assert(N.update(m,goal,250));assert(stops==1 and m.formationLease.settled)
+ actor.K2_GetActorLocation=function()return {X=414,Y=0,Z=0}end
+ goal.distance=86;assert(N.update(m,goal,250));assert(stops==1 and m.formationLease.settled,'Native arrival must not stay in the old 80 to 100 cm dead zone')
  for now=500,4000,250 do goal.distance=110;assert(N.update(m,goal,now))end
  assert(calls==1 and stops==1 and not b.Follower.bFollowerModeEnabled,'Idle correction restarted following')
  goal.moving=true;goal.epoch=2;goal.point={X=1000,Y=0,Z=0};goal.distance=550
@@ -83,12 +110,13 @@ test('arrival stops the path once and small idle motion does not restart it',()=
  assert(marker.point.X==1100,'Resumed navigation used the old arrival point')
  goal.moving=false;goal.distance=40;N.update(m,goal,4500);N.release(m.formationLease)
  assert(b.Follower.bFollowerModeEnabled and bb.values.follow==false and bb.values.track==false,'Idle lease failed to restore flags')
+ goal.distance=125;c.pathStatus=0;assert(N.update(m,goal,5000));assert(m.formationLease.settled,'Native idle just inside settled tolerance kept chasing')
 `));
 test('native route stalls have bounded rebinds and yield after measured failure',()=>run(`${boundary}
- for now=0,18000,250 do N.update(m,goal,now)end
+ for now=0,6000,250 do N.update(m,goal,now)end
  assert(calls==3 and not m.formationLease.owned,'Stalled native route became an endless restart loop')
- assert(m.formationLease.retryAt==24000 and b.Follower.bFollowerModeEnabled)
- for now=18250,23750,250 do N.update(m,goal,now)end
+ assert(m.formationLease.retryAt==12000 and b.Follower.bFollowerModeEnabled)
+ for now=6250,11750,250 do N.update(m,goal,now)end
  assert(calls==3,'Fallback delay ignored')
 `));
 test('native stop-radius compensation reaches the seat and moving intents refresh at a bounded cadence',()=>run(`${boundary}

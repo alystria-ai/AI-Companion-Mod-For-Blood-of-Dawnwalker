@@ -87,7 +87,7 @@ function M.update(m,goal,now)
  -- chasing that last fraction of a metre once the group has arrived. Keep
  -- the owned follower flag off so the fallback does not immediately restart.
  -- A wider exit tolerance prevents turn-in-place root motion from waking it.
- if not goal.moving and goal.distance<=80 then
+ if not goal.moving and (goal.distance<=100 or goal.distance<=145 and c:GetMoveStatus()==0)then
   c:AIStopFollowing();c:StopMovement()
   s.settled=true;s.settledEpoch=goal.epoch;s.sample=nil;s.failures=0
   return true,'Settled; native idle'
@@ -112,7 +112,7 @@ function M.update(m,goal,now)
  local a=actorPosition;local sample=s.sample
  if not sample or (a.X-sample.X)^2+(a.Y-sample.Y)^2>=75^2 or goal.distance<=100 then
   s.sample={X=a.X,Y=a.Y,at=now};s.failures=0
- elseif now-sample.at>=4500 and now-(s.issuedAt or 0)>=6000 then
+ elseif now-sample.at>=2000 and now-(s.issuedAt or 0)>=2000 then
   s.failures=(s.failures or 0)+1
   if s.failures>=3 then M.release(s);s.retryAt=now+6000;return false,'Native route blocked; follow fallback'end
   c:AIMoveToActor(s.marker,true,true,false);s.issuedAt=now;s.sample={X=a.X,Y=a.Y,at=now}

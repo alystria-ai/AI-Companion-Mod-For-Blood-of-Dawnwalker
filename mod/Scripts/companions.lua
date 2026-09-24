@@ -41,8 +41,15 @@ local formation=Formation.new();local formationFrame=formation.frame
 local partyPositions={}
 local partyDeparture=false
 local gazeAttention={}
+local gazeQuietSince
 local xantheCombatProfile='/Game/_Dawnwalker/Player/MovementProfiles/DA_Xanthe_Combat_MovementProfile.DA_Xanthe_Combat_MovementProfile'
 local valid,same=AI.valid,AI.same
+local layoutCloseness,layoutSpacing,layoutNarrow
+local function layoutParty()
+ layoutCloseness=Settings.values.FollowerCloseness or 100;layoutSpacing=Settings.values.PartySpacing or 100
+ layoutNarrow=Settings.values.NarrowFormation or 0
+ return Recovery.layout(members,{FollowerCloseness=layoutCloseness,PartySpacing=layoutSpacing,NarrowFormation=layoutNarrow})
+end
 local function ready(m)return valid(m.actor)and AI.board(m.stub,m.board)end
 local function clean(s)return tostring(s or ''):gsub('[\r\n\t]',' '):sub(1,500)end
 local function read(name,max)local f=io.open(root..'/'..name,'rb');if not f then return ''end;local s=f:read(max or 65536)or '';f:close();return s end
@@ -285,7 +292,7 @@ local function dismiss(m,reason)
  if m.actionPath then local result,why=Native.stop(m.actionPath);assert(result,why)end
  if m.stubKey then ownedStubs[m.stubKey]=nil;m.stubKey=nil end
  members[m.id]=nil;log(m.name..': '..reason)
- Recovery.layout(members)
+ layoutParty()
 end
 local beforeReset=nil
 function M.beforeReset(fn)beforeReset=fn end
@@ -509,18 +516,23 @@ end
 local function conversationReady(m)
  return conversationCandidate(m)and not m.board:HasAnyUnbreakableActiveAction()
 end
-local function updateGaze(pc,now)
- if partyEncounterActive or playerSpeed>=170 or formationFrame.moving then releaseGaze();return end
+local function updateGaze(pc,now,selected)
+ if partyEncounterActive or playerSpeed>=170 or formationFrame.moving then gazeQuietSince=nil;releaseGaze();return end
+ gazeQuietSince=gazeQuietSince or now
  local candidates={}
  -- Reuse the formation snapshot. No world scan or camera-facing requirement:
  -- settled followers behind Coen participate too, including combat-only ones.
  for _,p in ipairs(partyPositions)do
   local m=members[p.id];local goal=formation.goals[p.id]
-  if m and not p.locked and goal and goal.distance<=100 then
+  local settled=m and m.formationLease and m.formationLease.settled and goal
+   and m.formationLease.settledEpoch==goal.epoch
+  -- AIStopFollowing clears controller focus when arrival completes. Let that
+  -- one-shot cleanup finish before attention takes ownership, not afterwards.
+  if m and not p.locked and settled and goal.distance<=150 then
    local gap=distance(p,playerPoint);local range=math.max(650,(m.followSpacing or 250)+200)
    if gap<=range and math.abs(p.Z-playerPoint.Z)<180 then
     local v=m.actor:GetVelocity()
-    if v.X^2+v.Y^2<=25^2 then
+    if v.X^2+v.Y^2<=(gazeAttention[m.id]and 40 or 25)^2 then
      if not same(m.gazeLOSActor,m.actor)or now>=(m.gazeLOSAt or 0)then
       m.gazeLOSActor=m.actor;m.gazeLOSAt=now+2000
       m.gazeVisible=pc:LineOfSightTo(m.actor,cameraPoint or playerPoint,false)
@@ -544,16 +556,17 @@ local function updateGaze(pc,now)
  end
  for id,state in pairs(gazeAttention)do
   local entry=wanted[id]
-  if not entry or not same(state.actor,entry.m.actor)or state.sideAngle~=entry.angle then releaseGaze(id)end
+  if not entry or not same(state.actor,entry.m.actor)then releaseGaze(id)end
  end
  -- Spread new native leases across ticks for large parties. Existing leases
  -- update without pushing another mode; movement/combat release them first.
  local acquired=0
  for _,entry in ipairs(candidates)do
   local id=entry.m.id;local previous=gazeAttention[id]
-  if previous or acquired<4 and now>=(entry.m.gazeAttemptAt or 0)then
+  if previous or acquired<1 and now-gazeQuietSince>=1000 and now>=(entry.m.gazeAttemptAt or 0)then
    if not previous then acquired=acquired+1 end
-   gazeAttention[id]=Engagement.attend(previous,entry.m.actor,player,log,false,{sideAngle=entry.angle,range=entry.range})
+   gazeAttention[id]=Engagement.attend(previous,entry.m.actor,player,log,false,{sideAngle=entry.angle,range=entry.range,
+    idleSmile=entry.m.definition.chat~=false and not same(entry.m.actor,selected)})
    if gazeAttention[id]then entry.m.gazeAttemptAt=nil else entry.m.gazeAttemptAt=now+5000 end
   end
  end
@@ -567,16 +580,46 @@ end
 function M.identity(actor)
  for _,m in pairs(members)do if same(m.actor,actor)then return {name=m.name,definition=m.definition.path,characterId=m.characterId,chat=m.definition.chat~=false}end end
 end
-function M.beforeConversation(actor)
- releaseGaze()
+function M.selectForChat(actor,takeFace)
+ for _,m in pairs(members)do if same(m.actor,actor)then
+  if not conversationReady(m)then return false,'Companion is busy with combat or an action'end
+  -- Selection is bookkeeping only. Following, focus and body/head animation
+  -- keep their existing party owner; no action cancellation or movement hold.
+  m.talkFollowing=true
+  return true,nil,takeFace and Engagement.takeIdleFace(gazeAttention[m.id])or nil
+ end end
+ return nil -- World NPCs use the separate conversation hold adapter.
+end
+function M.returnChatFace(actor,face)
+ if not face or face.restored then return false end
+ for _,m in pairs(members)do if same(m.actor,actor)then
+  local look=gazeAttention[m.id]
+  if look and look.sideAngle==0 and not look.idleFace and same(look.actor,actor)then
+   look.idleFace=face;look.idleSmile=true;look.smileAttempted=true
+   look.smileStarted=look.smileStarted or os.clock()
+   return true
+  end
+ end end
+ return false
+end
+function M.beforeConversation(actor,takeFace,takeAttention)
  for _,m in pairs(members)do if same(m.actor,actor)then
   if not conversationReady(m)then return false,'Companion is busy with combat or an action'end
   m.talkFollowing=nil;m.resumeConversation=nil;m.formationPending=nil;m.formationEpoch=formationFrame.epoch
   m.conversationOwned=actor
   releaseFollowPace(m);releaseHold(m)
-  -- A cached running gait is not evidence that the native animation state
-  -- still matches it. Re-evaluate once before acquiring the movement hold.
-  m.travelPose=nil;m.travelGait=nil;travelPose(m,false);return true
+  local look=gazeAttention[m.id]
+  local facing=takeAttention and Engagement.canTransferAttention(look,actor)
+  -- A live settled attention lease already established the idle pose. Moving
+  -- actors still need the travel-to-conversation cleanup.
+  if not facing then m.travelPose=nil;m.travelGait=nil;travelPose(m,false)end
+  -- Chat concerns one actor. Releasing the entire party reset their head/body
+  -- attention and rebuilt multiple face graphs on the next formation tick.
+  local face=takeFace and Engagement.takeIdleFace(look)or nil
+  if facing then
+   gazeAttention[m.id]=nil;look.idleSmile=false
+  else releaseGaze(m.id);look=nil end
+  return true,nil,face,look
  end end
  return true
 end
@@ -643,7 +686,7 @@ local function attach(m,actor)
  m.formationEpoch=formationFrame.epoch;m.formationPending=nil
  local capsule=actor.CapsuleComponent
  if valid(capsule)then m.capsuleRadius=capsule:GetScaledCapsuleRadius()end
- Recovery.layout(members)
+ layoutParty()
  friendly(m,s,playerStub);friendly(m,playerStub,s)
  m.playerEpoch=playerEpoch
  for _,other in pairs(members)do if other~=m and ready(other)then friendly(m,s,other.stub);friendly(m,other.stub,s)end end
@@ -821,7 +864,7 @@ local function spawn(id,now,request,preset)
  local m={id=request,characterId=id,archetype=c.archetype~=''and c.archetype or id,label=label,baseName=label,ordinal=spawnOrdinal,name=c.name,definition=c,loading='character',spawnSlot=slot,position=position,yaw=yaw,created=now,mode='follow',status='Loading character',detail='',attitudes={}}
  m.appearancePreset=Appearance.capture(id,preset)
  members[request]=m -- A distinct game actor; the Convai identity stays c.id.
- Recovery.layout(members)
+ layoutParty()
  m.request=request
  for i=#summons,1,-1 do if summons[i].id==request then table.remove(summons,i)end end
  summons[#summons+1]={id=request,member=request,phase='character',message='Preparing character'}
@@ -904,7 +947,7 @@ local function replaceMissingMember(m,now)
  dismiss(m,'Recreating an unavailable travel owner')
  spawn(character,now,id,preset)
  local replacement=members[id];replacement.ordinal=ordinal;replacement.mode=mode;replacement.replacedEpoch=epoch
- Recovery.layout(members)
+ layoutParty()
  log(replacement.name..' owner recreated after travel streaming did not recover')
 end
 local function cancelPendingWorldDismissals()
@@ -941,7 +984,7 @@ local function restoreWorldParty(now)
    table.remove(queue,1)
   end
  end
- Recovery.layout(members)
+ layoutParty()
  if not ok then pendingWorldParty.retryAt=now+2000;note='Waiting to restore travelling party: '..clean(why)
  elseif #queue==0 then pendingWorldParty=nil;log('Party restored after world travel')
  else note='Restoring travelling party · '..#queue..' remaining'end
@@ -1187,7 +1230,7 @@ local function update(m,now,enemies,selected)
    if same(m.actor,selected)and beforeReset then beforeReset()end
    local id,character,ordinal=m.id,m.characterId,m.ordinal
    local preset=Appearance.capture(character,m.appearancePreset)
-   dismiss(m,'Returning after combat');spawn(character,now,id,preset);members[id].ordinal=ordinal;Recovery.layout(members)
+   dismiss(m,'Returning after combat');spawn(character,now,id,preset);members[id].ordinal=ordinal;layoutParty()
   end
   return
  end
@@ -1372,6 +1415,7 @@ function M.tick(pc,selected)
   worldName=currentWorld;playerName=currentPlayer
   if lastGameTime and now==lastGameTime then note='Paused. Queued commands execute after unpausing.';publish();return end
   lastGameTime=now;note='Companions follow and fight automatically; native AI chooses abilities.'
+  if layoutCloseness~=(Settings.values.FollowerCloseness or 100)or layoutSpacing~=(Settings.values.PartySpacing or 100)or layoutNarrow~=(Settings.values.NarrowFormation or 0)then layoutParty()end
   playerPoint=loc(player)
   local velocity=player:GetVelocity();playerVelocity={X=velocity.X,Y=velocity.Y};playerSpeed=math.sqrt(velocity.X^2+velocity.Y^2)
   travelKind,travelEpoch,travelDiscontinuity=Recovery.travelTransition(travelState,{now=now,world=currentWorld,player=currentPlayer,point=playerPoint,speed=playerSpeed,reset=clockReset})
@@ -1475,7 +1519,7 @@ function M.tick(pc,selected)
   partyPositions={}
   for _,m in pairs(members)do if ready(m)then
    local p=loc(m.actor);p.id=m.id;p.ordinal=m.ordinal;p.radius=m.capsuleRadius or 55
-   p.position={X=p.X,Y=p.Y,Z=p.Z};p.slot=m.formationSlot;p.pitch=m.formationPitch;p.count=m.formationCount
+   p.position={X=p.X,Y=p.Y,Z=p.Z};p.slot=m.formationSlot;p.pitch=m.formationPitch;p.count=m.formationCount;p.distanceScale=m.formationDistanceScale;p.narrow=m.formationNarrow
    p.locked=m.mode~='follow'or same(m.actor,selected)and not m.talkFollowing or m.hold~=nil
     or m.stub:IsInCombat()or m.board.Combat.bInCombat or m.stub:IsInCinematicMode()
     or m.board.bMainBehaviorSuspended or m.board.bIsDead or m.board:HasAnyUnbreakableActiveAction()
@@ -1483,7 +1527,7 @@ function M.tick(pc,selected)
    partyPositions[#partyPositions+1]=p
   end end
   formation:update(partyPositions,playerPoint,heading,playerSpeed,now,members)
-  updateGaze(pc,now)
+  measured('attention',updateGaze,pc,now,selected)
   travelHeading=formationFrame.yaw
   local ordered;ordered,updateCursor=Recovery.updateOrder(members,updateCursor)
   local loadBudget={}

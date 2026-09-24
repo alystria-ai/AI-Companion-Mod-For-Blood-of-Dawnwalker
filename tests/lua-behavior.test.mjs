@@ -104,6 +104,7 @@ test('face graph resolves only owned linked instances and samples without rescan
  local actor={K2_GetComponentsByClass=function()return {face}end}
  local scans=0
  StaticFindObject=function()return {IsValid=valid}end
+ require('ai_state').find=StaticFindObject
  FindAllOf=function()scans=scans+1;error('Global scan prohibited')end
  FName=function(s)return s end
  local lines={};local state=M.capture(actor,function(s)table.insert(lines,s)end)
@@ -116,14 +117,17 @@ test('face graph resolves only owned linked instances and samples without rescan
 test('speech layer links temporarily and restores the captured expression layer',()=>run('face_graph',`
  local function valid()return true end
  local desired={IsValid=valid};local previous={IsValid=valid,GetFullName=function()return 'FemaleExpression' end}
- local old={IsValid=valid,GetFullName=function()return 'Expression instance' end}
+ local old={IsValid=valid,GetFullName=function()return 'Expression instance' end,GetClass=function()return previous end}
  local new={IsValid=valid,JawOpenAlpha=0.12,GetFullName=function()return 'JALI instance' end}
  local main={IsValid=valid,GetFullName=function()return 'Main' end,active=previous}
  function main:GetLinkedAnimLayerInstanceByClass(cls)if self.active==cls then return cls==desired and new or old end end
+ function main:GetLinkedAnimLayerInstancesByGroup(group,out)assert(group=='None');out[1]=main;out[2]=old end
  function main:LinkAnimClassLayers(cls)self.active=cls end
  function main:UnlinkAnimClassLayers(cls)assert(self.active==cls);self.active=nil end
  StaticFindObject=function()return desired end
- FindObjects=function()return {previous,desired}end
+ require('ai_state').find=StaticFindObject
+ FName=function(s)return s end
+ FindObjects=function()error('Global animation scan prohibited')end
  local state=M.linkSpeechLayer({main=main},function()end)
  assert(main.active==desired and state.previous[1]==previous)
  local preview=M.beginJaw(state,{IsValid=valid},100)
@@ -230,6 +234,15 @@ test('native hold and companion transitions preserve idle and restore owned stat
  stub.cinematic=false;board.bMainBehaviorSuspended=true;held=M.begin(actor,log);assert(held.blocked);M.finish(held);assert(board.bMainBehaviorSuspended,'must preserve external holds')
  board.bMainBehaviorSuspended=false;held=M.begin(actor,log);assert(M.follow(held,player));board.Follower.bFollowerModeEnabled=false
  assert(not M.followTick(held,player),'game override ends follow rather than fighting it');M.finish(held)
+ -- Already-settled speakers keep their animation rather than cancelling an empty action queue.
+ board.ActiveActions={};actor.GetVelocity=function()return {X=0,Y=0,Z=0}end
+ controller.GetMoveStatus=function()return 0 end
+ local stoppedBefore=board.stops;movement.stopped=false;board.stoppedMontages=false
+ held=M.begin(actor,log);assert(not held.blocked and held.alreadyIdle and M.canReuseHold(held))
+ assert(board.stops==stoppedBefore and not board.stoppedMontages and not movement.stopped,'Idle conversation cancelled animation')
+ board.busy=true;assert(not M.canReuseHold(held),'Busy native action cannot reuse a hold');board.busy=false
+ M.finish(held);assert(not M.canReuseHold(held),'Released hold cannot be reused')
+ actor.GetVelocity=function()return {X=100,Y=0,Z=0}end
  -- A native error after the first write must restore the earlier mutation.
  board.StopAllActions=function()error('unavailable')end
  held=M.begin(actor,log);assert(held.blocked and not board.bMainBehaviorSuspended and movement.MovementMode==1)
@@ -269,11 +282,13 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  function mesh:GetFName()return name('Face Mesh')end
  function mesh:GetClass()return class end
  function mesh:GetSkeletalMeshAsset()assert(not metadataOnly,'F8 must never read mesh assets');return {IsValid=valid,GetFullName=function()return 'Face asset' end,MorphTargets={morph}} end
- local faceAnim={IsValid=valid,JawOpenAlpha=0.15,GetFullName=function()return 'FaceInstance' end,GetClass=function()return class end}
- function faceAnim:GetLinkedAnimLayerInstanceByClass(c)return self.linked and self or nil end
- function faceAnim:GetLinkedAnimLayerInstancesByGroup()end
+ local faceAnim={IsValid=valid,JawOpenAlpha=0.15,GetFullName=function()return 'FaceInstance' end,GetClass=function()return class end,GetAddress=function()return 2 end}
+ local expressionClass={IsValid=valid,GetFullName=function()return 'FemaleExpression' end}
+ local expression={IsValid=valid,GetFullName=function()return 'ExpressionInstance' end,GetClass=function()return expressionClass end}
+ function faceAnim:GetLinkedAnimLayerInstanceByClass(c)if self.linked then return c==class and self or nil end;return c==expressionClass and expression or nil end
+ function faceAnim:GetLinkedAnimLayerInstancesByGroup(_,out)out[1]=expression end
  function faceAnim:GetAllCurveNames()end
- function faceAnim:LinkAnimClassLayers()self.linked=true end
+ function faceAnim:LinkAnimClassLayers(c)self.linked=c==class end
  function faceAnim:UnlinkAnimClassLayers()self.linked=false end
  function mesh:GetAnimInstance()return faceAnim end
  function mesh:GetNumBones()return 0 end
@@ -334,10 +349,12 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  package.preload.companions=function()return {beforeReset=function()end,
   identity=function(actor)if ownedParty and actor==npc then return {name='Anca',characterId='anca'}end end,
   conversationAction=function(actor,action)assert(actor==npc and ownedParty);partyAction=action;return true,'Party action accepted'end,
+  selectForChat=function()return nil end,returnChatFace=function()return false end,
   beforeConversation=function()end,afterConversation=function()end,cleanup=function()end,tick=function()end,actor=function()return npc end
  }end
  package.preload.ui_input=function()return {acquire=function()return {}end,release=function()end}end
  ${['ai_state','targeting','engagement','config','face_inspector','jali_probe','jali_preview','face_graph'].map(name=>`package.preload.${name}=function()\n${sources[name]}\nend`).join('\n')}
+ require('ai_state').find=StaticFindObject
  ${sources.app}
  if ${streamMode} then
    files['memory/ui-control.txt']='select-single:first';for i=1,8 do tick()end;assert(movement.MovementMode==1 and movement:GetOverrideInputSize()==0 and faceAnim.linked,'conversation must hold NPC and attach face: '..table.concat(logs,' | '))
@@ -357,7 +374,7 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
    assert(movement:GetOverrideInputSize()==-1 and faceAnim.linked,'Completion must restore movement and retain face/selection')
    files['memory/ui-control.txt']='select-single:second';for i=1,8 do tick()end
    gen=files['memory/target.txt']:match('^(%d+)')
-   assert(movement:GetOverrideInputSize()==0,'Next conversation must reacquire its own hold')
+   assert(movement:GetOverrideInputSize()==0,'Next conversation must reacquire its own hold: '..table.concat(logs,' | '))
    ownedParty=true
    files['memory/actions.txt']=gen..'\\t100\\townedfollow\\tFollow\\n'
    for i=1,12 do tick()end

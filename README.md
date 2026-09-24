@@ -2,7 +2,7 @@
 
 Fight Horde battles, explore in first-person POV, customise your companions' eye, hair and armour colours, and manage relationships with Anca and Lacra. Summon characters such as Brencis, Bakir, Xanthe and Crake to follow Coen and fight alongside him using the game's native AI and abilities.
 
-Talk to supported characters through text or voice, with AI-powered replies, subtitles, lipsync and group conversations. No Convai account, API key setup or command-line commands are needed.
+Talk to supported characters through text or voice, with spoken replies, subtitles, lipsync and group conversations. Companions blink, smile, react with facial expressions and look toward you. Tune how closely they follow, choose a narrower formation, and let conversations continue with natural follow-up questions. No Convai account, API key setup or command-line commands are needed.
 
 ## Features
 
@@ -13,6 +13,8 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 - Custom eye, hair and armour colours with 33 shades, including vivid pinks, purples, blues, greens and reds. Each summoned copy keeps its own colours.
 - Relationship management with Anca and Lacra through separate Auto, On and Off profile choices. Auto follows relationship history in the loaded save, On selects her romantic conversation profile, and Off uses her normal profile. When the save confirms both relationships and both characters join group chat, they can acknowledge Coen’s relationship with each of them and exchange character-specific banter.
 - Optional multilingual pack switches conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
+- More expressive conversations with smiles, blinking and emotion-driven mouth, cheek and brow movement, native head tracking and adjustable first-person gaze offsets. Optional follow-up questions keep the exchange going naturally; only the final group speaker asks Coen.
+- Adjustable follower closeness and party spacing, plus an optional narrow formation that favours front-to-back rows. Body clearance is preserved, large groups add columns to limit tail length, and changes apply on your next real follow.
 - Character-specific biographies, speaking rules and relationships, with quest knowledge based on detected journal progress and relevant location, time and environmental context.
 - Recent battle context with observed character names, enemy types and cleared Horde waves, so companions can discuss who you fought during the rest between waves.
 - 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
@@ -25,6 +27,14 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 - Built-in Copy logs support report with sensitive values removed.
 
 ## Changelog
+
+### What changed in 0.5.2
+
+- Added greeting smiles, blinking and facial emotions that blend with speech and return to a listening smile afterwards. Native head tracking follows your viewpoint, with adjustable gaze offsets in first person.
+- Added Follow-up questions, enabled by default. Replies normally end with a relevant question unless there is a good reason not to; in group chat, only the last speaker asks Coen.
+- Added Follower closeness, Party spacing and Narrow formation under Following. Companions keep their stationary positions while you approach them, and formation changes apply on the next real walk.
+- Reduced tracking setup hitches and removed chat-key movement resets. Corrected arrival/focus timing, shortened blocked-route retries and accommodated the game's temporary look-target counts at higher frame rates.
+- Improved first-person body turning and isolated gaze-update errors from the camera. Expanded the Settings guide with defaults, ranges and explanations for every option.
 
 ### What changed in 0.5.1
 
@@ -48,7 +58,7 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.1](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.1)
+Windows · Game 1.05 · [Latest release: 0.5.2](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.2)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
 
@@ -58,10 +68,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.2/DawnwalkerConvai-0.5.2-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 
@@ -131,10 +141,14 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 
 | Setting | Default | What it does |
 | --- | --- | --- |
+| Follower closeness | 100% | Higher values bring the rear formation closer to Coen; lower values leave more room behind him. Range: 50% to 150%. Applies on your next real follow, keeping stationary companions in place. |
+| Party spacing | 100% | Lower values form a tighter group; higher values spread companions out. Range: 75% to 175%. Character size sets the minimum clearance for both following controls. |
+| Narrow formation | Off | Prefers a narrower, deeper group behind Coen, making companions easier to keep in view together. Larger parties gain extra columns so the group does not become a long single-file tail. Works with closeness and spacing; applies on the next real follow. |
 | Companion damage | 250% | Scales summoned companions' normal physical damage. Enemy damage is unchanged; some special abilities use separate damage rules. |
 | Attack frequency | 180% | Adjusts the native attack-speed attribute so attacks finish faster. Native AI still chooses when to attack and which moves to use. |
 | Anca romance profile | Auto | Auto follows your save. On always uses her romantic profile; Off always uses her normal profile, even after unlocking romance. |
 | Lacra romance profile | Auto | The same Auto, On and Off choices, independent of Anca. |
+| Follow-up questions | On | Companions normally end with one relevant question, skipping it for a clear reason such as a farewell, immediate danger or an intrusive moment. Only the final group speaker asks Coen. Off removes this encouragement; characters can still ask necessary clarifying questions. Applies to new replies, including romance profiles, and never starts the microphone automatically. |
 | Transparent chat HUD | On | Removes the backdrop behind subtitles, voice status and the typing field. Subtitles and status text have a dark outline for readability. Off restores the shaded panel. |
 | Hide chat boxes | Off | On hides all conversation text, including NPC subtitles. Voice input shows only a transparent microphone indicator with a Listening status and your finish shortcut. After sending a text message, the input disappears and no reply text is shown. Spoken replies continue. Horde countdowns are unaffected. |
 | NPC subtitles | On | Off hides subtitles for mod NPC replies while keeping the normal voice-input HUD and live transcript. Hide chat boxes overrides this toggle. The game's own subtitles are unchanged. |
@@ -143,6 +157,8 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | First-person field of view | 90° | Adjust the mod camera from 60° to 120°. Higher values show more surroundings. Applies live without changing native gameplay or cinematic cameras. |
 | Camera height offset | 0 cm | Adjust the viewpoint up or down by up to 20 cm relative to Coen's eye height. Crouching still follows the native eye height. |
 | Camera forward offset | 42 cm | Adjust the viewpoint between 20 and 70 cm ahead of Coen's capsule. Applies live in first person. |
+| Companion gaze horizontal | 5 cm | Aim companion eye contact slightly to your right in first person. Adjust from 20 cm left to 20 cm right. Zero targets the camera centre; your camera does not move. |
+| Companion gaze vertical | -1 cm | Aim companion eye contact slightly downward. Adjust from 20 cm down to 20 cm up relative to your view. Both gaze controls apply live. |
 | Starting wave (Horde page) | Roadside raiders | Choose the first enemy theme with the arrows. Remaining themes are random without repeats; the choice saves for future runs. |
 | Starting enemies | 8 | Regular enemies in the first Horde wave, in addition to bosses. |
 | Enemies added per level | 2 | Extra regular enemies added with each cleared wave. |
@@ -180,7 +196,7 @@ This is a preview mod. Some roster entries, boss powers and area attacks still n
 
 ## For developers
 
-[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-051.md)
+[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-052.md)
 
 The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai connections, group chat, quest memory and adapting the approach to another game.
 

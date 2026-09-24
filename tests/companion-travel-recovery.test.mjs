@@ -130,7 +130,7 @@ test('world restoration advances one member per tick and keeps defeated members 
   local members={};local spawns=0;local travelEpoch=9;local note='';local logs={}
   local Appearance={capture=function(_,p)return p or {}end}
   local byId={lacra={name='Lacra',archetype='lacra'},anca={name='Anca',archetype='anca'}}
-  local Recovery={layout=function()end};local function log(v)logs[#logs+1]=v end;local function clean(v)return tostring(v)end
+  local function layoutParty()end;local function log(v)logs[#logs+1]=v end;local function clean(v)return tostring(v)end
   local function spawn(character,now,id)spawns=spawns+1;members[id]={id=id,characterId=character,ordinal=99,mode='follow',spawnSlot=99}end
   ${source}
   restoreWorldParty(100)

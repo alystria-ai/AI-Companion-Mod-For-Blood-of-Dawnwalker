@@ -14,12 +14,20 @@ function M.new()
    present[row.id]=true
    local s=self.seats[row.id]
    if not s then s={epoch=frame.epoch,parked=copy(row.position)};self.seats[row.id]=s end
+   -- Settings change the next journey, not the spot somebody currently owns.
+   if not s.pitch or frame.moving then s.pitch=row.pitch;s.distanceScale=row.distanceScale;s.narrow=row.narrow end
    if row.locked then locked[#locked+1]=row;s.interrupted=true end
    if frame.moving or s.epoch~=frame.epoch then s.parked=nil;s.epoch=frame.epoch end
    -- Hold the local group while the player approaches one companion. A new
    -- journey releases the parked seat; turning the camera never reshuffles it.
    if not row.locked and not frame.moving and gap(row.position,player)<170 then s.parked=s.parked or copy(row.position)end
-   assigned[row.id]=s.parked or R.followPoint(frame.point,frame.yaw,row.slot,row.pitch,row.count)
+   -- A companion approached by Coen owns this resting spot. Reserve it before
+   -- resolving arriving seats; otherwise somebody else's planned destination
+   -- can send this stationary speaker back onto the arc and release attention.
+   if not row.locked and s.parked then
+    locked[#locked+1]={id=row.id,position=s.parked,radius=row.radius}
+   end
+   assigned[row.id]=s.parked or R.followPoint(frame.point,frame.yaw,row.slot,s.pitch,row.count,s.distanceScale,s.narrow)
   end
   -- Streaming can remove the pawn without dismissing its companion instance.
   -- Preserve that journey/seat so reattachment is not mistaken for a new spawn.
@@ -35,8 +43,8 @@ function M.new()
    return true
   end
   for _,row in ipairs(rows)do if not row.locked then
-   local desired=assigned[row.id];local goal=desired;local mode=self.seats[row.id].parked and 'Parked'or 'Rear arc'
-   if not clear(goal,row)then
+   local desired=assigned[row.id];local goal=desired;local mode=self.seats[row.id].parked and 'Parked'or self.seats[row.id].narrow and 'Narrow rows'or 'Rear arc'
+   if not self.seats[row.id].parked and not clear(goal,row)then
     goal=nil
     -- A locked actor may occupy a seat. Search only nearby angles on that arc,
     -- with a little outward clearance; never collapse everyone onto Coen.

@@ -1,6 +1,6 @@
 -- Synchronous, game-thread-only adapter for the narrow native ABI bridge.
 -- Native outputs are data; no returned text is evaluated as Lua.
-local M={};local invoke,invokeAssets,invokeProtection,invokeSimulation;local counter=0;local loadedClasses={};local loadedAssets={}
+local M={};local invoke,invokeAssets,invokeProtection,invokeSimulation,invokeGaze;local counter=0;local loadedClasses={};local loadedAssets={}
 local root=require('runtime_path')
 -- One-time recovery of the recorded v0.21 owner after its async action was
 -- collected. The native v2 registry is retired, never read/unloaded again.
@@ -35,6 +35,13 @@ function M.run(operation,arguments)
         assert(fn,'Native companion bridge unavailable: '..tostring(err));invoke=fn
     end
     local dispatch=invoke
+    if operation=='gazeadd'then
+        if not invokeGaze then
+            local fn,err=package.loadlib(root..'/../bridge/native/companion_gaze_v2.dll','companion_native_run')
+            assert(fn,'Camera gaze helper unavailable: '..tostring(err));invokeGaze=fn
+        end
+        dispatch=invokeGaze
+    end
     if operation=='animationbudget'then
         if not invokeSimulation then
             local fn,err=package.loadlib(root..'/../bridge/native/companion_simulation_v1.dll','companion_native_run')
@@ -72,6 +79,7 @@ function M.run(operation,arguments)
     assert(result.OK,'Incomplete native companion reply');return result
 end
 function M.probe()return M.run('probe')end
+function M.cameraGaze(actor,camera)return M.run('gazeadd',{path(actor),path(camera)})end
 function M.requestClass(player,classPath)return M.run('loadclassasync',{path(player),classPath})end
 function M.requestAsset(player,assetPath)return M.run('loadassetasync',{path(player),assetPath})end
 local function cachedObject(cache,assetPath)

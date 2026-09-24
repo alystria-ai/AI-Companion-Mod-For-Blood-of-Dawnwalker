@@ -2,9 +2,11 @@ import type {ConvaiClient} from '@convai/web-sdk/vanilla';
 import {METAHUMAN_ORDER_251} from '@convai/web-sdk/lipsync-helpers';
 import {ReplyTracker} from './reply-tracker';
 import {ReplyAudio} from './reply-audio';
+import {FacialExpression,supportedFaceCurve,type EmotionSignal} from './facial-expression';
 type Face={at:number;weights:Record<string,number>};
 export class PreparedReply {
  readonly reply=new ReplyTracker();readonly audio:ReplyAudio;
+ readonly expression=new FacialExpression();private emotions:{at:number;signal:EmotionSignal}[]=[];private emotionIndex=0;
  private unlisten:(()=>void)[]=[];private faces:Face[]=[];private captions:{at:number;text:string}[]=[];
  private faceIndex=0;private captionIndex=0;private previous=performance.now();private carry=0;private started=0;
  sent=false;error='';cancelled=false;activated=false;actions:{name:string;target?:string}[]=[];private finishedAt=0;
@@ -17,6 +19,7 @@ export class PreparedReply {
   this.on('stateChange',()=>this.reply.state(!!this.client.state.isThinking,!!this.client.state.isSpeaking));
   this.on('botOutput',d=>{if(d.text&&(d.spoken||['in-progress','completed'].includes(d.spokenStatus))){this.reply.audio();this.captions.push({at:this.audio.clock,text:d.text});}});
   this.on('actionResponse',d=>this.actions.push(...d.actions.slice(0,8-this.actions.length)));
+  this.on('emotionChange',(signal:EmotionSignal)=>this.emotions.push({at:this.activated?this.audio.clock:0,signal}));
   this.on('error',()=>{this.error='Prepared Convai response failed';});
   this.on('disconnect',()=>{this.error='Prepared Convai connection closed';});
   this.client.updateContext({mode:'replace',run_llm:'false',text:context});
@@ -32,7 +35,7 @@ export class PreparedReply {
     this.carry+=delta*q.getPlaybackFps();const n=Math.floor(this.carry);this.carry-=n;
     if(n>0){const weights:Record<string,number>={};
      if(q.length){const f=q.getFrameWithAlpha(Math.min(n,q.length)-1);q.consumeFrames(Math.min(n,q.length));
-      if(f?.length===METAHUMAN_ORDER_251.length)METAHUMAN_ORDER_251.forEach((name,i)=>{if(/^CTRL_expressions_(mouth|jaw|tongue)/.test(name))weights[name]=f[i]||0;});}
+      if(f?.length===METAHUMAN_ORDER_251.length)METAHUMAN_ORDER_251.forEach((name,i)=>{if(supportedFaceCurve(name))weights[name]=f[i]||0;});}
      this.faces.push({at:this.audio.clock,weights});
     }
    }
@@ -50,9 +53,13 @@ export class PreparedReply {
  }
  view(){
   const at=this.audio.position;
+  // Only the audible speaker receives its own buffered emotion. Never show a
+  // future group member's reaction while a different character is speaking.
+  if(this.activated)while(this.emotionIndex<this.emotions.length&&(this.emotions[this.emotionIndex].at<=at||this.audio.done)){this.expression.receive(this.emotions[this.emotionIndex++].signal);}
   while(this.faceIndex+1<this.faces.length&&this.faces[this.faceIndex+1].at<=at)this.faceIndex++;
   while(this.captionIndex+1<this.captions.length&&this.captions[this.captionIndex+1].at<=at)this.captionIndex++;
-  return {weights:this.audio.playing&&this.faces[this.faceIndex]?.at<=at?this.faces[this.faceIndex].weights:{},
+  const speech=this.audio.playing&&this.faces[this.faceIndex]?.at<=at?this.faces[this.faceIndex].weights:{};
+  return {weights:this.expression.mix(speech,this.audio.playing),
    subtitle:this.audio.playing?(this.captions[this.captionIndex]?.at<=at?this.captions[this.captionIndex].text:this.reply.text):'',
    done:!this.error&&this.audio.done&&this.reply.finished};
  }

@@ -2,6 +2,30 @@
 
 Player-facing history for LLM NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.2: September 25, 2026
+
+[Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.2)
+
+- Added an optional Narrow formation toggle, off by default. Companions favour front-to-back rows with some lateral space; larger parties add columns to limit the tail length.
+
+- Added Follower closeness and Party spacing controls under Following. Both default to 100%, preserve body clearance and apply on the next real follow.
+- Parked companions retain their spots when other followers arrive. Tracking starts after native arrival cleanup, preventing that cleanup from clearing a newly acquired focus.
+
+- Fixed followers staying in movement mode just short of their arrival point, restored facing throughout the settled-position tolerance, and reduced stalled-route retry delays. Head tracking now accepts the game's normal temporary target counts at higher frame rates.
+- F6 through F9 leave summoned companions' existing movement and tracking alone. Chat reuses the idle facial layer when available, preserving its animation and blink state; the party manager continues to own following and attention.
+- Reduced tracking hitches by replacing global face-layer scans with direct attached-layer lookups, caching native gaze object identities, and staggering attention setup after the party settles. Blink updates no longer trigger the heavier idle UI work, and unchanged upper-face values are not rewritten every frame.
+- Removed empty-action cancellations, recurring AI dumps and per-second lip debug logging. Explicit movement actions and world NPC conversation holds retain their safety checks.
+
+- Companions return smoothly to their listening smile after a spoken reaction fades; neutral emotion labels no longer leave the face expressionless.
+
+- First-person gameplay now requests native body turning when the view moves beyond the normal head-turn range, with low-priority modes that release for input holds, airborne movement and camera teardown.
+
+- Added gentle greeting smiles before chat for the two closest settled, conversation-capable companions, and eight families of Convai-driven mouth expressions with intensity, soft transitions and reduced influence during speech. Emotion detection is turn-level; group replies keep each speaker's expression separate. Eye direction stays native. Added a separate eyelid, cheek, brow and nose curve path, timed blinking while our face layer is active, and a slightly stronger greeting smile. Previously only mouth controls were forwarded, leaving the replacement face layer without blinking.
+- Added live first-person gaze offsets under Camera settings, defaulting to 5 cm toward the player's right and 1 cm down. Both axes support -20 to +20 cm without moving the player's camera. Corrected UE4SS rotator casing and isolated gaze-update errors so attention cannot release the first-person camera.
+- Added native head-tracking requests alongside conversation body turning. Requests follow the actual camera in first person and Coen's native face target in third person, and release their own handles when attention ends or combat takes over; idle and speech animations remain active.
+- Reorganised the Settings right panel into a scrollable guide covering every option, grouped into Following, Companions, Conversations, Camera and Horde, with defaults, ranges and explanations of how settings interact.
+- Added Follow-up questions under Conversations, enabled by default. Companions normally end with one natural, relevant question, skipping it only when there is a clear conversational reason. Only the final group speaker asks Coen. Works with text, voice, prepared group replies and romance profiles. Turning it off removes the closing-question encouragement without changing character biographies or cloud memory.
+
 ## 0.5.1: September 24, 2026
 
 [Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.1)

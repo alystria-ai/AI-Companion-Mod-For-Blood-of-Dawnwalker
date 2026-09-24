@@ -150,7 +150,7 @@ test('companion conversation selection waits for actions and resumes only its ow
  const s=await readFile(`${scripts}/companions.lua`,'utf8');const part=s.slice(s.indexOf('local function conversationCandidate'),s.indexOf('local function rememberOwner'));
  execute(`
  local M={};local a,b={},{};local members={a={actor=a,mode='follow',name='Brencis',definition={path='brencis'}},b={actor=b,mode='follow'}}
- local player={};local formationFrame={epoch=1};local busy=true;local board={Combat={},HasAnyUnbreakableActiveAction=function()return busy end}
+ local gazeAttention={};local player={};local formationFrame={epoch=1};local busy=true;local board={Combat={},HasAnyUnbreakableActiveAction=function()return busy end}
  local stub={IsInCombat=function()return false end,IsInCinematicMode=function()return false end}
  members.a.board=board;members.a.stub=stub;members.b.board=board;members.b.stub=stub
  local function ready()return true end;local function valid()return true end;local function same(x,y)return x==y end

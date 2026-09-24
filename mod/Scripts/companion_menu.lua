@@ -356,7 +356,38 @@ render=function()
   v.hordeStatus=caption('',26);add(detail,size(v.hordeStatus,670,52))
   v.hordeDetail=caption('',23);add(detail,size(v.hordeDetail,670,100)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
  elseif v.page=='Settings'then
-  add(left,size(list,790,710));describe('Settings','Changes save immediately. Native AI chooses attacks and powers. Fallen companions revive automatically after combat.\n\nAnca and Lacra have separate romance profile choices: Auto follows the loaded save, On enables the romantic profile, and Off always uses the normal profile. Memories still follow the loaded save. Horde options apply when a new run starts.')
+  add(left,size(list,790,710));describe('Settings guide','Changes save immediately. Scroll this panel for an explanation of every option. Horde changes apply to your next run.')
+  v.detailBody.WrapTextAt=650
+  local notes={
+   Following='Adjust how close companions gather behind Coen and how much space they leave each other. Changes apply on the next journey; stationary companions keep their current spots.',
+   Companions='These settings affect summoned allies, not enemies. Native AI still chooses attacks and powers. Fallen companions recover automatically after 3 seconds out of combat.',
+   Conversations='Anca and Lacra have independent profile choices. HUD controls affect mod conversations only. Hiding chat boxes takes priority over NPC subtitles; spoken replies continue.',
+   Camera='Field of view and camera offsets apply while first-person mode is On. Native dialogue and cutscene cameras retain control when needed.',
+   Horde='Enemy counts exclude the additional bosses. Choose your starting theme on the Horde page; later themes are random without repeats. Changes take effect when you start a new run.'
+  }
+  local guideGroup
+  local function guideText(parent,value,points,top,bottom)
+   local label=caption(value,points);label.WrapTextAt=650
+   add(parent,size(label,670)):SetPadding({Left=0,Top=top or 0,Right=0,Bottom=bottom or 0})
+  end
+  for _,s in ipairs(Settings.schema)do
+   local section=s.group or 'Companions'
+   if section~=guideGroup then
+    guideText(detail,string.upper(section),28,guideGroup and 24 or 4,8)
+    guideText(detail,notes[section]or '',22,0,16);guideGroup=section
+   end
+   -- Auto-height cards with explicit wrapping prevent overlap after scrolling
+   -- or changing resolution. Build once; hover never rebuilds this guide.
+   local card=new('VerticalBox');add(detail,size(card,670)):SetPadding({Left=0,Top=0,Right=0,Bottom=20})
+   guideText(card,s.label..(s.menuOnly and ' (Horde page)'or ''),25,0,4)
+   local defaults
+   if s.romance then defaults='Default: Auto | Choices: Auto / On / Off'
+   elseif s.min==0 and s.max==1 then defaults='Default: '..(s.default==1 and 'On'or 'Off')
+   elseif s.id=='HordeStartingWave'then defaults='Default: Roadside raiders | 10 themes'
+   else local suffix=s.suffix or '';defaults='Default: '..s.default..suffix..' | Range: '..s.min..' to '..s.max..suffix end
+   guideText(card,defaults,20,0,5)
+   guideText(card,s.help,22)
+  end
   local group
   for _,s in ipairs(Settings.schema)do if not s.menuOnly then
    local section=s.group or 'Companions'
@@ -550,7 +581,7 @@ function M.tick()
    b.widget:SetBackgroundColor({R=1,G=1,B=1,A=alpha})
    if b.slider then b.slider:SetSliderHandleColor({R=1,G=1,B=1,A=(selected or hovered)and 1 or 0})end
   end
-  if selected and b.help then describe(b.title,b.help)end
+  if selected and b.help and v.page~='Settings'then describe(b.title,b.help)end
   -- CommonUI retains even a completed quick click until we consume it. Clear
   -- before dispatch; other rows keep their latches for the next EngineTick.
   if clicked then

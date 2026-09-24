@@ -109,10 +109,42 @@ local function restoreBody(s)
  end)end
  s.visibility=nil
 end
+local function releaseTurning(s)
+ if valid(s.turnMovement)then
+  if s.turnLookHandle then safe(function()s.turnMovement:PopLookAtMode(s.turnLookHandle)end)end
+  if s.turnRotationHandle then safe(function()s.turnMovement:PopRotationMode(s.turnRotationHandle)end)end
+ end
+ s.turnMovement=nil;s.turnLookHandle=nil;s.turnRotationHandle=nil
+end
+local function syncTurning(s)
+ if os.clock()<(s.turnRetryAt or 0)then return end
+ local ok,err=pcall(function()
+  local movement=s.pawn:GetMovementComponent()
+  if not valid(movement)or movement.MovementMode~=1 or s.pc:IsMoveInputIgnored()or s.pc:IsLookInputIgnored()or s.pc:IsAnyGameInputBlockerActive()then
+   releaseTurning(s);return
+  end
+  if same(s.turnMovement,movement)then return end
+  releaseTurning(s);s.turnMovement=movement
+  -- Low-priority native modes: turn with a large gaze change, allowing small
+  -- head turns and higher-priority gameplay rotation rules. No capsule snaps.
+  s.turnRotationHandle=movement:PushRotationMode(2,1) -- FaceDirection
+  assert(type(s.turnRotationHandle)=='number'and s.turnRotationHandle>=0,'Player facing request declined')
+  s.turnLookHandle=movement:PushLookAtMode(4,1) -- KeepInFOV
+  assert(type(s.turnLookHandle)=='number'and s.turnLookHandle>=0,'Player turn-in-place request declined')
+ end)
+ if not ok then
+  releaseTurning(s);s.turnRetryAt=os.clock()+5
+  if s.turnError~=tostring(err)then
+   s.turnError=tostring(err)
+   local f=io.open(root..'/camera-turn-status.txt','w');if f then f:write(s.turnError..'\n');f:close()end
+  end
+ end
+end
 local function release()
  local s=lease
  lease=nil
  if not s then return end
+ releaseTurning(s)
  restoreBody(s)
  -- A cinematic or another game system may have changed the view target.
  -- Restore only our own target, and only to the same live pawn and world.
@@ -123,10 +155,53 @@ local function release()
    s.pc:SetViewTargetWithBlend(s.pawn,0,0,0,false)
   end
  end)
+ safe(function()if valid(s.gaze)then s.gaze:K2_DestroyActor()end end)
  safe(function()if valid(s.camera)then s.camera:K2_DestroyActor()end end)
 end
 M.release=release
 function M.active()return lease~=nil end
+local function updateGazePosition(s)
+ if not valid(s.gaze)then return end
+ local p=s.camera:K2_GetActorLocation();local r=s.pc:GetControlRotation()
+ -- UE4SS exposes mixed-case rotator members in this build: Yaw and pitch.
+ local yaw,pitch=math.rad(r.Yaw or r.yaw or 0),math.rad(r.Pitch or r.pitch or 0)
+ local x,y=Settings.values.GazeHorizontal or 5,Settings.values.GazeVertical or -1
+ -- Camera-local right and up, not the companion's left/right or world height.
+ s.gaze:K2_SetActorLocation({X=p.X-math.sin(yaw)*x-math.sin(pitch)*math.cos(yaw)*y,
+  Y=p.Y+math.cos(yaw)*x-math.sin(pitch)*math.sin(yaw)*y,Z=p.Z+math.cos(pitch)*y},false,{},true)
+end
+local function updateGaze(s)
+ -- Attention is optional. A gaze update must never release the gameplay camera
+ -- or its body mask. Keep the last valid target and report only changed errors.
+ local ok,err=pcall(updateGazePosition,s)
+ if not ok then
+  local message=tostring(err)
+  if s.gazeError~=message then
+   s.gazeError=message
+   local f=io.open(root..'/gaze-status.txt','w');if f then f:write('Gaze update unavailable: '..message..'\n');f:close()end
+  end
+ elseif s.gazeError then
+  s.gazeError=nil
+  local f=io.open(root..'/gaze-status.txt','w');if f then f:write('Gaze update restored\n');f:close()end
+ end
+end
+function M.gazeTarget(player)
+ if lease and same(lease.pawn,player)and valid(lease.camera)and valid(lease.pc)
+  and same(lease.pc:GetViewTarget(),lease.camera)then
+  if not valid(lease.gaze)then
+   local gameplay=AI.find('/Script/Engine.Default__GameplayStatics')
+   local class=AI.find('/Script/Engine.CameraActor');local transform=lease.camera:GetTransform()
+   local anchor=gameplay:BeginDeferredActorSpawnFromClass(player,class,transform,1,player,0)
+   if not valid(anchor)then return lease.camera end
+   lease.gaze=anchor
+   anchor=gameplay:FinishSpawningActor(anchor,transform,0)
+   if not valid(anchor)then return lease.camera end
+   lease.gaze=anchor;anchor:SetActorEnableCollision(false);anchor:SetActorHiddenInGame(true);anchor:SetActorTickEnabled(false)
+  end
+  updateGaze(lease)
+  return lease.gaze
+ end
+end
 
 local function eligible(pc,suspended)
  if not valid(pc)then return nil,nil,nil,nil,'Player controller is unavailable'end
@@ -153,7 +228,10 @@ local function update(s)
  local position=viewPosition(s.pawn,rotation)
  if not position then return false end
  maskBody(s)
- return s.camera:K2_SetActorLocationAndRotation(position,rotation,false,{},true)==true
+ syncTurning(s)
+ local moved=s.camera:K2_SetActorLocationAndRotation(position,rotation,false,{},true)==true
+ if moved then updateGaze(s)end
+ return moved
 end
 
 local function acquire(pc,pawn,world,manager,follow)

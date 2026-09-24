@@ -81,6 +81,7 @@ test('all four chat commands reselect on every press and failed lookup preserves
  local NativeMenu={close=function()end}
  local function restoreFocusPause()restored=restored+1 end
  local function toggle(mode,a)assert(mode=='compose');selected=a end
+ local function reuseConversation()return false end
  local function acquireUiInput()acquired=acquired+1;return true end
  ${commands}
  for _,kind in ipairs({'compose-single','select-single','compose-group','select-group'})do
