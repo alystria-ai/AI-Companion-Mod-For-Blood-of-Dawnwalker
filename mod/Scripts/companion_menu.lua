@@ -72,6 +72,9 @@ function M.close(returnToGame)
  if returnToGame and not cls('/Script/Engine.Default__GameplayStatics'):IsGamePaused(old.pc)then
   old.library:SetInputMode_GameOnly(old.pc,true);old.pc.bShowMouseCursor=false
  end
+ -- Complete the camera hand-off in the same game-thread call as menu removal.
+ -- Do not expose a pawn-camera frame while waiting for the next timer tick.
+ pcall(function()require('first_person_camera').tick(old.pc,Settings.values.FirstPersonCamera==1,false)end)
  marker('0')
 end
 -- Pure batch reduction: completion belongs to the request returned by this menu,

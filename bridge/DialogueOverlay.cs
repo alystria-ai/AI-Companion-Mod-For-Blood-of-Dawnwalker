@@ -29,12 +29,13 @@ public sealed class DialogueOverlay : Form {
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr h,int id);
     [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h,int index);
     [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr h,int index,int value);
+    [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h,int attribute,ref int value,int size);
     [DllImport("gdi32.dll",CharSet=CharSet.Unicode)] static extern int AddFontResourceEx(string path,uint flags,IntPtr reserved);
     readonly PrivateFontCollection gameFonts=new PrivateFontCollection();
     Font GameFont(float size,FontStyle style=FontStyle.Regular){return gameFonts.Families.Length>0?new Font(gameFonts.Families[0],size*96f/72f,style,GraphicsUnit.Pixel):new Font("Georgia",size*96f/72f,style,GraphicsUnit.Pixel);}
     readonly string runtime,token; readonly bool preview;
     readonly JavaScriptSerializer json=new JavaScriptSerializer();
-    readonly TextBox input=new TextBox();readonly Button send=new Button();
+    readonly TextBox input=new TextBox();
     readonly Timer timer=new Timer();ComposerKeys composerKeys;
     DialogueState state=new DialogueState();IntPtr game;
     readonly ModKeyBindings bindings=new ModKeyBindings();
@@ -70,28 +71,85 @@ public sealed class DialogueOverlay : Form {
     }
     bool editing,registered,sending,opening,micRegistered,micBusy,singleRegistered,singleMicRegistered,closing;float scale=1;long composeGeneration;string error="",lastOpen="";
     bool voiceGroup,micStopping;string voiceNotice="";DateTime voiceNoticeUntil;
+    bool transparentHud=true,hideChatBoxes=false,showNpcSubtitles=true;DateTime hudReadAt;string hudConfig;
+    int hudBottomPercent=0;
+    readonly Stopwatch hudClock=Stopwatch.StartNew();float voiceMeter;
+    readonly Color clearColour=Color.FromArgb(1,2,3);
+    bool MinimalVoice {get{return hideChatBoxes;}}
+    bool ClearBackground {get{return transparentHud||MinimalVoice;}}
+    static bool ReadHudNumber(string source,string key,out double value){
+        // Lua/native sliders can serialize a whole number as 28.0. Read using
+        // the file's invariant decimal format, independently of Windows locale.
+        var row=Regex.Match(source,@"(?m)^[ \t]*"+Regex.Escape(key)+@"[ \t]*=[ \t]*([+-]?\d+(?:\.\d+)?)[ \t]*(?:;[^\r\n]*)?\r?$");
+        value=0;
+        return row.Success&&double.TryParse(row.Groups[1].Value,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out value)&&!double.IsNaN(value)&&!double.IsInfinity(value);
+    }
+    void ReadHudSettings(bool force=false){
+        if(!force&&DateTime.UtcNow<hudReadAt)return;hudReadAt=DateTime.UtcNow.AddSeconds(1);
+        try{
+            string directory=Path.GetFullPath(Path.Combine(runtime,"../mod"));
+            var pointer=Path.Combine(runtime,"mod-directory.txt");if(File.Exists(pointer))directory=ReadShared(pointer).Trim();
+            var source=ReadShared(Path.Combine(directory,"config.ini"));if(String.IsNullOrWhiteSpace(source)||source==hudConfig)return;
+            double value;
+            if(ReadHudNumber(source,"TransparentChatHud",out value)&&(value==0||value==1))transparentHud=value==1;
+            if(ReadHudNumber(source,"HideChatBoxes",out value)&&(value==0||value==1))hideChatBoxes=value==1;
+            else if(ReadHudNumber(source,"ShowConversationText",out value)&&(value==0||value==1))hideChatBoxes=value==0;
+            if(ReadHudNumber(source,"ShowNpcSubtitles",out value)&&(value==0||value==1))showNpcSubtitles=value==1;
+            if(ReadHudNumber(source,"ChatHudBottomOffset",out value))hudBottomPercent=(int)Math.Round(Math.Max(0,Math.Min(40,value)));
+            hudConfig=source;ApplyHudStyle();
+        }catch(IOException){}catch(UnauthorizedAccessException){}
+    }
+    void ApplyHudStyle(){
+        var background=ClearBackground?clearColour:panel;
+        // Do not expose an intermediate opaque/background frame while switching
+        // the layered-window colour key and native child-control appearance.
+        if(Visible&&BackColor!=background)Hide();
+        if(BackColor!=background)BackColor=background;
+        var key=ClearBackground?clearColour:Color.Empty;if(TransparencyKey!=key)TransparencyKey=key;
+        double opacity=ClearBackground?1:.95;if(Opacity!=opacity)Opacity=opacity;
+        // Native child controls otherwise paint opaque rectangles even when the
+        // parent is transparent. Use the same colour key for their interiors.
+        input.BackColor=ClearBackground?clearColour:Color.FromArgb(30,31,27);
+    }
     bool VoiceNoticeVisible {get{return voiceNotice!=""&&DateTime.UtcNow<voiceNoticeUntil;}}
-    bool VoiceVisible {get{return state.microphoneOn||(state.microphoneRequested&&VoiceFailed)||VoiceNoticeVisible;}}
+    bool VoiceVisible {get{return micBusy||state.microphoneRequested||state.microphoneOn||VoiceNoticeVisible;}}
     bool HordeVisible {get{return !editing&&!opening&&!sending&&!VoiceVisible&&String.IsNullOrWhiteSpace(state.text)&&!String.IsNullOrWhiteSpace(state.hordeText);}}
-    string DisplayText {get{return HordeVisible?state.hordeText:state.text;}}
+    string DisplayText {get{return HordeVisible?state.hordeText:!opening&&!editing&&!micBusy&&!hideChatBoxes&&showNpcSubtitles?state.text:"";}}
+    string VoiceTranscript {get{return micBusy?"":state.microphoneTranscript??"";}}
     string VoiceKey {get{return (micBusy||VoiceNoticeVisible?voiceGroup:state.mode=="group")?bindings.Label("GroupVoice"):bindings.Label("SingleVoice");}}
     bool VoiceFailed {get{return !state.microphoneOn&&!String.IsNullOrEmpty(state.microphoneStatus)&&(state.microphoneStatus.StartsWith("Microphone unavailable")||state.microphoneStatus.StartsWith("Microphone control failed")||state.microphoneStatus.StartsWith("Microphone disconnected"));}}
     bool Alive {get{return !closing&&!IsDisposed&&!Disposing;}}
     readonly Color ink=Color.FromArgb(236,227,206),gold=Color.FromArgb(173,148,102),panel=Color.FromArgb(19,21,19);
     protected override bool ShowWithoutActivation {get{return true;}}
+    protected override void OnHandleCreated(EventArgs e){
+        base.OnHandleCreated(e);
+        // No desktop fade from a cached rectangular window image when this
+        // frequently reused overlay is shown again. Scope this to our HWND.
+        try{int disabled=1;DwmSetWindowAttribute(Handle,3,ref disabled,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
+    }
+    void Present(){
+        if(!Alive)return;
+        if(Visible){Refresh();return;}
+        // Show/Refresh alone lets the desktop compositor reveal the preceding
+        // backing surface before WM_PAINT. Paint parent and child controls at
+        // zero opacity, then reveal only the completed current frame.
+        double finalOpacity=ClearBackground?1:.95;
+        Opacity=0;
+        try{Show();Refresh();}finally{if(Alive)Opacity=finalOpacity;}
+        if(!preview)HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-presentation.txt"),DateTime.UtcNow.ToString("o")+" transparent="+ClearBackground+" editing="+editing+" minimal="+MinimalVoice+" bounds="+Bounds+" offsetPercent="+hudBottomPercent+" colourKey="+TransparencyKey.ToArgb());
+    }
     protected override CreateParams CreateParams {get{var p=base.CreateParams;p.ExStyle|=0x08000000|0x20;return p;}}
     public DialogueOverlay(string directory,string auth,bool renderPreview=false){
         runtime=directory;token=auth;preview=renderPreview;
         try{var fontPath=Path.GetFullPath(Path.Combine(runtime,"../bridge/fonts/Afacad-Regular.ttf"));gameFonts.AddFontFile(fontPath);AddFontResourceEx(fontPath,0x10,IntPtr.Zero);}catch{}
         try{lastOpen=ReadShared(Path.Combine(runtime,"ui-open.txt"));}catch{}
         FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;DoubleBuffered=true;
-        AutoScaleMode=AutoScaleMode.None;BackColor=panel;Opacity=0.95;KeyPreview=true;Width=760;Height=90;
+        AutoScaleMode=AutoScaleMode.None;StartPosition=FormStartPosition.Manual;BackColor=panel;Opacity=0.95;KeyPreview=true;Width=760;Height=90;
+        ReadHudSettings();ApplyHudStyle();
         input.BorderStyle=BorderStyle.None;input.BackColor=Color.FromArgb(30,31,27);input.ForeColor=ink;
-        input.Font=GameFont(16);input.MaxLength=1200;input.Visible=false;
-        send.UseVisualStyleBackColor=false;send.TabStop=false;send.FlatAppearance.BorderSize=1;send.FlatAppearance.MouseOverBackColor=Color.FromArgb(47,44,35);send.FlatAppearance.MouseDownBackColor=Color.FromArgb(62,54,39);send.Text="Send";send.FlatStyle=FlatStyle.Flat;send.FlatAppearance.BorderColor=gold;send.BackColor=panel;send.ForeColor=ink;send.Font=GameFont(11);send.Visible=false;
-        Controls.Add(input);Controls.Add(send);
-        send.Click+=async(s,e)=>await Submit();
-        AcceptButton=send;
+        input.Font=GameFont(18);input.MaxLength=1200;input.Visible=false;
+        Controls.Add(input);
+        ApplyHudStyle();
         KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape){e.SuppressKeyPress=true;EndCompose(false);}};
         timer.Interval=100;timer.Tick+=(s,e)=>UpdateState();if(!preview)timer.Start();
         FormClosing+=(s,e)=>{closing=true;timer.Stop();if(nativeMenuKeys!=null){nativeMenuKeys.Dispose();nativeMenuKeys=null;}if(composerKeys!=null){composerKeys.Dispose();composerKeys=null;}};
@@ -104,10 +162,14 @@ public sealed class DialogueOverlay : Form {
         try{
             if(CompanionPanel.IsOpen){Hide();return;}
             state=json.Deserialize<DialogueState>(ReadShared(Path.Combine(runtime,"overlay.json")));
+            voiceMeter+=(float)((Math.Max(0,Math.Min(1,state.microphoneLevel))-voiceMeter)*.45);
             var foreground=GetForegroundWindow();bool gameFocused=IsGame(foreground),ours=foreground==Handle;
             if(gameFocused)game=foreground;
             if(bindings.Read(runtime))ClearHotkeys();
+            ReadHudSettings();
+            bool wasMenuOpen=NativeMenuOpen;
             NativeMenuInput(state.gameAlive&&gameFocused);
+            if(wasMenuOpen&&!NativeMenuOpen)ReadHudSettings(true);
             bool eligible=state.gameAlive&&(gameFocused||ours)&&!NativeMenuOpen;
             bool shortcuts=eligible&&!editing&&!opening;
             InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts);
@@ -129,59 +191,72 @@ public sealed class DialogueOverlay : Form {
             if(File.Exists(openPath)){var request=ReadShared(openPath);if(request!=lastOpen){lastOpen=request;if(!editing)BeginCompose(false);}}
             if(editing&&state.active){
                 if(composeGeneration==0)composeGeneration=state.generation;
-                else if(composeGeneration!=state.generation){error="Conversation changed. Close and select her again.";send.Enabled=false;}
+                else if(composeGeneration!=state.generation){error="Conversation changed. Close and select her again.";}
             }
-            if(editing&&!sending)send.Enabled=state.active&&composeGeneration==state.generation;
-            Rect bounds;var origin=new PointNative();
-            if(game!=IntPtr.Zero&&GetClientRect(game,out bounds)&&ClientToScreen(game,ref origin)){
-                int gw=bounds.Right-bounds.Left,gh=bounds.Bottom-bounds.Top;
-                float next=Math.Max(0.65f,Math.Min(2f,Math.Min(gw/1920f,gh/1080f)));
-                ApplyScale(next);
-                int width=Math.Min(gw-S(32),S(!editing&&VoiceVisible&&String.IsNullOrWhiteSpace(state.text)?480:760));
-                int height=PanelHeight(width);
-                SetBounds(origin.X+(gw-width)/2,origin.Y+gh-height-S(35),width,height);
-            }
-            if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(state.text))){LayoutInput();if(!Visible)Show();Invalidate();}else Hide();
+            PositionOverlay();
+            if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(DisplayText))){LayoutInput();if(!Visible)Present();else Invalidate();}else Hide();
         }catch(Exception e){InputDiagnostic("Shortcut update failed: "+e.GetType().Name+": "+e.Message);if(DateTime.UtcNow>=inputErrorAt){inputErrorAt=DateTime.UtcNow.AddSeconds(30);HostDiagnostics.Log("Shortcut update",e);}if(!editing)Hide();}
     }
     protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
     int S(int value){return (int)Math.Round(value*scale);}
+    void PositionOverlay(){
+        Rect bounds;var origin=new PointNative();
+        if(game==IntPtr.Zero||!GetClientRect(game,out bounds)||!ClientToScreen(game,ref origin))return;
+        // Use the visible client area, including when a resolution change leaves
+        // the window partly outside the monitor. Never anchor below its edge.
+        var client=new Rectangle(origin.X,origin.Y,bounds.Right-bounds.Left,bounds.Bottom-bounds.Top);
+        var area=Rectangle.Intersect(client,Screen.FromHandle(game).Bounds);
+        LayoutForArea(area);
+    }
+    void LayoutForArea(Rectangle area){
+        if(area.Width<160||area.Height<160)return;
+        ApplyScale(Math.Max(.65f,Math.Min(2f,Math.Min(area.Width/1920f,area.Height/1080f))));
+        int width=Math.Min(area.Width-S(32),S(!editing&&MinimalVoice&&VoiceVisible?220:!editing&&VoiceVisible&&String.IsNullOrWhiteSpace(DisplayText)?560:760));
+        int height=Math.Min(area.Height-S(64),Math.Max(S(1),PanelHeight(width)));
+        int bottom=Math.Min((int)Math.Round(area.Height*hudBottomPercent/100.0)+S(40),Math.Max(0,area.Height-height-S(16)));
+        SetBounds(area.Left+(area.Width-width)/2,area.Bottom-height-bottom,width,height);
+    }
     void ApplyScale(float next){
         if(!Alive||Math.Abs(next-scale)<=0.01f)return;
-        scale=next;GameControlFonts.Replace(input,GameFont(15*scale));GameControlFonts.Replace(send,GameFont(10*scale));
+        scale=next;GameControlFonts.Replace(input,GameFont(18*scale));
     }
     int SubtitleHeight(int width){
-        using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=GameFont(15)){
+        using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=GameFont(18)){
             float textHeight=g.MeasureString(DisplayText??"",font,Math.Max(80,(int)(width/scale)-48)).Height;
             return S(42+(int)Math.Ceiling(Math.Max(25,Math.Min(110,textHeight))));
         }
     }
     int VoiceHeight(int width){
         if(!VoiceVisible)return 0;
-        string transcript=state.microphoneTranscript??"";
-        if(String.IsNullOrWhiteSpace(transcript))return S(90);
-        using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=new Font("Segoe UI",12,FontStyle.Regular,GraphicsUnit.Pixel)){
+        if(MinimalVoice)return S(136);
+        string transcript=VoiceTranscript;
+        if(String.IsNullOrWhiteSpace(transcript))return S(112);
+        using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=GameFont(12)){
             int lines=(int)Math.Ceiling(g.MeasureString("You: "+transcript,font,Math.Max(80,(int)(width/scale)-48)).Height);
-            return S(72+Math.Max(26,lines));
+            return S(118+Math.Max(26,lines));
         }
     }
-    int PanelHeight(int width){return (editing?S(180):String.IsNullOrWhiteSpace(DisplayText)?0:SubtitleHeight(width))+VoiceHeight(width);}
+    int PanelHeight(int width){return (editing?S(128):String.IsNullOrWhiteSpace(DisplayText)?0:SubtitleHeight(width))+VoiceHeight(width);}
     protected override bool ProcessCmdKey(ref Message msg,Keys keyData){
         if(editing&&keyData==Keys.Enter){SubmitFromKey();return true;}
         if(editing&&keyData==Keys.Escape){EndCompose(false);return true;}
         return base.ProcessCmdKey(ref msg,keyData);
     }
     async void SubmitFromKey(){await Submit();}
-    void LayoutInput(){input.SetBounds(S(27),Height-S(70),Width-S(139),S(30));send.SetBounds(Width-S(95),Height-S(75),S(70),S(32));}
+    void LayoutInput(){int bottom=Height-VoiceHeight(Width);input.SetBounds(S(27),bottom-S(70),Math.Max(S(40),Width-S(54)),S(30));}
     void SetEditing(bool value){
         if(!Alive)return;
-        editing=value;input.Visible=value;send.Visible=value;
+        if(editing!=value&&Visible)Hide();
+        editing=value;input.Visible=value;
+        ApplyHudStyle();
         if(!preview){int style=GetWindowLong(Handle,-20);SetWindowLong(Handle,-20,value?(style|0x08000000)&~0x20:style|(0x08000000|0x20));}
         Height=Math.Max(S(67),PanelHeight(Width));LayoutInput();Invalidate();
-        if(!value&&!VoiceVisible&&!HordeVisible&&String.IsNullOrWhiteSpace(state.text))Hide();
+        if(!preview){PositionOverlay();LayoutInput();}
+        if(!value&&!VoiceVisible&&!HordeVisible&&String.IsNullOrWhiteSpace(DisplayText))Hide();
     }
     async void BeginCompose(bool group){
         if(!Alive||sending||opening||editing)return;opening=true;error="";
+        Hide();ReadHudSettings(true);
         CompanionPanel.CloseActive();
         var command=(group?"compose-group:":"compose-single:")+Guid.NewGuid().ToString("N");
         try{
@@ -199,7 +274,7 @@ public sealed class DialogueOverlay : Form {
             if(!await AwaitSelection(command)){error="Waiting for the new conversation. Try the chat key again.";return;}
             if(!Alive)return;
             composeGeneration=state.generation;
-            SetEditing(true);Show();
+            ReadHudSettings(true);SetEditing(true);Present();
             if(!Alive)return;
             composerKeys=new ComposerKeys(this,()=>editing&&Visible&&GetForegroundWindow()==game,ComposerKey);
         }catch(Exception e){HostDiagnostics.Log("Open composer",e);if(Alive&&editing)EndCompose(false,false);error="Could not open the conversation.";}
@@ -242,6 +317,7 @@ public sealed class DialogueOverlay : Form {
     }
     async void ToggleMicrophone(bool group){
         if(!Alive||micBusy)return;
+        Hide();ReadHudSettings(true);
         bool turnOff=state.active&&state.microphoneRequested&&state.mode==(group?"group":"single");
         micBusy=true;micStopping=turnOff;voiceGroup=group;voiceNotice="";error="";
         UpdateState();
@@ -258,10 +334,25 @@ public sealed class DialogueOverlay : Form {
             if(!Alive)return;
             if(!state.active){error="Face a nearby character and press the voice key again.";return;}
             if(!turnOff&&!IsGame(GetForegroundWindow())){error="Return to the game and press the voice key again.";return;}
+            long micGeneration=state.generation;
             using(var client=new WebClient()){
                 client.Headers["Content-Type"]="application/json";client.Headers["x-bridge-token"]=token;
-                await client.UploadStringTaskAsync("http://127.0.0.1:32123/microphone","POST",json.Serialize(new{generation=state.generation,enabled=!turnOff}));
+                await client.UploadStringTaskAsync("http://127.0.0.1:32123/microphone","POST",json.Serialize(new{generation=micGeneration,enabled=!turnOff}));
             }
+            // HTTP acceptance comes before the next overlay snapshot. Keep the
+            // pending indicator until that snapshot acknowledges our request;
+            // requested-but-not-on then stays Connecting until capture is live.
+            bool acknowledged=false;
+            for(int i=0;i<20;i++){
+                if(!Alive)return;
+                try{
+                    var next=json.Deserialize<DialogueState>(ReadShared(Path.Combine(runtime,"overlay.json")));
+                    if(next.generation!=micGeneration||!next.active){error="Conversation changed. Select a character and try again.";break;}
+                    if(next.microphoneRequested==!turnOff){state=next;acknowledged=true;break;}
+                }catch(IOException){}catch(ArgumentException){}
+                await Task.Delay(100);
+            }
+            if(!acknowledged&&error=="")error="Microphone request was not confirmed. Press "+VoiceKey+" to try again.";
         }catch{error="Could not change microphone state. Try again.";}
         finally{
             micBusy=false;micStopping=false;
@@ -272,7 +363,7 @@ public sealed class DialogueOverlay : Form {
     async Task Submit(){
         if(!Alive||sending)return;if(!state.active||composeGeneration!=state.generation){error="Waiting for the selected character. Try again shortly.";Invalidate();return;}
         var text=input.Text.Trim();if(text.Length==0){error="Write your reply first.";Invalidate();return;}
-        sending=true;send.Enabled=false;input.Enabled=false;
+        sending=true;input.Enabled=false;
         try{
             using(var client=new WebClient()){
                 client.Encoding=System.Text.Encoding.UTF8;client.Headers["Content-Type"]="application/json";client.Headers["x-bridge-token"]=token;
@@ -282,44 +373,118 @@ public sealed class DialogueOverlay : Form {
             sending=false;input.Enabled=true;EndCompose(true);
         }catch(WebException e){error="Message could not be sent. Check the conversation and try again.";if(e.Response!=null)using(var r=new StreamReader(e.Response.GetResponseStream()))error=r.ReadToEnd();}
         catch{error="The connection is unavailable. Try again shortly.";}
-        finally{sending=false;if(Alive){input.Enabled=true;send.Enabled=true;Invalidate();}}
+        finally{sending=false;if(Alive){input.Enabled=true;Invalidate();}}
     }
     string Speaker(){if(!String.IsNullOrEmpty(state.name))return state.name.ToUpperInvariant();if(String.IsNullOrEmpty(state.actor))return "ANCA";var name=state.actor.Substring(state.actor.LastIndexOf('.')+1);return Regex.Replace(name,"_[0-9]+$","").Replace('_',' ').ToUpperInvariant();}
+    void HudText(Graphics g,string text,Font font,Brush brush,RectangleF bounds,StringFormat format){
+        if(!ClearBackground){g.DrawString(text,font,brush,bounds,format);return;}
+        // Keep subtitles legible over bright scenery without covering the game.
+        using(var path=new GraphicsPath())using(var outline=new Pen(Color.FromArgb(16,18,16),2.5f){LineJoin=LineJoin.Round}){
+            // All HUD fonts use pixel units. SizeInPoints depends on system DPI
+            // and shrinks this path on scaled displays if converted using 96.
+            float em=font.Unit==GraphicsUnit.Pixel?font.Size:font.SizeInPoints*g.DpiY/72f;
+            path.AddString(text,font.FontFamily,(int)font.Style,em,bounds,format);
+            g.DrawPath(outline,path);g.FillPath(brush,path);
+        }
+    }
+    string MicrophonePhase {
+        get {
+            if(micBusy)return micStopping?"finishing":"connecting";
+            if(VoiceFailed||VoiceNoticeVisible)return "error";
+            if(state.microphoneRequested&&!state.microphoneOn)return "connecting";
+            if(state.microphoneOn&&!state.microphoneRequested)return "finishing";
+            return state.microphoneSilent?"quiet":"listening";
+        }
+    }
+    string MicrophoneLabel {
+        get {switch(MicrophonePhase){case "finishing":return "Sending";case "connecting":return "Connecting";case "error":return "Mic unavailable";case "quiet":return "No input signal";default:return "Listening";}}
+    }
+    void Diamond(Graphics g,float x,float y,float radius,Color colour){
+        using(var brush=new SolidBrush(colour))g.FillPolygon(brush,new[]{new PointF(x,y-radius),new PointF(x+radius,y),new PointF(x,y+radius),new PointF(x-radius,y)});
+    }
+    void Ornament(Graphics g,float left,float right,float y){
+        if(right-left<12)return;
+        using(var shadow=new Pen(Color.FromArgb(14,16,14),3))using(var line=new Pen(gold,1)){
+            g.DrawLine(shadow,left,y,right,y);g.DrawLine(line,left,y,right,y);
+        }
+        Diamond(g,left,y,2,gold);Diamond(g,right,y,2,gold);
+    }
+    void DrawMicRing(Graphics g,float x,float y){
+        string phase=MicrophonePhase;bool warning=phase=="error"||phase=="quiet";
+        Color accent=warning?Color.FromArgb(232,167,108):phase=="listening"?Color.FromArgb(190,219,188):ink;
+        float level=preview?(float)state.microphoneLevel:voiceMeter;
+        using(var shadow=new Pen(Color.FromArgb(14,16,14),4.5f))using(var rim=new Pen(gold,1.1f))using(var voice=new Pen(accent,2){StartCap=LineCap.Round,EndCap=LineCap.Round}){
+            g.DrawEllipse(shadow,x-29,y-29,58,58);g.DrawEllipse(rim,x-29,y-29,58,58);
+            // Broken concentric arcs echo the game's brass ornamentation. Only
+            // voice amplitude changes their length; no extra animation timer.
+            float sweep=phase=="listening"?25+Math.Max(0,Math.Min(1,level))*110:phase=="finishing"||phase=="connecting"?65:35;
+            float angle=phase=="finishing"||phase=="connecting"?(float)(hudClock.Elapsed.TotalSeconds*80%360):-90;
+            g.DrawArc(shadow,x-34,y-34,68,68,angle,sweep);g.DrawArc(voice,x-34,y-34,68,68,angle,sweep);
+            g.DrawArc(shadow,x-34,y-34,68,68,angle+180,sweep);g.DrawArc(voice,x-34,y-34,68,68,angle+180,sweep);
+            using(var capsule=new GraphicsPath()){
+                capsule.AddArc(x-5,y-15,10,10,180,180);capsule.AddArc(x-5,y-6,10,10,0,180);capsule.CloseFigure();
+                g.DrawPath(shadow,capsule);g.DrawPath(voice,capsule);
+            }
+            g.DrawArc(shadow,x-10,y-9,20,20,0,180);g.DrawArc(voice,x-10,y-9,20,20,0,180);
+            g.DrawLine(shadow,x,y+11,x,y+17);g.DrawLine(voice,x,y+11,x,y+17);
+            g.DrawLine(shadow,x-6,y+17,x+6,y+17);g.DrawLine(voice,x-6,y+17,x+6,y+17);
+            if(warning){g.DrawLine(shadow,x-17,y+17,x+17,y-17);g.DrawLine(voice,x-17,y+17,x+17,y-17);}
+        }
+        Diamond(g,x-41,y,2,gold);Diamond(g,x+41,y,2,gold);
+    }
+    void DrawMicrophone(Graphics g,int width,int top){
+        DrawMicRing(g,width/2f,top+45);
+        string phase=MicrophonePhase;
+        string key=phase=="finishing"||phase=="connecting"?"":VoiceKey+(phase=="error"?" · RETRY":" · FINISH");
+        using(var label=GameFont(12))using(var hint=GameFont(10))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center}){
+            HudText(g,MicrophoneLabel,label,light,new RectangleF(4,top+85,width-8,24),format);
+            HudText(g,key,hint,brass,new RectangleF(4,top+109,width-8,20),format);
+        }
+    }
     protected override void OnPaint(PaintEventArgs e){
         base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.ScaleTransform(scale,scale);int w=(int)(Width/scale),h=(int)(Height/scale);
         var logical=new Rectangle(0,0,w,h);
-        using(var gradient=new LinearGradientBrush(logical,Color.FromArgb(28,29,24),panel,90))g.FillRectangle(gradient,logical);
-        using(var pen=new Pen(gold,1)){g.DrawRectangle(pen,0,0,w-1,h-1);if(editing)g.DrawRectangle(pen,25,h-79,w-133,40);}
-        using(var title=GameFont(11))using(var body=GameFont(15))using(var hint=new Font("Segoe UI",12,FontStyle.Regular,GraphicsUnit.Pixel))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
+        int composerBottom=h-(int)(VoiceHeight(Width)/scale);
+        if(!ClearBackground){
+            using(var gradient=new LinearGradientBrush(logical,Color.FromArgb(28,29,24),panel,90))g.FillRectangle(gradient,logical);
+            using(var pen=new Pen(gold,1))g.DrawRectangle(pen,0,0,w-1,h-1);
+        }
+        if(editing){
+            // Open, lightly ornamented entry line instead of stacked rectangles.
+            Ornament(g,25,w-25,composerBottom-39);
+            using(var pen=new Pen(gold,1)){g.DrawLine(pen,25,composerBottom-47,25,composerBottom-39);g.DrawLine(pen,w-25,composerBottom-47,w-25,composerBottom-39);}
+        }
+        using(var title=GameFont(13))using(var body=GameFont(18))using(var hint=GameFont(12))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
             if(!String.IsNullOrWhiteSpace(DisplayText)||editing){
-                g.DrawString(HordeVisible?"HORDE":(state.mode=="group"?"GROUP · ":"")+Speaker(),title,brass,new RectangleF(24,8,w-48,22),format);
-                var caption=String.IsNullOrWhiteSpace(DisplayText)?(editing?"What would you like to say?":""):DisplayText;
-                g.DrawString(caption,body,light,new RectangleF(24,32,w-48,editing?60:h-39-(int)(VoiceHeight(Width)/scale)),format);
+                string heading=HordeVisible?"HORDE":(state.mode=="group"?"GROUP · ":"")+Speaker();
+                float half=Math.Min(w/2-45,g.MeasureString(heading,title).Width/2+18);
+                Ornament(g,Math.Max(24,w/2-half-70),w/2-half,18);Ornament(g,w/2+half,Math.Min(w-24,w/2+half+70),18);
+                HudText(g,heading,title,brass,new RectangleF(24,8,w-48,22),format);
+                if(!editing)HudText(g,DisplayText,body,light,new RectangleF(24,32,w-48,h-39-(int)(VoiceHeight(Width)/scale)),format);
             }
             string footer=editing?(String.IsNullOrEmpty(error)?"ENTER  SEND     ·     ESC  RETURN":error):"";
-            if(editing)g.DrawString(footer,hint,brass,new RectangleF(28,h-30,w-56,24),format);
+            if(editing)HudText(g,footer,hint,brass,new RectangleF(28,composerBottom-30,w-56,24),format);
             if(VoiceVisible){
                 int voiceHeight=(int)(VoiceHeight(Width)/scale);int top=h-voiceHeight;
-                if(top>0)using(var pen=new Pen(Color.FromArgb(65,gold),1))g.DrawLine(pen,24,top,w-24,top);
-                bool listening=state.microphoneOn&&state.microphoneRequested&&!micBusy&&!VoiceNoticeVisible;
-                bool stopping=micStopping||(state.microphoneOn&&!state.microphoneRequested);
-                string heading=listening?"Speak now":stopping?"Finishing voice input…":VoiceNoticeVisible?"Voice chat unavailable":"Microphone unavailable";
-                string instruction=listening?"Press "+VoiceKey+" again when you’re finished":VoiceNoticeVisible?voiceNotice:state.microphoneStatus??"Check your Windows default microphone";
-                if(listening&&state.microphoneSilent)instruction="No input signal · check your Windows default microphone";
-                if(listening&&!String.IsNullOrWhiteSpace(state.microphoneTranscript))instruction="You: "+state.microphoneTranscript;
-                if(stopping)instruction="Your microphone is closing";
-                string label=((micBusy||VoiceNoticeVisible?voiceGroup:state.mode=="group")?"GROUP CHAT":"SINGLE CHAT")+(listening?" · "+VoiceKey+" TO FINISH":" · MICROPHONE");
-                g.DrawString(label,title,brass,new RectangleF(24,top+7,w-48,20),format);
-                g.DrawString(heading,body,light,new RectangleF(24,top+28,w-48,30),format);
-                g.DrawString(instruction,hint,brass,new RectangleF(24,top+60,w-48,voiceHeight-64),format);
-                if(listening)using(var live=new SolidBrush(Color.FromArgb(147,183,134))){g.FillEllipse(live,16,top+13,6,6);g.FillRectangle(live,w-95,top+16,(float)(60*Math.Max(0,Math.Min(1,state.microphoneLevel))),3);}
+                if(MinimalVoice){DrawMicrophone(g,w,top);return;}
+                if(top>0)Ornament(g,w/2-40,w/2+40,top+1);
+                DrawMicRing(g,53,top+52);
+                string phase=MicrophonePhase;
+                string instruction=phase=="listening"?"Press "+VoiceKey+" again to send":phase=="quiet"?"Check your microphone · "+VoiceKey+" to finish":phase=="finishing"?"Finishing your message":phase=="connecting"?"Getting your conversation ready":VoiceNoticeVisible?voiceNotice:"Check your Windows microphone";
+                using(var left=new StringFormat{Alignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
+                    HudText(g,MicrophoneLabel,body,light,new RectangleF(108,top+24,w-132,30),left);
+                    HudText(g,instruction,hint,brass,new RectangleF(108,top+62,w-132,40),left);
+                }
+                if(!String.IsNullOrWhiteSpace(VoiceTranscript)){
+                    HudText(g,"You: "+VoiceTranscript,hint,light,new RectangleF(24,top+118,w-48,voiceHeight-118),format);
+                }
             }
         }
     }
     public static void RenderPreview(string path){using(var form=new DialogueOverlay(Path.GetDirectoryName(path),"",true)){
         form.state=new DialogueState{actor="Anca_241",text="I have not forgotten what you did for us. Tell me, what brings you here?",active=true};
         form.SetEditing(true);form.input.Text="Tell me more about this place.";
-        form.CreateControl();using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);form.input.DrawToBitmap(bitmap,form.input.Bounds);form.send.DrawToBitmap(bitmap,form.send.Bounds);bitmap.Save(path);}
+        form.CreateControl();using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);form.input.DrawToBitmap(bitmap,form.input.Bounds);bitmap.Save(path);}
         form.SetEditing(false);
         using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.Save(path+".subtitle.png");}
         form.scale=0.667f;form.Width=form.S(760);form.Height=form.SubtitleHeight(form.Width);
@@ -338,10 +503,69 @@ public sealed class DialogueOverlay : Form {
         form.state.microphoneOn=false;form.state.microphoneStatus="Microphone unavailable: permission denied";
         form.Width=form.S(480);form.Height=form.PanelHeight(form.Width);
         using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.Save(path+".voice-error.png");}
+        form.hideChatBoxes=true;form.ApplyHudStyle();
+        form.state=new DialogueState{active=true,text="This subtitle must be hidden.",microphoneTranscript="This transcript must be hidden.",microphoneRequested=true,microphoneOn=true,microphoneLevel=.65};
+        form.Width=form.S(220);form.Height=form.PanelHeight(form.Width);
+        using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.MakeTransparent(form.clearColour);bitmap.Save(path+".minimal.png");}
+        foreach(string phase in new[]{"quiet","error","finishing","connecting"}){
+            form.state.microphoneSilent=phase=="quiet";form.state.microphoneOn=phase!="error";
+            form.state.microphoneRequested=phase!="finishing";
+            form.state.microphoneStatus=phase=="error"?"Microphone unavailable":"";
+            form.micBusy=phase=="connecting";
+            using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.MakeTransparent(form.clearColour);bitmap.Save(path+".minimal-"+phase+".png");}
+        }
+        form.micBusy=false;form.state.microphoneSilent=false;form.state.microphoneStatus="";
+        form.state.microphoneRequested=true;form.state.microphoneOn=false;
+        if(!form.VoiceVisible||form.MicrophonePhase!="connecting")throw new Exception("Pending microphone disappeared before capture was ready");
+        form.state.microphoneOn=true;
+        if(!form.VoiceVisible||form.MicrophonePhase!="listening")throw new Exception("Ready microphone did not enter Listening");
+        form.state.microphoneOn=false;form.state.microphoneRequested=false;
+        if(form.DisplayText!=""||form.VoiceVisible||form.PanelHeight(form.Width)!=0)throw new Exception("Minimal HUD retained conversation text after recording");
+        foreach(bool hidden in new[]{false,true})foreach(bool subtitles in new[]{false,true}){
+            form.hideChatBoxes=hidden;form.showNpcSubtitles=subtitles;
+            if((form.DisplayText!="")!=(!hidden&&subtitles))throw new Exception("Chat/subtitle visibility precedence failed");
+            form.state.microphoneOn=true;form.state.microphoneRequested=true;
+            if(!form.VoiceVisible||form.MinimalVoice!=hidden)throw new Exception("HUD toggle changed voice availability");
+        }
+        form.hideChatBoxes=true;form.showNpcSubtitles=true;form.state.microphoneOn=false;form.state.microphoneRequested=false;
+        form.state.text="";form.state.hordeText="Next wave in 8 seconds";
+        if(!form.HordeVisible||form.DisplayText!=form.state.hordeText)throw new Exception("Minimal HUD hid the Horde countdown");
+        form.SetEditing(true);if(!form.editing)throw new Exception("Minimal HUD disabled deliberate text entry");
+        form.Width=form.S(760);form.Height=form.PanelHeight(form.Width);form.LayoutInput();
+        using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.Save(path+".minimal-composer.png");}
+        form.SetEditing(false);form.hideChatBoxes=false;form.transparentHud=false;form.ApplyHudStyle();
+        form.state=new DialogueState{active=true,text="The original panel remains available in Settings.",name="Anca"};form.Height=form.PanelHeight(form.Width);
+        using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.Save(path+".panel.png");}
+        form.transparentHud=true;form.ApplyScale(4f/3f);form.SetEditing(true);form.Width=form.S(760);form.Height=form.PanelHeight(form.Width);form.LayoutInput();
+        using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.MakeTransparent(form.clearColour);bitmap.Save(path+".1600-composer.png");}
+        form.state.microphoneOn=true;form.state.microphoneRequested=true;form.state.microphoneTranscript="Tell me about the people we met on the road and what happened in the valley.";
+        foreach(var area in new[]{new Rectangle(0,0,1280,720),new Rectangle(0,0,1920,1080),new Rectangle(0,0,2560,1440),new Rectangle(0,0,2560,1600),new Rectangle(0,0,3440,1440),new Rectangle(0,0,3840,2160),new Rectangle(-2560,0,2560,1600)}){
+            form.LayoutForArea(area);form.LayoutInput();
+            if(!area.Contains(form.Bounds)||!form.ClientRectangle.Contains(form.input.Bounds))throw new Exception("HUD exceeds viewport or clips input at "+area);
+            using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.MakeTransparent(form.clearColour);bitmap.Save(path+"."+area.Width+"x"+area.Height+".png");}
+            foreach(int offset in new[]{0,40}){
+                form.hudBottomPercent=offset;form.LayoutForArea(area);form.LayoutInput();
+                if(!area.Contains(form.Bounds)||!form.ClientRectangle.Contains(form.input.Bounds))throw new Exception("HUD bottom offset clips controls at "+area);
+            }
+            form.hudBottomPercent=0;
+        }
     }}
     public static void VerifyInput(string path){
         string dir=Path.Combine(Path.GetTempPath(),"DawnwalkerComposerTest-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
         using(var form=new DialogueOverlay(dir,"",true)){
+            File.WriteAllText(Path.Combine(dir,"mod-directory.txt"),dir);
+            var culture=System.Threading.Thread.CurrentThread.CurrentCulture;
+            try{
+                System.Threading.Thread.CurrentThread.CurrentCulture=new System.Globalization.CultureInfo("fr-FR");
+                foreach(string offset in new[]{"28","28.0"}){
+                    File.WriteAllText(Path.Combine(dir,"config.ini"),"[Companions]\r\nTransparentChatHud = 1.0\r\nHideChatBoxes = 0.0\r\nShowNpcSubtitles = 1.0\r\nChatHudBottomOffset = "+offset+" ; slider value\r\n");
+                    form.ReadHudSettings(true);
+                    if(form.hudBottomPercent!=28||!form.transparentHud||form.hideChatBoxes||!form.showNpcSubtitles)throw new Exception("HUD settings did not accept the slider format");
+                    form.SetEditing(true);form.LayoutForArea(new Rectangle(0,0,2560,1600));int raised=form.Bottom;
+                    File.WriteAllText(Path.Combine(dir,"config.ini"),"[Companions]\nChatHudBottomOffset = 0.0\n");form.ReadHudSettings(true);form.LayoutForArea(new Rectangle(0,0,2560,1600));
+                    if(form.Bottom-raised!=448)throw new Exception("HUD offset did not move the window by 28% of screen height");
+                }
+            }finally{System.Threading.Thread.CurrentThread.CurrentCulture=culture;}
             form.SetEditing(true);
             form.ComposerKey(Keys.H,"H",true,false);form.ComposerKey(Keys.I,"i",false,false);
             if(form.input.Text!="Hi")throw new Exception("Typing failed");
@@ -353,20 +577,20 @@ public sealed class DialogueOverlay : Form {
             form.ComposerKey(Keys.Enter,"",false,false);
             if(!form.error.StartsWith("Waiting for"))throw new Exception("Enter did not reach submit");
             form.ComposerKey(Keys.Escape,"",false,false);if(form.editing)throw new Exception("Escape failed");
-            File.WriteAllText(path,"PASS: typing, replacement, backspace, navigation, delete, Enter and Escape; no game input or foreground activation.");
+            File.WriteAllText(path,"PASS: integer/decimal HUD settings in comma-decimal locale; saved offset moves actual window bounds; typing, replacement, backspace, navigation, delete, Enter and Escape; no game input or foreground activation.");
         }
     }
     public static void VerifyFonts(string directory,string output){
         using(var form=new DialogueOverlay(Path.Combine(directory,"runtime"),"",true)){
             if(form.gameFonts.Families.Length==0)throw new Exception("Verification must load the bundled game-style font");
             var original=form.input.Font;
-            form.ApplyScale(16f/15f); // 2048x1152: replacement equals the initial font.
+            GameControlFonts.Replace(form.input,form.GameFont(18));
             if(!Object.ReferenceEquals(form.input.Font,original))throw new Exception("Equal font should retain the existing instance");
             foreach(float next in new[]{1.1f,1f,16f/15f,.667f,1.25f,1.333333f,2f,.8f,16f/15f}){
                 form.ApplyScale(next);form.SetEditing(true);
                 // Force the actual HWND path that the fallback-font test missed.
-                var inputHandle=form.input.Handle;var sendHandle=form.send.Handle;
-                if(inputHandle==IntPtr.Zero||sendHandle==IntPtr.Zero)throw new Exception("Composer HWND unavailable");
+                var inputHandle=form.input.Handle;
+                if(inputHandle==IntPtr.Zero)throw new Exception("Composer HWND unavailable");
                 using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,form.ClientRectangle);}
                 form.SetEditing(false);
             }
@@ -374,6 +598,6 @@ public sealed class DialogueOverlay : Form {
             if(form.IsHandleCreated)throw new Exception("Disposed composer recreated its HWND");
         }
         CompanionPanel.VerifyFonts(directory);
-        File.WriteAllText(output,"PASS: bundled Afacad font; equal-size replacement; real textbox/button HWND creation and drawing at nine scales; companion-panel font resizing; disposed composer stays closed. No game input or microphone capture.");
+        File.WriteAllText(output,"PASS: bundled Afacad font; equal-size replacement; real textbox HWND creation and drawing at nine scales; companion-panel font resizing; disposed composer stays closed. No game input or microphone capture.");
     }
 }

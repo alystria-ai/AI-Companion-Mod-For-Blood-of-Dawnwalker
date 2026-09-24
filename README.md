@@ -7,7 +7,8 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 ## Features
 
 - Text and microphone conversations with nearby supported characters, voiced replies, subtitles, facial animation and gentle distance-based volume; talk privately or in a group with up to three distinct speakers.
-- Optional first-person POV, enabled in Settings, with native cameras preserved for dialogue and cutscenes.
+- Transparent conversation HUD, with an optional microphone-only display, a separate NPC-subtitle toggle, and a shared bottom-offset control for chat and voice UI.
+- Optional first-person POV with adjustable field of view, height and forward offset, while preserving native dialogue and cutscene cameras.
 - Horde mode with ten curated wave types, a starting-wave selector and random later waves without repeats, adjustable enemy counts, wave growth, levels and rest times; waves load before combat, defeated bodies remain on the ground, and the rest countdown makes room for conversation subtitles.
 - Custom eye, hair and armour colours with 33 shades, including vivid pinks, purples, blues, greens and reds. Each summoned copy keeps its own colours.
 - Relationship management with Anca and Lacra through separate Auto, On and Off profile choices. Auto follows relationship history in the loaded save, On selects her romantic conversation profile, and Off uses her normal profile. When the save confirms both relationships and both characters join group chat, they can acknowledge Coen’s relationship with each of them and exchange character-specific banter.
@@ -25,6 +26,13 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 
 ## Changelog
 
+### What changed in 0.5.1
+
+- Redesigned the conversation HUD with transparent backgrounds, brass details, larger text and a microphone indicator that shows listening, sending and input problems. Text chat uses Enter to send.
+- Added Hide chat boxes, an independent NPC subtitles toggle, and one shared bottom-offset slider. Zero keeps the original position; higher values move the HUD upward across screen sizes.
+- Added live first-person FOV, height and forward-offset controls. Removed the fixed camera aspect ratio and retained first person through F5 transitions.
+- Corrected microphone-startup visibility, HUD positioning and decimal-valued settings. Reworked overlay startup to avoid showing an old window frame.
+
 ### What changed in 0.5 since 0.30.9
 
 - Added first-person POV, kept it active during text and voice chat, and adjusted player visibility to prevent head, hair and body clipping.
@@ -40,7 +48,7 @@ Talk to supported characters through text or voice, with AI-powered replies, sub
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.0](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.0)
+Windows · Game 1.05 · [Latest release: 0.5.1](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.1)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
 
@@ -50,10 +58,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.0/DawnwalkerConvai-0.5.0-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.1/DawnwalkerConvai-0.5.1-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 
@@ -127,7 +135,14 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | Attack frequency | 180% | Adjusts the native attack-speed attribute so attacks finish faster. Native AI still chooses when to attack and which moves to use. |
 | Anca romance profile | Auto | Auto follows your save. On always uses her romantic profile; Off always uses her normal profile, even after unlocking romance. |
 | Lacra romance profile | Auto | The same Auto, On and Off choices, independent of Anca. |
+| Transparent chat HUD | On | Removes the backdrop behind subtitles, voice status and the typing field. Subtitles and status text have a dark outline for readability. Off restores the shaded panel. |
+| Hide chat boxes | Off | On hides all conversation text, including NPC subtitles. Voice input shows only a transparent microphone indicator with a Listening status and your finish shortcut. After sending a text message, the input disappears and no reply text is shown. Spoken replies continue. Horde countdowns are unaffected. |
+| NPC subtitles | On | Off hides subtitles for mod NPC replies while keeping the normal voice-input HUD and live transcript. Hide chat boxes overrides this toggle. The game's own subtitles are unchanged. |
+| Chat HUD bottom offset | 0% | Zero keeps the original HUD position. Increase it to move text input, subtitles, the microphone HUD and Horde countdowns upward together, by up to 40% of screen height. Tall content stays within the screen. Applies live and scales with resolution. |
 | First-person camera | Off | Switches to Coen's eye-level viewpoint. Turn Off to return to the normal camera. Dialogue, menus and cutscenes keep their native cameras. |
+| First-person field of view | 90° | Adjust the mod camera from 60° to 120°. Higher values show more surroundings. Applies live without changing native gameplay or cinematic cameras. |
+| Camera height offset | 0 cm | Adjust the viewpoint up or down by up to 20 cm relative to Coen's eye height. Crouching still follows the native eye height. |
+| Camera forward offset | 42 cm | Adjust the viewpoint between 20 and 70 cm ahead of Coen's capsule. Applies live in first person. |
 | Starting wave (Horde page) | Roadside raiders | Choose the first enemy theme with the arrows. Remaining themes are random without repeats; the choice saves for future runs. |
 | Starting enemies | 8 | Regular enemies in the first Horde wave, in addition to bosses. |
 | Enemies added per level | 2 | Extra regular enemies added with each cleared wave. |
@@ -165,7 +180,7 @@ This is a preview mod. Some roster entries, boss powers and area attacks still n
 
 ## For developers
 
-[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-050.md)
+[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-051.md)
 
 The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai connections, group chat, quest memory and adapting the approach to another game.
 

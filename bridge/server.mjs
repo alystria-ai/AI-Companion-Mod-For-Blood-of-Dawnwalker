@@ -57,7 +57,16 @@ setInterval(async () => {
   if (flushing) return; flushing = true;
   try {
     const raw = await readFile(resolve(runtime,'target.txt'),'utf8').catch(()=>null);
-    if(raw) { const next=parseTarget(raw); target=next; }
+    if(raw) {
+      const next=parseTarget(raw);
+      if(next.generation!==target.generation||next.room!==target.room){
+        // Never relabel the preceding character's subtitle/microphone frame as
+        // the new conversation while the browser is acknowledging selection.
+        overlay={text:'',microphoneOn:false,microphoneTranscript:'',status:'',updated:Date.now()};
+        currentFrame=encodeFrame({generation:next.generation});
+      }
+      target=next;
+    }
     if(Date.now()-lastSpatialRead>=80){lastSpatialRead=Date.now();spatialRaw=await readFile(resolve(runtime,'spatial.txt'),'utf8').catch(()=>'');}
     if(Date.now()-lastQuestRead>1000){
       lastQuestRead=Date.now();

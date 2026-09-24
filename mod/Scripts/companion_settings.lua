@@ -4,7 +4,14 @@ M.schema={
  {id='AttackFrequency',label='Attack frequency',default=180,min=50,max=250,step=10,suffix='%',help='Uses the native attack-speed attribute. Higher values shorten attacks; native AI still chooses when and what to attack. This is not a forced attack timer.'},
  {id='AncaRomance',label='Anca romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
  {id='LacraRomance',label='Lacra romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
+ {id='TransparentChatHud',label='Transparent chat HUD',group='Conversations',default=1,min=0,max=1,step=1,help='Makes subtitles, voice status and the typing field transparent. Subtitle and status text keep a dark outline for readability. Turn Off to restore the shaded panel.'},
+ {id='HideChatBoxes',label='Hide chat boxes',group='Conversations',default=0,min=0,max=1,step=1,help='On keeps only the microphone indicator during voice input and hides all conversation text, including NPC subtitles. Text entry still opens with your text shortcut, then disappears after sending. Horde countdowns are unaffected.'},
+ {id='ShowNpcSubtitles',label='NPC subtitles',group='Conversations',default=1,min=0,max=1,step=1,help='Shows subtitles for spoken NPC replies. Turn Off to hear replies without reading them while retaining the normal voice-input HUD. Hide chat boxes overrides this setting. This affects mod conversations only.'},
+ {id='ChatHudBottomOffset',label='Chat HUD bottom offset',group='Conversations',default=0,min=0,max=40,step=1,suffix='%',help='Extra height above the original HUD position. Zero keeps the current placement; higher values move text input, NPC subtitles, voice indicators and Horde countdowns upward together, by a percentage of screen height. Tall content stays inside the screen. Applies live.'},
  {id='FirstPersonCamera',label='First-person camera',group='Camera',default=0,min=0,max=1,step=1,help='Experimental head-height gameplay camera. Dialogue, menus and cutscenes take priority. Turn Off to restore the normal camera.'},
+ {id='FirstPersonFOV',label='First-person field of view',group='Camera',default=90,min=60,max=120,step=5,suffix='°',help='Horizontal field of view for the mod camera. Higher values show more surroundings. Applies live in first person; normal gameplay and cinematic cameras are unchanged.'},
+ {id='FirstPersonHeight',label='Camera height offset',group='Camera',default=0,min=-20,max=20,step=2,suffix=' cm',help='Moves the first-person camera above or below Coen’s native eye height. Crouching still follows the game’s eye height. Applies live.'},
+ {id='FirstPersonForward',label='Camera forward offset',group='Camera',default=42,min=20,max=70,step=2,suffix=' cm',help='Moves the first-person viewpoint forward from Coen’s capsule. Lower values stay nearer his head; higher values move it further forward. Applies live.'},
  {id='HordeStartEnemies',label='Starting enemies',group='Horde',default=8,min=1,max=20,step=1,help='Regular enemies in the first horde, in addition to bosses. Changes apply to your next run.'},
  {id='HordeEnemyGrowth',label='Enemies added per level',group='Horde',default=2,min=0,max=4,step=1,help='Adds this many regular enemies with each cleared level.'},
  {id='HordeStartingWave',label='Starting wave',group='Horde',menuOnly=true,cycle=true,default=1,min=1,max=10,step=1,help='Choose the first enemy theme on the Horde page. Later waves are random without repeats.'},
@@ -23,6 +30,7 @@ function M.poll()
  local f=io.open(directory()..'/config.ini','r');if not f then return end
  local text=f:read('*a');f:close();if text==lastText then return end;lastText=text
  local values={};for k,v in text:gmatch('([%w_]+)%s*=%s*([%d%.%-]+)')do values[k]=tonumber(v)end
+ if values.HideChatBoxes==nil and values.ShowConversationText~=nil then values.HideChatBoxes=1-values.ShowConversationText end
  for _,s in ipairs(M.schema)do local v=values[s.id];if v and v==v then M.values[s.id]=math.max(s.min,math.min(s.max,s.min+math.floor((v-s.min)/s.step+.5)*s.step))end end
  M.revision=M.revision+1
 end

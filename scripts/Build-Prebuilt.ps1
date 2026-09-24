@@ -55,6 +55,7 @@ return root
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/FILE-STRUCTURE.md') -Destination (Join-Path $taskPayload 'docs/FILE-STRUCTURE.md')
  [IO.File]::WriteAllText((Join-Path $taskPayload 'release.json'),(@{version=$taskVersion;game='1.05';ue4ss='1.2.1 RC6';menu='1.0.7';native=9;assets=2;protection=2}|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/THIRD-PARTY-PREBUILT.txt') -Destination (Join-Path $taskPayload 'licenses/THIRD-PARTY.txt')
+ Copy-Item -LiteralPath (Join-Path $taskRoot 'LICENSE') -Destination (Join-Path $taskPayload 'licenses/MOD-LICENSE.txt')
  foreach($taskName in @('NODE-LICENSE.txt','WEBVIEW2-LICENSE.txt','WEBVIEW2-NOTICE.txt')){Copy-Item -LiteralPath (Join-Path $taskRoot ('vendor/release-licenses/'+$taskName)) -Destination (Join-Path $taskPayload 'licenses')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'vendor/release-licenses/browser') -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'licenses')}
  # Distribution is an explicit allowlist: no saves, diagnostics, machine paths or browser profile.

@@ -2,9 +2,12 @@
 -- but this build has no authored first-person mode to push into it. Borrow the
 -- controller's view target only during ordinary player-controlled gameplay.
 local AI=require('ai_state')
+local Settings=require('companion_settings')
 local M={}
 local lease
 local retryAt=0
+local menuHeld=false
+local menuResumeUntil=0
 local root=require('runtime_path');local lastStatus
 local function status(message)
  if message==lastStatus then return end;lastStatus=message
@@ -18,10 +21,10 @@ local function safe(fn)
  if ok then return value end
 end
 
-local function nativeScene(pc,pawn)
+local function nativeScene(pc,pawn,menuTransition)
  -- A dialogue can still be preparing its camera cut while the pawn remains
  -- the view target. Give it the camera before its first sequence frame.
- if safe(function()return pc:IsAnyGameInputBlockerActive()end)==true then return 'Native input blocker is active'end
+ if not menuTransition and safe(function()return pc:IsAnyGameInputBlockerActive()end)==true then return 'Native input blocker is active'end
  if safe(function()return pawn.IsCinematicFinisher end)==true then return 'Native finisher is active'end
  local library=AI.find('/Script/Engine.Default__SubsystemBlueprintLibrary')
  local class=AI.find('/Script/DialogueSystem.CinematicSubsystem')
@@ -40,7 +43,9 @@ local function viewPosition(pawn,rotation)
  local eye=safe(function()return pawn.BaseEyeHeight end)
  if type(eye)~='number'or eye<20 or eye>150 then eye=65 end
  local yaw=math.rad(rotation.Yaw or rotation.yaw or 0)
- return {X=actor.X+42*math.cos(yaw),Y=actor.Y+42*math.sin(yaw),Z=actor.Z+eye+3}
+ local forward=Settings.values.FirstPersonForward or 42
+ local height=Settings.values.FirstPersonHeight or 0
+ return {X=actor.X+forward*math.cos(yaw),Y=actor.Y+forward*math.sin(yaw),Z=actor.Z+eye+3+height}
 end
 
 local function obstructsCamera(component,pawn)
@@ -124,7 +129,6 @@ M.release=release
 function M.active()return lease~=nil end
 
 local function eligible(pc,suspended)
- if suspended then return nil,nil,nil,nil,'Mod menu or scene is active'end
  if not valid(pc)then return nil,nil,nil,nil,'Player controller is unavailable'end
  local pawn=safe(function()return pc.Pawn end)
  if not valid(pawn)then return nil,nil,nil,nil,'Player pawn is unavailable'end
@@ -134,11 +138,16 @@ local function eligible(pc,suspended)
  local manager=safe(function()return pc.PlayerCameraManager end)
  local follow=safe(function()return pawn.FollowCamera end)
  if not valid(world)or not valid(manager)or not valid(follow)then return nil,nil,nil,nil,'World or player camera component is unavailable'end
- local scene=nativeScene(pc,pawn);if scene then return nil,nil,nil,nil,scene end
+ local scene=nativeScene(pc,pawn,suspended);if scene then return nil,nil,nil,nil,scene end
  return pawn,world,manager,follow
 end
 
 local function update(s)
+ local fov=Settings.values.FirstPersonFOV or 90
+ if s.fov~=fov then
+  local component=s.camera.CameraComponent
+  if valid(component)then component:SetFieldOfView(fov);s.fov=fov end
+ end
  local rotation=s.pc:GetControlRotation()
  if not rotation then return false end
  local position=viewPosition(s.pawn,rotation)
@@ -166,8 +175,9 @@ local function acquire(pc,pawn,world,manager,follow)
  -- the game's view setup does not consistently respect owner-only visibility.
  camera:SetOwner(pawn)
  local component=camera.CameraComponent
- local fov=manager:GetFOVAngle()
- if valid(component)and type(fov)=='number'and fov>=40 and fov<=130 then component:SetFieldOfView(fov)end
+ -- The CameraActor default is a constrained 16:9 view. Let the viewport own
+ -- the aspect ratio so 16:10 and ultrawide displays do not acquire black bars.
+ if valid(component)then component.bConstrainAspectRatio=false end
  if not update(s)then release();return false end
  pc:SetViewTargetWithBlend(camera,0,0,0,false)
  if not same(pc:GetViewTarget(),camera)then release();return false end
@@ -175,14 +185,24 @@ local function acquire(pc,pawn,world,manager,follow)
 end
 
 function M.tick(pc,enabled,suspended)
- if not enabled then release();retryAt=0;status('First-person camera Off');return false end
+ if not enabled then release();retryAt=0;menuHeld=false;menuResumeUntil=0;status('First-person camera Off');return false end
+ if suspended then menuHeld=true;menuResumeUntil=0
+ elseif menuHeld then menuHeld=false;menuResumeUntil=os.clock()+.5;retryAt=0 end
+ local menuTransition=suspended or os.clock()<menuResumeUntil
  local ok,result,reason=pcall(function()
-  local pawn,world,manager,follow,why=eligible(pc,suspended)
+  local pawn,world,manager,follow,why=eligible(pc,menuTransition)
   if not pawn then release();return false,why end
   if lease then
    if not same(lease.pc,pc)or not same(lease.pawn,pawn)or not same(lease.world,world)
     or not same(lease.manager,manager)or not same(lease.follow,follow)then
     release()
+   elseif menuTransition and same(pc:GetViewTarget(),pawn)then
+    -- Pause-menu resume can reassign the pawn view. Retain our mask and camera
+    -- through this known transition, while real dialogue/finisher checks above
+    -- still release both immediately.
+    if not update(lease)then release();return false end
+    pc:SetViewTargetWithBlend(lease.camera,0,0,0,false)
+    return true
    elseif not same(pc:GetViewTarget(),lease.camera)then
     -- Native camera cut took ownership. Never wrestle it back this frame.
     release();retryAt=os.time()+2;return false

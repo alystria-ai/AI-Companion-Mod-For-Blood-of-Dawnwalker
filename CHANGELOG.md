@@ -2,6 +2,23 @@
 
 Player-facing history for LLM NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.1: September 24, 2026
+
+[Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.1)
+
+- Added transparent subtitle and voice-status backgrounds, with outlined text for readability.
+- Added Hide chat boxes and a separate NPC subtitles toggle in Settings. Hiding chat boxes takes priority: voice input shows only a microphone indicator, and text chat disappears after sending. Spoken replies and Horde countdowns remain available. Existing hidden-text preferences migrate automatically.
+- Refined the transparent HUD with brass details, ivory text, an open typing line and a microphone ring that responds to input level. Listening, connecting, sending and microphone problems have distinct indicators and shortcut hints.
+- HUD settings apply without restarting or interrupting a conversation.
+- Added one shared Chat HUD bottom offset slider for text input, subtitles, microphone indicators and Horde countdowns, measured as extra height above their original position. Defaults to zero; increasing it moves the HUD upward by a percentage of screen height while keeping content visible.
+- Fixed HUD settings ignoring decimal-formatted slider values such as `28.0`. Offsets and toggles now accept both whole-number formats regardless of Windows number-format settings.
+- Corrected transparent HUD font sizing on scaled displays, enlarged chat text, made the typing field transparent and kept the overlay inside the visible game area when opening or changing resolution.
+- Removed the first-person camera's fixed aspect ratio so it fills 16:10 and ultrawide viewports, and kept its camera and body mask through F5 menu transitions to prevent a brief third-person flash.
+- Added live first-person field-of-view, height-offset and forward-offset controls.
+- Prevented stale conversation UI from flashing when opening text or voice chat. Chat shortcuts refresh HUD preferences immediately, old conversation frames clear on selection changes, and the overlay completes its layout before appearing.
+- Removed the Send button; Enter submits text. The typing line now uses the full width. The overlay paints while invisible before appearing, with desktop window transitions disabled for its own window.
+- Removed the voice-conversation heading and kept the microphone indicator visible between request acceptance and confirmed capture, so Connecting transitions into Listening without disappearing.
+
 ## 0.5.0: September 24, 2026
 
 Horde battles, first-person POV, companion colours and relationship management, with the following improvements since 0.30.9. This release includes the corrected Horde AI and melee-weapon setup.
