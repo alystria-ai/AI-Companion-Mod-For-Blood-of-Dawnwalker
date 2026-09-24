@@ -13,7 +13,9 @@ Fight Horde battles, explore in first-person POV, customise companion colours an
 - Clear, centred character voices with gentle distance-based volume.
 - Menu layout and navigation improvements, including Esc returning from Horde and Settings directly to gameplay, plus shortcut recovery and reduced idle background work.
 
-Choose Complete for one download, or install both matching Scripts and Runtime ZIPs. Close the game, extract into its installation folder and merge the Dawnwalker folders. Reapply the matching optional Multilingual pack afterwards if you use it.
+## Installation
+
+Choose Complete for one download, or install both matching Scripts and Runtime ZIPs. Close the game, extract into its installation folder. Reapply the matching optional Multilingual pack afterwards if you use it.
 
 The Multilingual ZIP contains a character-ID configuration file and an installation note. The Source ZIP is for developers and contains no service key or compiled binaries. Existing appearance choices and keybindings are retained. The two relationship profile settings replace the previous shared toggle.
 

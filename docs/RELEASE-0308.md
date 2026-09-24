@@ -2,7 +2,7 @@
 
 Character voices sound clearer in this release. Replies still come from the character's direction and get quieter with distance, but the hollow, drummy sound from the previous audio setup is gone. This applies to text chats, microphone chats and group replies. The improvement was confirmed in game.
 
-## Install or update
+## Installation
 
 Close the game, then install **Complete** or both **Scripts** and **Runtime** for 0.30.8. Scripts contains the Lua game code; Runtime contains the other files the mod needs. You do not need to run npm commands or create a Convai account.
 

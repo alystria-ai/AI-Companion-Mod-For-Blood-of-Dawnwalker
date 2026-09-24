@@ -2,7 +2,7 @@
 
 This update fixes the heavy stuttering and repeated UE4SS errors that could start after reloading a save, even if you dismissed your companions first. Companion cleanup now handles game objects that have already gone away. The fix was confirmed in game and passes the automated tests.
 
-## Install or update
+## Installation
 
 Close the game, then install **Complete** or both **Scripts** and **Runtime** for 0.30.9. The save-reload fix is in Runtime, so replacing Scripts alone will not fix it. Keep your existing settings and conversation data when updating.
 
