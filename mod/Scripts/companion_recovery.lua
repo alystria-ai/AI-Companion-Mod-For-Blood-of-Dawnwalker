@@ -21,12 +21,13 @@ function M.layout(members)
  table.sort(ordered,function(a,b)return a.ordinal<b.ordinal end)
  local seen={};local largest=55
  for _,m in ipairs(ordered)do largest=math.max(largest,m.capsuleRadius or 55)end
- local pitch=math.max(190,largest*2+80)
+ local compact=#ordered>=2 and #ordered<=5
+ local pitch=compact and math.max(150,largest*2+40)or math.max(180,largest*2+70)
  for i,m in ipairs(ordered)do
   seen[m.characterId]=(seen[m.characterId]or 0)+1
   m.label=m.baseName..(counts[m.characterId]>1 and ' #'..seen[m.characterId]or '')
-  m.formationSlot=i;m.formationPitch=pitch
-  local back,side=M.followOffset(i,pitch)
+  m.formationSlot=i;m.formationPitch=pitch;m.formationCount=#ordered
+  local back,side=M.followOffset(i,pitch,#ordered)
   m.followSpacing=math.sqrt(back*back+side*side)+15
  end
  return ordered
@@ -34,13 +35,14 @@ end
 -- Keep a settled party's frame fixed while Coen approaches somebody. A real
 -- travel leg begins after three metres; stopping captures one final destination.
 -- Camera turns and short sidesteps never rotate everyone's assigned slot.
-function M.formationFrame(state,p,yaw,speed,now)
+function M.formationFrame(state,p,yaw,speed,now,count)
  local function capture()
   state.point={X=p.X,Y=p.Y,Z=p.Z};state.yaw=yaw
  end
  if not state.point then capture();state.epoch=0;return state end
  local gap=(p.X-state.point.X)^2+(p.Y-state.point.Y)^2
- if not state.moving and gap>=300^2 then
+ local depart=count and count>=2 and count<=5 and 180 or 300
+ if not state.moving and gap>=depart^2 then
   state.moving=true;state.epoch=state.epoch+1;state.lastMoving=now
  end
  if state.moving then
@@ -220,15 +222,36 @@ function M.reconnectCandidate(m,key,now)
  if key~=m.candidateKey then m.candidateKey=key;m.candidateAt=key and now or nil;return false end
  return key~=nil and now-(m.candidateAt or now)>=1000
 end
-function M.followOffset(slot,pitch)
- -- Mirror the successful summon fan behind Coen, using the same arc seats
- -- and capsule spacing. Additional companions fill wider concentric arcs.
- local radius,angles,index=M.summonArc(slot,pitch)
+function M.followOffset(slot,pitch,count)
+ if count==1 then return math.max(145,(pitch or 190)-45),0 end
+ if count and count>=2 and count<=5 and slot and slot<=count then
+  -- One compact rear fan for a small group, including the fifth companion.
+  -- Keep chord clearance tied to capsule size, not just a fixed radius.
+  local step=(count==2 and 90 or count==3 and 150 or 170)/(count-1)
+  local angles={};if count%2==1 then angles[1]=0 end
+  for i=1,math.floor(count/2)do local a=(i-(count%2==0 and .5 or 0))*step;angles[#angles+1]=-a;angles[#angles+1]=a end
+  local radius=math.max(130,(pitch or 150)/(2*math.sin(math.rad(step/2)))+8)
+  local angle=math.rad(angles[slot]);return math.cos(angle)*radius,math.sin(angle)*radius
+ end
+ -- Arrival seats need less clearance than spawning a new actor. Keep the
+ -- same stable 4/7/10-seat arcs, but bring them inward and spread them wider.
+ -- Derive clearance from body size; large creatures still need more space.
+ local clearance=math.max(155,(pitch or 180)-25)
+ local index=math.max(0,(slot or 1)-1);local ring=0
+ while index>=4+ring*3 do index=index-(4+ring*3);ring=ring+1 end
+ local capacity=4+ring*3;local angles={};local step=170/(capacity-1)
+ if capacity%2==1 then angles[1]=0 end
+ for i=1,math.floor(capacity/2)do
+  local a=(i-(capacity%2==0 and .5 or 0))*step
+  angles[#angles+1]=-a;angles[#angles+1]=a
+ end
+ local inner=math.max(165,clearance/(2*math.sin(math.rad(170/6)))+8)
+ local radius=math.max(inner+ring*(clearance+10),clearance/(2*math.sin(math.rad(step/2)))+8)
  local angle=math.rad(angles[index+1])
  return math.cos(angle)*radius,math.sin(angle)*radius
 end
-function M.followPoint(player,yaw,slot,pitch)
- local back,side=M.followOffset(slot,pitch);local angle=math.rad(yaw)
+function M.followPoint(player,yaw,slot,pitch,count)
+ local back,side=M.followOffset(slot,pitch,count);local angle=math.rad(yaw)
  return {X=player.X-math.cos(angle)*back-math.sin(angle)*side,Y=player.Y-math.sin(angle)*back+math.cos(angle)*side,Z=player.Z},math.sqrt(back*back+side*side)
 end
 -- A blocked lane yields to the native direct route, with a quiet interval.

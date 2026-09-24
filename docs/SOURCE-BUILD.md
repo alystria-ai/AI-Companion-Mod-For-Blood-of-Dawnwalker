@@ -8,7 +8,7 @@ This source tree includes the Lua mod, TypeScript/browser client, JavaScript ser
 - Node.js and npm. The release uses Node.js 24.19.0. Dependencies are pinned in `package-lock.json`.
 - Microsoft.Web.WebView2 SDK **1.0.4191.47**. Extract the NuGet package into `vendor/webview2/sdk/`; that folder must contain `lib/net462` and `runtimes/win-x64/native`.
 - Zig **0.14.1** for Windows x64, extracted so the compiler is `vendor/zig/zig-x86_64-windows-0.14.1/zig.exe`.
-- The game and its separately installed dependencies are required only for runtime testing: Dawnwalker **1.05**, game-specific UE4SS **1.2.1 RC6**, and Dawnwalker Mod Menu **1.0.6.2**.
+- The game and its separately installed dependencies are required only for runtime testing: Dawnwalker **1.05**, game-specific UE4SS **1.2.1 RC6**, and Dawnwalker Mod Menu **1.0.7**.
 
 Use the official [WebView2 SDK package](https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.4191.47) and [Zig downloads](https://ziglang.org/download/). External build dependencies are not downloaded or installed by the mod at runtime.
 
@@ -28,12 +28,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-WebView.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1 -AssetLoader
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1 -Protection
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-CompanionNative.ps1 -Simulation
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-BackgroundLauncher.ps1
 ```
 
 The example contains placeholders. Configure your own Convai account and character IDs in the ignored `runtime/convai-config.json` when developing conversations. Do not overwrite an existing configuration with the example or commit your runtime folder. The public source contains no shared-service credential.
 
-`Build-WebView.ps1` compiles the C# files into `bridge/native/ConvaiHost.exe` and copies the three WebView2 SDK runtime libraries. The native builds produce `companion_native_v9.dll`, `companion_assets_v2.dll`, `companion_protection_v2.dll` and `background_launcher_v1.dll` in that same output directory. `npm run build` writes `bridge/public/client.js`.
+`Build-WebView.ps1` compiles the C# files into `bridge/native/ConvaiHost.exe` and copies the three WebView2 SDK runtime libraries. The native builds produce `companion_native_v9.dll`, `companion_assets_v2.dll`, `companion_protection_v2.dll`, `companion_simulation_v1.dll` and `background_launcher_v1.dll` in that same output directory. `npm run build` writes `bridge/public/client.js`.
 
 ## Distribution build
 

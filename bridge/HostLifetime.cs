@@ -31,6 +31,34 @@ public static class HostDiagnostics {
     }
     public static void TryWrite(string path,string value){try{File.WriteAllText(path,value);}catch(Exception e){Log("UI mailbox write: "+Path.GetFileName(path),e);}}
 }
+// A helper manually restarted outside an elevated game can have a lower token.
+// Windows then withholds keyboard input. Ask the existing in-game launcher to
+// recreate the helper; never request elevation or change system/UAC settings.
+public static class HostGamePermissions {
+    static DateTime nextCheck;
+    static bool? ownElevation;
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access,bool inherit,int pid);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("advapi32.dll")] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
+    [DllImport("advapi32.dll")] static extern bool GetTokenInformation(IntPtr token,int kind,out int value,int length,out int needed);
+    static bool? Elevated(int pid){
+        IntPtr process=OpenProcess(0x1000,false,pid),token=IntPtr.Zero;
+        try{if(process==IntPtr.Zero||!OpenProcessToken(process,8,out token))return null;int value,needed;return GetTokenInformation(token,20,out value,4,out needed)?(bool?)(value!=0):null;}
+        finally{if(token!=IntPtr.Zero)CloseHandle(token);if(process!=IntPtr.Zero)CloseHandle(process);}
+    }
+    public static bool NeedsGameLaunch(){
+        if(ownElevation==true)return false;
+        if(DateTime.UtcNow<nextCheck)return false;nextCheck=DateTime.UtcNow.AddSeconds(5);
+        using(var self=Process.GetCurrentProcess()){
+            ownElevation=ownElevation??Elevated(self.Id);
+            if(ownElevation!=false)return false;
+            foreach(var game in Process.GetProcessesByName("Dawnwalker"))using(game){
+                try{if(game.SessionId==self.SessionId&&Elevated(game.Id)==true)return true;}catch{}
+            }
+        }
+        return false;
+    }
+}
 // Closing the host's job handle (including process termination) kills its Node
 // child. A dead WinForms/WebView host must not leave the bridge port occupied.
 public sealed class HostServerJob : IDisposable {

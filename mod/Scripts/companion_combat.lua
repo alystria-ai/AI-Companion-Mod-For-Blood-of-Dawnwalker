@@ -1,6 +1,69 @@
 -- Combat owns locomotion between entry and exit. A forced-target lease may be
 -- renewed without replaying the native combat-start phase / battle cry.
 local M={}
+-- Bounded, session-local observations. Keep names/IDs only, never stale UObject
+-- references. The conversation bridge reads this independently of combat AI.
+local battles={records={},witnesses={},serial=0,stamp=0}
+M.battles=battles
+local function field(value)return tostring(value or ''):gsub('[\r\n\t,;|]',' '):sub(1,180)end
+function battles.reset()
+ battles.records={};battles.current=nil;battles.horde=nil;battles.afterHorde=nil;battles.witnesses={};battles.witnessRequested=nil;battles.stamp=0;battles.sampleAt=nil
+end
+local function record(kind,key,title,level)
+ for _,r in ipairs(battles.records)do if r.key==key then return r end end
+ local r={key=key,kind=kind,title=title,level=level or 0,state='fighting',enemies={},witnesses={},updated=os.time(),kills=0}
+ battles.records[#battles.records+1]=r
+ while #battles.records>3 do table.remove(battles.records,1)end
+ return r
+end
+local function witness(r)
+ for id in pairs(battles.witnesses)do r.witnesses[id]=true end
+end
+function battles.observe(active,opponents,now)
+ if battles.horde then return end
+ if battles.afterHorde then if active then return end;battles.afterHorde=nil end
+ local r=battles.current
+ if active then
+  if not r then
+   battles.serial=battles.serial+1;r=record('battle','battle-'..battles.serial,'Recent battle');battles.current=r;witness(r)
+   for key,name in pairs(opponents or {})do if (r.count or 0)<64 then
+    r.count=(r.count or 0)+1;r.enemies[key]=field(name)
+   end end
+  end
+  r.quietAt=nil
+ elseif r then
+  r.quietAt=r.quietAt or now
+  if now-r.quietAt>=5000 then r.state='combat-ended';r.updated=os.time();battles.current=nil end
+ end
+end
+function battles.wave(s,state)
+ if not s.engaged and state~='cleared'and state~='complete'then return end
+ if state=='fighting'and not s.released then return end
+ local r=record('horde',s.id..'-'..s.level,s.name,s.level)
+ if state=='ended'and r.state=='cleared'then return end
+ local now=os.time()
+ if r.sampleSecond==now and r.state==state and r.kills==(s.kills or 0)then return end
+ r.sampleSecond=now
+ r.state=state;r.kills=s.kills or 0;r.updated=os.time()
+ if not r.captured then
+  r.captured=true;witness(r)
+  for i,e in ipairs(s.handles)do
+   if e.ready and not e.omitted then r.enemies[tostring(i)]=field(e.name or 'Unidentified opponent')end
+  end
+ end
+end
+function battles.publish(root)
+ local now=os.time();if battles.stamp==now then return end;battles.stamp=now
+ local rows={'BATTLES\t1\t'..now}
+ for _,r in ipairs(battles.records)do if r.state~='fighting'and now-r.updated<=1800 then
+  local names,counts,people={},{},{}
+  for _,name in pairs(r.enemies)do counts[name]=(counts[name]or 0)+1 end
+  for name,count in pairs(counts)do names[#names+1]=name..' x'..count end;table.sort(names)
+  for id in pairs(r.witnesses)do people[#people+1]=field(id)end;table.sort(people)
+  rows[#rows+1]=table.concat({field(r.key),r.kind,r.state,r.level,field(r.title),table.concat(names,'; '),table.concat(people,','),r.kills,r.updated},'\t')
+ end end
+ local f=io.open(root..'/battle-context.tsv','w');if f then f:write(table.concat(rows,'\n')..'\n');f:close()end
+end
 -- Choose an initial opponent only. Native combat owns later retargeting.
 -- Spread available companions over nearby threats instead of queueing every
 -- helper behind the attack tickets on whatever Coen happens to be aiming at.
@@ -23,7 +86,13 @@ function M.followPace(gap,playerSpeed,wasRunning,spacing,wasSprinting)
  local running=gap>=enter or (gap>stop+35 and playerSpeed>=180)
  if wasRunning and gap>stop+65 then running=true end
  local sprinting=running and (playerSpeed>=320 or gap>stop+400 or wasSprinting and gap>stop+120)
- return {stop=stop,start=start,running=running,sprinting=sprinting,enum=sprinting and 2 or running and 1 or 0,runAt=enter}
+ local excess=math.max(0,gap-stop)
+ -- A distant follower must catch up even after Coen slows or stops. Ease the
+ -- private travel profile back down near its seat instead of dropping the
+ -- boost as soon as the player's sprint ends.
+ local targetSpeed=sprinting and (playerSpeed>=450 or excess>400)and excess>80
+  and math.min(4000,math.max(590,playerSpeed*1.05)+math.min(900,excess*.6))or nil
+ return {stop=stop,start=start,running=running,sprinting=sprinting,enum=sprinting and 2 or running and 1 or 0,runAt=enter,targetSpeed=targetSpeed}
 end
 function M.new(ops)
  local self={phase='travel',attempts=0,nextStart=0,lastLease=-math.huge}

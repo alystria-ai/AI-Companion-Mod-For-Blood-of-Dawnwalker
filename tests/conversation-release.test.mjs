@@ -48,4 +48,18 @@ test('native attention leases focus/modes without rotating or locking movement; 
  assert(not M.attend(nil,actor,player,log,false))
  attention=M.attend(nil,actor,player,log,true);assert(attention,'Owned conversation hold should allow animated attention')
  M.releaseAttention(attention)
+ board.bMainBehaviorSuspended=false
+ local point={X=10,Y=20,Z=30};local writes=0
+ controller.focus=nil
+ controller.GetFocalPoint=function()return point end
+ controller.K2_SetFocalPoint=function(self,p)self.focus=nil;point=p;writes=writes+1 end
+ attention=M.attend(nil,actor,player,log,false,{sideAngle=22,range=700})
+ assert(attention and point.Y>50 and point.X<200,'General attention should look beside the player')
+ attention=M.attend(attention,actor,player,log,false,{sideAngle=22,range=700})
+ assert(attention and writes==1,'Settled attention should not rewrite focus every tick')
+ speed=100;attention=M.attend(attention,actor,player,log,false,{sideAngle=22,range=700})
+ assert(not attention and point.X==10 and point.Y==20,'Travel must restore the previous focal point')
+ speed=0;attention=M.attend(nil,actor,player,log,false,{sideAngle=-22,range=700})
+ point={X=900,Y=100,Z=50};M.releaseAttention(attention)
+ assert(point.X==900,'Cleanup must preserve a newer native focal point')
 `));

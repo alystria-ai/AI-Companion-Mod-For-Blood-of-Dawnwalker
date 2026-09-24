@@ -24,7 +24,7 @@ try {
  }else{& (Join-Path $PSScriptRoot 'Build-WebView.ps1') -OutputName ConvaiHost.distribution.exe}
  if($LASTEXITCODE -ne 0){throw 'Helper build failed'}
  Copy-Item -LiteralPath (Join-Path $taskRoot 'bridge/native/ConvaiHost.distribution.exe') -Destination (Join-Path $taskPayload 'bridge/native/ConvaiHost.exe')
- foreach($taskName in @('companion_native_v9.dll','companion_assets_v2.dll','companion_protection_v2.dll','background_launcher_v1.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $taskRoot ('bridge/native/'+$taskName)) -Destination (Join-Path $taskPayload 'bridge/native')}
+ foreach($taskName in @('companion_native_v9.dll','companion_assets_v2.dll','companion_protection_v2.dll','companion_simulation_v1.dll','background_launcher_v1.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $taskRoot ('bridge/native/'+$taskName)) -Destination (Join-Path $taskPayload 'bridge/native')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'bridge') -Filter '*.mjs' -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'bridge')}
  foreach($taskDir in @('bridge/public','bridge/fonts','mod/Scripts')){Get-ChildItem -LiteralPath (Join-Path $taskRoot $taskDir) -File | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $taskPayload $taskDir)}}
  foreach($taskName in @('companion-config.json','companion-lore.json','quest-knowledge.json','combat-roster.json','romance-config.json')){Copy-Item -LiteralPath (Join-Path $taskRoot ('characters/'+$taskName)) -Destination (Join-Path $taskPayload 'characters')}
@@ -53,7 +53,7 @@ return root
  New-Item -ItemType Directory -Force -Path (Join-Path $taskPayload 'docs')|Out-Null
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/PREBUILT-INSTALL.md') -Destination (Join-Path $taskPayload 'docs/INSTALL.md')
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/FILE-STRUCTURE.md') -Destination (Join-Path $taskPayload 'docs/FILE-STRUCTURE.md')
- [IO.File]::WriteAllText((Join-Path $taskPayload 'release.json'),(@{version=$taskVersion;game='1.05';ue4ss='1.2.1 RC6';menu='1.0.6.2';native=9;assets=2;protection=2}|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+ [IO.File]::WriteAllText((Join-Path $taskPayload 'release.json'),(@{version=$taskVersion;game='1.05';ue4ss='1.2.1 RC6';menu='1.0.7';native=9;assets=2;protection=2}|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
  Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/THIRD-PARTY-PREBUILT.txt') -Destination (Join-Path $taskPayload 'licenses/THIRD-PARTY.txt')
  foreach($taskName in @('NODE-LICENSE.txt','WEBVIEW2-LICENSE.txt','WEBVIEW2-NOTICE.txt')){Copy-Item -LiteralPath (Join-Path $taskRoot ('vendor/release-licenses/'+$taskName)) -Destination (Join-Path $taskPayload 'licenses')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'vendor/release-licenses/browser') -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'licenses')}

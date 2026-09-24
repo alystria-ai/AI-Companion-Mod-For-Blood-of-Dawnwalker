@@ -40,6 +40,7 @@ local playerPoint,playerSpeed,playerVelocity,travelHeading,cameraPoint,cameraYaw
 local formation=Formation.new();local formationFrame=formation.frame
 local partyPositions={}
 local partyDeparture=false
+local gazeAttention={}
 local xantheCombatProfile='/Game/_Dawnwalker/Player/MovementProfiles/DA_Xanthe_Combat_MovementProfile.DA_Xanthe_Combat_MovementProfile'
 local valid,same=AI.valid,AI.same
 local function ready(m)return valid(m.actor)and AI.board(m.stub,m.board)end
@@ -47,6 +48,66 @@ local function clean(s)return tostring(s or ''):gsub('[\r\n\t]',' '):sub(1,500)e
 local function read(name,max)local f=io.open(root..'/'..name,'rb');if not f then return ''end;local s=f:read(max or 65536)or '';f:close();return s end
 local function write(name,s)local f=assert(io.open(root..'/'..name,'wb'));f:write(s);f:close()end
 local function log(s)print('[Dawnwalker Companions] '..clean(s)..'\n')end
+-- A save load is not world travel. Keep one primitive event counter across
+-- Lua reloads; the callback never touches pawns or invokes application code.
+local seenSaveLoad
+local function saveLoaded()
+ local key='DawnwalkerConvai.SaveLoadSignal'
+ local signal=package.loaded[key]
+ if not signal then
+  signal={generation=0};package.loaded[key]=signal
+  local ok,why=pcall(RegisterHook,'/Script/Flow.FlowSubsystem:OnGameLoaded',function()
+   signal.generation=signal.generation+1
+  end)
+  if not ok then log('Save-load notification unavailable; using player/clock transitions: '..tostring(why))end
+ end
+ local changed=seenSaveLoad~=nil and seenSaveLoad~=signal.generation
+ seenSaveLoad=signal.generation
+ return changed
+end
+local function releaseGaze(id)
+ if id then Engagement.releaseAttention(gazeAttention[id]);gazeAttention[id]=nil;return end
+ for key,state in pairs(gazeAttention)do Engagement.releaseAttention(state);gazeAttention[key]=nil end
+end
+local function releaseSimulation(m)
+ local s=m.simulationLease;m.simulationLease=nil;if not s then return end
+ if valid(s.mesh)and same(s.mesh:GetOwner(),s.actor)then
+  if s.budgetFlags then
+   local result,why=Native.run('animationbudget',{s.mesh:GetFullName():match('^%S+ (.+)$'),tostring(s.budgetFlags)})
+   if not result then log('Animation scheduling restore: '..tostring(why))end
+  end
+  if s.mesh.VisibilityBasedAnimTickOption==0 then s.mesh.VisibilityBasedAnimTickOption=s.visibility end
+  if s.mesh.bEnableUpdateRateOptimizations==false then s.mesh.bEnableUpdateRateOptimizations=s.updateRate end
+  if s.mesh:IsComponentTickEnabled()then s.mesh:SetComponentTickEnabled(s.tick)end
+ end
+end
+local function simulation(m)
+ if not ready(m)or m.mode~='follow'or m.board.bIsDead or m.stub:IsInCinematicMode()or m.board.bMainBehaviorSuspended then releaseSimulation(m);return end
+ local mesh=m.actor.Mesh
+ if not valid(mesh)or not same(mesh:GetOwner(),m.actor)then releaseSimulation(m);return end
+ local s=m.simulationLease
+ if s and not same(s.mesh,mesh)then releaseSimulation(m);s=nil end
+ if not s then
+  local budgeted=AI.find('/Script/AnimationBudgetAllocator.SkeletalMeshComponentBudgeted')
+  s={actor=m.actor,mesh=mesh,visibility=mesh.VisibilityBasedAnimTickOption,tick=mesh:IsComponentTickEnabled(),updateRate=mesh.bEnableUpdateRateOptimizations,budget=valid(budgeted)and mesh:IsA(budgeted)}
+  m.simulationLease=s
+ end
+ -- Root-motion locomotion cannot advance when the main animation is culled.
+ -- Exempt just this owned pawn's driving mesh, not face/hair/cloth meshes or
+ -- the world's animation budget. Restore when this companion stops following.
+ -- AutoRegister is only a future-registration flag; changing it does not
+ -- release an already-budgeted mesh. Lease the allocator's native scheduling
+ -- flags once for this driving mesh. Face/hair/cloth remain normally budgeted.
+ if s.budget and not s.budgetFlags and (m.now or 0)>=(s.retryAt or 0)then
+  s.retryAt=(m.now or 0)+5000
+  local result,why=Native.run('animationbudget',{mesh:GetFullName():match('^%S+ (.+)$'),'enable'})
+  if result and result.registered=='1'then s.budgetFlags=tonumber(result.previous);m.simulationNote='Off-screen locomotion scheduling active'
+  elseif not result then m.simulationNote=tostring(why)end
+ end
+ if mesh.VisibilityBasedAnimTickOption~=0 then mesh.VisibilityBasedAnimTickOption=0 end
+ if mesh.bEnableUpdateRateOptimizations then mesh.bEnableUpdateRateOptimizations=false end
+ if not mesh:IsComponentTickEnabled()then mesh:SetComponentTickEnabled(true)end
+end
 local function summonStage(m,phase,message)
  if not m.request then return end
  m.loadTrace=m.loadTrace or {}
@@ -209,6 +270,8 @@ local function enemyPair(m,a,b)
  return true
 end
 local function dismiss(m,reason)
+ releaseSimulation(m)
+ releaseGaze(m.id)
  releaseCivilian(m)
  summonStage(m,'failed',reason)
  local restored,restoreError=pcall(Appearance.release,m)
@@ -227,12 +290,14 @@ end
 local beforeReset=nil
 function M.beforeReset(fn)beforeReset=fn end
 local function resetParty(reason,preserve)
+ Combat.battles.reset()
+ releaseGaze()
  local saved,seen={},{}
  if preserve then
   for _,entry in ipairs(pendingWorldParty and pendingWorldParty.entries or {})do saved[#saved+1]=entry;seen[entry.id]=true end
   for _,m in pairs(members)do if not seen[m.id]then
    saved[#saved+1]={id=m.id,characterId=m.characterId,ordinal=m.ordinal,mode=m.mode,spawnSlot=m.spawnSlot,replacedEpoch=m.replacedEpoch,
-    defeated=m.defeated==true or m.health==0 or ready(m)and m.board.bIsDead,peaceSince=m.peaceSince}
+    appearancePreset=Appearance.capture(m.characterId,m.appearancePreset),defeated=m.defeated==true or m.health==0 or ready(m)and m.board.bIsDead,peaceSince=m.peaceSince}
   end end
   table.sort(saved,function(a,b)return a.ordinal<b.ordinal end)
  end
@@ -245,6 +310,7 @@ local function resetParty(reason,preserve)
  -- Root ownership lives in the native DLL across Lua reloads. Never abandon it.
  local result,why=Native.stopAll();assert(result,why)
  Protection.cleanup()
+ Native.clearAssetCache();AI.clearFindCache()
  return {entries=saved,retryAt=0}
 end
 function M.cleanup()
@@ -429,7 +495,7 @@ local function followMovement(m,now)
  m.paceLease=m.paceLease or {}
  local suffix=pace.sprinting and 'Sprinter'or 'Runner'
  local path='/Game/_Dawnwalker/NPC/BasicNPC/MovementProfiles/DA_Follower_'..suffix..'_MovementProfile.DA_Follower_'..suffix..'_MovementProfile'
- AI.travelPace(m.stub,m.board,m.paceLease,m.actor:GetMovementComponent(),pace.running and AI.find(path)or nil,pace.enum)
+ AI.travelPace(m.stub,m.board,m.paceLease,m.actor:GetMovementComponent(),pace.running and AI.find(path)or nil,pace.enum,nil,pace.targetSpeed,now)
  local active,why=FormationNative.update(m,goal,now)
  m.wakeNote=why;m.formationPathStatus=valid(m.controller)and m.controller:GetMoveStatus()or nil
  m.travelRequestAt=m.formationLease and m.formationLease.issuedAt
@@ -443,6 +509,55 @@ end
 local function conversationReady(m)
  return conversationCandidate(m)and not m.board:HasAnyUnbreakableActiveAction()
 end
+local function updateGaze(pc,now)
+ if partyEncounterActive or playerSpeed>=170 or formationFrame.moving then releaseGaze();return end
+ local candidates={}
+ -- Reuse the formation snapshot. No world scan or camera-facing requirement:
+ -- settled followers behind Coen participate too, including combat-only ones.
+ for _,p in ipairs(partyPositions)do
+  local m=members[p.id];local goal=formation.goals[p.id]
+  if m and not p.locked and goal and goal.distance<=100 then
+   local gap=distance(p,playerPoint);local range=math.max(650,(m.followSpacing or 250)+200)
+   if gap<=range and math.abs(p.Z-playerPoint.Z)<180 then
+    local v=m.actor:GetVelocity()
+    if v.X^2+v.Y^2<=25^2 then
+     if not same(m.gazeLOSActor,m.actor)or now>=(m.gazeLOSAt or 0)then
+      m.gazeLOSActor=m.actor;m.gazeLOSAt=now+2000
+      m.gazeVisible=pc:LineOfSightTo(m.actor,cameraPoint or playerPoint,false)
+     end
+     if m.gazeVisible then
+      local previous=gazeAttention[m.id]
+      candidates[#candidates+1]={m=m,gap=gap,range=range,score=gap-(previous and previous.sideAngle==0 and 45 or 0)}
+     end
+    end
+   end
+  end
+ end
+ table.sort(candidates,function(a,b)if a.score==b.score then return a.m.ordinal<b.m.ordinal end;return a.score<b.score end)
+ local wanted={};local direct=0
+ for _,entry in ipairs(candidates)do
+  local m=entry.m;local previous=gazeAttention[m.id]
+  local near=entry.gap<=(previous and previous.sideAngle==0 and 380 or 330)
+  local angle=(m.ordinal%2==0 and 22 or -22)
+  if near and direct<2 then angle=0;direct=direct+1 end
+  entry.angle=angle;wanted[m.id]=entry
+ end
+ for id,state in pairs(gazeAttention)do
+  local entry=wanted[id]
+  if not entry or not same(state.actor,entry.m.actor)or state.sideAngle~=entry.angle then releaseGaze(id)end
+ end
+ -- Spread new native leases across ticks for large parties. Existing leases
+ -- update without pushing another mode; movement/combat release them first.
+ local acquired=0
+ for _,entry in ipairs(candidates)do
+  local id=entry.m.id;local previous=gazeAttention[id]
+  if previous or acquired<4 and now>=(entry.m.gazeAttemptAt or 0)then
+   if not previous then acquired=acquired+1 end
+   gazeAttention[id]=Engagement.attend(previous,entry.m.actor,player,log,false,{sideAngle=entry.angle,range=entry.range})
+   if gazeAttention[id]then entry.m.gazeAttemptAt=nil else entry.m.gazeAttemptAt=now+5000 end
+  end
+ end
+end
 function M.actor(id)
  local m=members[id]
  if not m or not conversationCandidate(m)or not valid(player)or distance(loc(m.actor),loc(player))>1200 then return nil,false end
@@ -453,6 +568,7 @@ function M.identity(actor)
  for _,m in pairs(members)do if same(m.actor,actor)then return {name=m.name,definition=m.definition.path,characterId=m.characterId,chat=m.definition.chat~=false}end end
 end
 function M.beforeConversation(actor)
+ releaseGaze()
  for _,m in pairs(members)do if same(m.actor,actor)then
   if not conversationReady(m)then return false,'Companion is busy with combat or an action'end
   m.talkFollowing=nil;m.resumeConversation=nil;m.formationPending=nil;m.formationEpoch=formationFrame.epoch
@@ -513,6 +629,7 @@ local function attach(m,actor)
  local s=stub(actor);local board=AI.board(s);if not board then return false end
  assert(actor:GetWorld():GetFullName()==worldName,'Spawned pawn belongs to another world')
  if m.stubKey then ownedStubs[m.stubKey]=nil end
+ releaseSimulation(m)
  m.actor,m.stub,m.board=actor,s,board;m.attitudes={}
  -- These are mod-owned population clones. Their original boss arena must not
  -- force Defensive/GuardArea behavior as the party travels across the world.
@@ -658,6 +775,12 @@ local function catchup(m,now)
  local p,a=loc(player),loc(m.actor);local gap=distance(a,p);m.playerGap=gap
  local minimum,cooldown=Recovery.catchupLimits(playerSpeed,m.followSpacing)
  if gap<minimum then return end
+ -- Give a moving follower's private sprint profile time to close the gap.
+ -- Relocation remains a last resort for blocked/unloaded actors or real travel.
+ if (not travelKind or travelKind=='rapid travel')and gap<5000 and playerSpeed>=450 then
+  local velocity=m.actor:GetVelocity()
+  if velocity.X^2+velocity.Y^2>200^2 then m.catchupNote='Running to catch up';return end
+ end
  local movement=m.actor:GetMovementComponent();local pm=player:GetMovementComponent()
  local ground=valid(movement)and valid(pm)and movement.MovementMode==1 and pm.MovementMode==1
  -- WasRecentlyRendered also reports shadows. Use a conservative rear-camera
@@ -681,7 +804,7 @@ local function catchup(m,now)
   log(m.name..' caught up from '..math.floor(gap/100)..' metres')
  else m.catchupNote='Native collision check declined arrival'end
 end
-local function spawn(id,now,request)
+local function spawn(id,now,request,preset)
  assert(not members[request],'Spawn request already exists')
  local c=assert(byId[id],'Unknown companion')
  local used={};for _,other in pairs(members)do if other.spawnSlot then used[other.spawnSlot]=true end end
@@ -696,6 +819,7 @@ local function spawn(id,now,request)
  spawnOrdinal=spawnOrdinal+1
  local label=id=='matriarch'and 'Bakr-Erga'or id=='marat'and 'Crake'or c.name
  local m={id=request,characterId=id,archetype=c.archetype~=''and c.archetype or id,label=label,baseName=label,ordinal=spawnOrdinal,name=c.name,definition=c,loading='character',spawnSlot=slot,position=position,yaw=yaw,created=now,mode='follow',status='Loading character',detail='',attitudes={}}
+ m.appearancePreset=Appearance.capture(id,preset)
  members[request]=m -- A distinct game actor; the Convai identity stays c.id.
  Recovery.layout(members)
  m.request=request
@@ -707,7 +831,7 @@ local function spawn(id,now,request)
  summonStage(m,'character','Preparing character')
 end
 local function pollLoading(m,now)
- if now-m.created>60000 then error('Character loading timed out after 60 unpaused seconds')end
+ if now-m.created>60000 then error(m.status..' timed out after 60 unpaused seconds')end
  local paths={character=m.definition.path,body=m.pawnPath,ai=m.aiPath,reactions=m.reactionsPath}
  local path=paths[m.loading]
  local class=path and Native.loadedClass(path)or nil
@@ -751,7 +875,10 @@ local function pollLoading(m,now)
   local point=valid(other.actor)and loc(other.actor)or other.position
   if point then occupied[#occupied+1]=point end
  end end
- local position,yaw=Recovery.summonPoint(loc(player),player:K2_GetActorRotation().Yaw,m.formationSlot or m.spawnSlot,occupied,project,m.formationPitch)
+ -- Spawn clearance stays wider than settled follow seats. Reusing a compact
+ -- follow pitch here squeezed the final placement after the loading preview.
+ local spawnPitch=math.max(190,m.formationPitch or 190)
+ local position,yaw=Recovery.summonPoint(loc(player),player:K2_GetActorRotation().Yaw,m.formationSlot or m.spawnSlot,occupied,project,spawnPitch)
  assert(position,'No clear walkable summon point; move onto open ground and summon again')
  m.position,m.yaw=position,yaw
  -- Other async loads can collect an earlier soft class. Reacquire at use and
@@ -773,8 +900,9 @@ local function pollLoading(m,now)
 end
 local function replaceMissingMember(m,now)
  local id,character,ordinal,mode,epoch=m.id,m.characterId,m.ordinal,m.mode,m.travelEpoch
+ local preset=Appearance.capture(character,m.appearancePreset)
  dismiss(m,'Recreating an unavailable travel owner')
- spawn(character,now,id)
+ spawn(character,now,id,preset)
  local replacement=members[id];replacement.ordinal=ordinal;replacement.mode=mode;replacement.replacedEpoch=epoch
  Recovery.layout(members)
  log(replacement.name..' owner recreated after travel streaming did not recover')
@@ -803,10 +931,11 @@ local function restoreWorldParty(now)
   local c=assert(byId[saved.characterId],'Unknown companion')
   local label=saved.characterId=='matriarch'and 'Bakr-Erga'or saved.characterId=='marat'and 'Crake'or c.name
   members[saved.id]={id=saved.id,characterId=saved.characterId,archetype=c.archetype~=''and c.archetype or saved.characterId,label=label,baseName=label,
+   appearancePreset=Appearance.capture(saved.characterId,saved.appearancePreset),
    ordinal=saved.ordinal,name=c.name,definition=c,spawnSlot=saved.spawnSlot,mode=saved.mode,status='Fallen · recovering',detail='',attitudes={},defeated=true,health=0,peaceSince=nil,replacedEpoch=saved.replacedEpoch,travelEpoch=travelEpoch}
   table.remove(queue,1)
  else
-  ok,why=pcall(spawn,saved.characterId,now,saved.id)
+  ok,why=pcall(spawn,saved.characterId,now,saved.id,saved.appearancePreset)
   if ok then
    local m=members[saved.id];m.ordinal=saved.ordinal;m.mode=saved.mode;m.spawnSlot=saved.spawnSlot or m.spawnSlot;m.replacedEpoch=saved.replacedEpoch;m.travelEpoch=travelEpoch
    table.remove(queue,1)
@@ -989,12 +1118,12 @@ function M.enqueue(op,id)
   request='p'..string.format('%x',os.time())..string.format('%x',nativeSequence)
   summons[#summons+1]={id=request,member=request,phase='queued',message='Waiting to begin loading'}
  end
- nativeCommands[#nativeCommands+1]={op=op,id=id,request=request};lastFault=nil;return request
+ nativeCommands[#nativeCommands+1]={op=op,id=id,request=request,appearancePreset=op=='spawn'and Appearance.capture(id)or nil};lastFault=nil;return request
 end
 local function nativeCommand(now,selected)
  local c=table.remove(nativeCommands,1);if not c then return end
  if c.op=='spawn' then
-  local ok,why=pcall(spawn,c.id,now,c.request)
+  local ok,why=pcall(spawn,c.id,now,c.request,c.appearancePreset)
   if not ok then
    for _,s in ipairs(summons)do if s.id==c.request then s.phase='failed';s.message=clean(why);break end end
    lastFault=clean(why);log('Summon failed: '..lastFault)
@@ -1057,7 +1186,8 @@ local function update(m,now,enemies,selected)
   if Tuning.canRespawn(m,now,battle,true,Settings.respawnDelay)then
    if same(m.actor,selected)and beforeReset then beforeReset()end
    local id,character,ordinal=m.id,m.characterId,m.ordinal
-   dismiss(m,'Returning after combat');spawn(character,now,id);members[id].ordinal=ordinal;Recovery.layout(members)
+   local preset=Appearance.capture(character,m.appearancePreset)
+   dismiss(m,'Returning after combat');spawn(character,now,id,preset);members[id].ordinal=ordinal;Recovery.layout(members)
   end
   return
  end
@@ -1068,7 +1198,7 @@ local function update(m,now,enemies,selected)
  if m.missingAt then if measured('reconnect '..m.name,reconnect,m,now)=='replace'then replaceMissingMember(m,now)end;return end
  if m.stableSince and now-m.stableSince>=10000 then m.reconnectAttempts=nil;m.stableSince=nil;m.candidateKey=nil;m.candidateAt=nil end
  if m.board.bIsDead then releaseCombatMovement(m);releaseTravelIdle(m);m.defeated=true;m.status='Defeated';return end
- if now>=(m.appearanceRetryAt or 0)and (Appearance.selected(m.characterId)or m.appearanceRevision~=nil)then
+ if now>=(m.appearanceRetryAt or 0)and (Appearance.hasPreset(m)or m.appearanceRevision~=nil)then
   local ok,why=pcall(Appearance.apply,m,now)
   if not ok then
    m.appearanceRetryAt=now+10000;m.appearanceNote='Colour change unavailable: '..tostring(why)
@@ -1211,8 +1341,17 @@ end
 function M.tick(pc,selected)
  local tickStarted=os.clock();Settings.poll()
  local ok,why=pcall(function()
+  Combat.battles.publish(root)
+  local loadedSave=saveLoaded()
+  if loadedSave then
+   resetParty('Dismissed after loading a save')
+   pendingWorldParty=nil;summons={};nativeCommands={}
+   worldName=nil;playerName=nil;lastGameTime=nil;playerStub=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil
+   travelState={epoch=0};epoch=tostring(tonumber(epoch)+1)
+  end
   if not valid(pc)or not valid(pc.Pawn)then
-   if next(members)then M.cleanup();worldName=nil;playerName=nil;lastGameTime=nil end
+   Combat.battles.reset()
+   if next(members)or pendingWorldParty then M.cleanup();worldName=nil;playerName=nil;lastGameTime=nil end
    note='Load a save to manage companions';publish();return
   end
   player=pc.Pawn
@@ -1220,11 +1359,17 @@ function M.tick(pc,selected)
   local currentPlayer=player:GetFullName()
   local now=AI.find('/Script/Engine.Default__KismetSystemLibrary'):GetGameTimeInSeconds(player)*1000
   local clockReset=lastGameTime and now<lastGameTime
-  if worldName and worldName~=currentWorld then
+  local replacedPlayer=worldName==currentWorld and playerName and playerName~=currentPlayer
+  if clockReset or replacedPlayer then
+   -- Quickload can reuse the same world name. Never carry its old party or
+   -- queued summons into the newly loaded save, even if its time is later.
+   resetParty('Dismissed after save / player reset')
+   pendingWorldParty=nil;summons={};nativeCommands={};travelState={epoch=0}
+   epoch=tostring(tonumber(epoch)+1);playerEpoch=playerEpoch+1;lastGameTime=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil
+  elseif worldName and worldName~=currentWorld then
    pendingWorldParty=resetParty('Recreating after world travel',true);epoch=tostring(tonumber(epoch)+1);lastGameTime=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil
-  elseif playerName and playerName~=currentPlayer then playerEpoch=playerEpoch+1;playerStub=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil end
+  end
   worldName=currentWorld;playerName=currentPlayer
-  if lastGameTime and clockReset then pendingWorldParty=resetParty('Recreating after world time reset',true);epoch=tostring(tonumber(epoch)+1);lastGameTime=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil end
   if lastGameTime and now==lastGameTime then note='Paused. Queued commands execute after unpausing.';publish();return end
   lastGameTime=now;note='Companions follow and fight automatically; native AI chooses abilities.'
   playerPoint=loc(player)
@@ -1241,8 +1386,8 @@ function M.tick(pc,selected)
   restoreWorldParty(now)
   if not valid(combatLib)then combatLib=AI.find('/Script/RebelAI.Default__RebelAICombatBlueprintFunctionLibrary')end
   if not pendingWorldParty then nativeCommand(now,selected)end
-  if next(members)then Protection.ensure(player,playerStub)end
-  local enemies={};local needsEnemies=false
+  local enemies={};local playerFighting=playerStub:IsInCombat()or playerStub.AIBoard.Combat.bInCombat
+  local needsEnemies=playerFighting and not Combat.battles.current and not Combat.battles.horde and not Combat.battles.afterHorde
   for _,m in pairs(members)do if valid(m.actor)and m.mode=='follow'then needsEnemies=true end end
   if needsEnemies then
    if not valid(subsystem)then subsystem=AI.find('/Script/Engine.Default__SubsystemBlueprintLibrary'):GetWorldSubsystem(player,AI.find('/Script/RebelAI.RebelAISubsystem'))end
@@ -1251,6 +1396,47 @@ function M.tick(pc,selected)
    end
    enemies=enemyCache
   end
+  -- Reuse the existing nearby-enemy snapshot, never scan all world actors for
+  -- memories. With no party, query only once when player combat starts.
+  if not Combat.battles.sampleAt or now<Combat.battles.sampleAt or now-Combat.battles.sampleAt>=750 then
+  Combat.battles.sampleAt=now
+  local observations={}
+  local fighting=playerFighting or partyEncounterActive
+  local capture=fighting and not Combat.battles.current and not Combat.battles.horde and not Combat.battles.afterHorde
+  if capture or Combat.battles.witnessRequested then
+   local witnesses={}
+   for _,m in pairs(members)do if ready(m)and not m.board.bIsDead and distance(loc(m.actor),playerPoint)<6000 then witnesses[m.characterId]=true end end
+   Combat.battles.witnesses=witnesses;Combat.battles.witnessRequested=nil
+  end
+  if capture then
+   for i=1,math.min(#enemies,64)do local enemy=enemies[i]
+    if eligible(enemy,playerPoint,30)and (enemy:IsInCombat()or same(enemy.AIBoard:GetTarget(),playerStub))then
+     local key=enemy:GetFullName()
+     local r=Combat.battles.current
+     local name=r and r.enemies[key]
+     if not name then
+      name='Unidentified opponent'
+      pcall(function()
+       local d=enemy:GetNPCDefinition();if not valid(d)then return end
+       local path=d:GetClass():GetFullName()
+       local t=AI.find('/Script/Dawnwalker.DogwoodNPCDefinition')
+       if valid(t)and d:IsA(t)then local label=d.CharacterName:ToString();if label~=''then name=label;return end end
+       for _,definition in ipairs(Config.characters)do if path:find(definition.path,1,true)then name=definition.name;return end end
+      end)
+     end
+     observations[key]=name
+    end
+   end
+  end
+  Combat.battles.observe(fighting,observations,now)
+  end
+  -- Idle without companions still skips formation, protection and enemy work.
+  if not next(members)then
+   if not playerFighting then enemyCache={};lastEnemyQuery=nil end
+   partyPositions={};partyEncounterActive=false;threatTarget=nil;threatPoint=nil;playerBattle=nil;partyDeparture=false
+   publish();return
+  end
+  Protection.ensure(player,playerStub)
   threatDistance=math.huge;threatPoint=nil;threatTarget=nil
   for i=1,math.min(#enemies,64)do
    local enemy=enemies[i]
@@ -1289,7 +1475,7 @@ function M.tick(pc,selected)
   partyPositions={}
   for _,m in pairs(members)do if ready(m)then
    local p=loc(m.actor);p.id=m.id;p.ordinal=m.ordinal;p.radius=m.capsuleRadius or 55
-   p.position={X=p.X,Y=p.Y,Z=p.Z};p.slot=m.formationSlot;p.pitch=m.formationPitch
+   p.position={X=p.X,Y=p.Y,Z=p.Z};p.slot=m.formationSlot;p.pitch=m.formationPitch;p.count=m.formationCount
    p.locked=m.mode~='follow'or same(m.actor,selected)and not m.talkFollowing or m.hold~=nil
     or m.stub:IsInCombat()or m.board.Combat.bInCombat or m.stub:IsInCinematicMode()
     or m.board.bMainBehaviorSuspended or m.board.bIsDead or m.board:HasAnyUnbreakableActiveAction()
@@ -1297,18 +1483,23 @@ function M.tick(pc,selected)
    partyPositions[#partyPositions+1]=p
   end end
   formation:update(partyPositions,playerPoint,heading,playerSpeed,now,members)
+  updateGaze(pc,now)
   travelHeading=formationFrame.yaw
   local ordered;ordered,updateCursor=Recovery.updateOrder(members,updateCursor)
   local loadBudget={}
   for _,m in ipairs(ordered)do
+   local simOK,simError=pcall(simulation,m)
+   if not simOK then m.simulationNote=clean(simError)end
    local pending=m.loading~=nil or not m.actor and m.actionPath~=nil
    if not pending or Recovery.admitLoadStep(loadBudget,os.clock())then
    local good,err=pcall(update,m,now,enemies,selected)
    if not good then
     pcall(releaseFormation,m)
-    m.status='Adapter error';m.detail=clean(err);m.fault=true
+    local failedLoad=m.loading~=nil or not m.actor and m.actionPath~=nil
+    m.status=failedLoad and 'Loading failed'or 'Adapter error';m.detail=clean(err);m.fault=true
     lastFault=m.name..': '..m.detail;log(lastFault);pcall(write,'companion-error.txt',os.date()..'\n'..lastFault..'\n'..(m.lastSpawnText or ''))
-    local stopped,stopError=pcall(dismiss,m,'Adapter error: '..m.detail)
+    local message=m.status..': '..m.detail:gsub('^live/[^:]+:%d+:%s*','')
+    local stopped,stopError=pcall(dismiss,m,message)
     if not stopped then m.detail=m.detail..'; cleanup: '..clean(stopError)end
    end
    end

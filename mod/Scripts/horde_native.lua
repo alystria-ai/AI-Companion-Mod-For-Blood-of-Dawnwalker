@@ -260,6 +260,73 @@ local function playerAI(pc)
  local stub=player and AI.find('/Script/RebelAI.Default__RebelAIBlueprintFunctionLibrary'):GetAIStub(player)
  return player,stub,AI.board(stub)
 end
+local function prepareEquipment(h)
+ local stub,board=h.stub,AI.board(h.stub,h.board)
+ if not board then return false,'Enemy AI detached during equipment setup'end
+ local proxy=stub:BP_GetEquipmentProxy()
+ local definition=stub:GetAIDefinition()
+ if not valid(proxy)or not valid(definition)then return false,'Enemy equipment is not ready'end
+ local setup=h.equipment
+ if not setup or not same(setup.proxy,proxy)then
+  setup={proxy=proxy,slots={}};h.equipment=setup
+ end
+ if setup.ready then return true end
+ local function live()return AI.board(stub,board)and valid(proxy)end
+ local inventory=false
+ -- New-AI melee hits resolve weapons through this proxy. A sword spawned
+ -- solely by CombatComponent can look correct but is absent from that lookup,
+ -- so its hit returns before applying damage. Use only this pawn's inventory.
+ for i=1,#definition.EquipmentSlotMapping do
+  local mapping=definition.EquipmentSlotMapping[i]
+  if mapping.InventorySlot.TagName:ToString()~='None'then
+   local weapon=proxy:BP_GetInventoryWeaponClass(mapping.InventorySlot)
+   if valid(weapon)then
+    if not inventory then
+     local selector=board.Weapon.TagName:ToString()
+     local state={TagName=FName('RebelAI.CharacterState.Combat.Sword')}
+     if selector=='None'and stub:BP_CharacterStateExist(state)then
+      local mode={TagName=FName('None')};board:Temp_BP_GetCombatMode(mode)
+      if mode.TagName:ToString()=='None'then board:Temp_BP_SetCombatMode({TagName=FName('RebelAI.CombatMode.Sword')})end
+      if not live()then return false,'Enemy AI detached during weapon selection'end
+      board:Temp_BP_SetWeapon({TagName=FName('RebelAI.Weapon.Sword')})
+      if not live()then return false,'Enemy AI detached during weapon selection'end
+      stub:BP_SetCharacterState(state)
+     end
+     if not live()then return false,'Enemy AI detached during weapon selection'end
+    end
+    inventory=true
+    local slot=mapping.CharacterSlot.TagName:ToString()
+    if not setup.slots[slot]then
+     proxy:BP_EquipInventoryWeapon(mapping.CharacterSlot,mapping.InventorySlot)
+     setup.slots[slot]=true
+     if not live()then return false,'Enemy AI detached while equipping'end
+    end
+   end
+  end
+ end
+ if not inventory then
+  local npc=stub:GetNPCDefinition()
+  if not valid(npc)then return false,'Enemy definition is not ready'end
+  local config=npc.EnemyConfig
+  local settings=AI.find('/Script/DogwoodAI.Default__DogwoodAISettings')
+  if valid(config)and valid(settings)then
+   -- Animals and unarmed enemies supply their own bite/claw weapon classes.
+   -- Convert their authored body slots using the game's mapping, not a sword.
+   config.HandToHandWeapons:ForEach(function(key,value)
+    local weapon=value:get();local bodySlot=key:get()
+    if valid(weapon)then settings.WeaponSlotToGenericCharacterSlotTag:ForEach(function(slotKey,slotValue)
+     if slotKey:get()==bodySlot and live()then
+      local tag=slotValue:get();local slot=tag.TagName:ToString()
+      if not setup.slots[slot]then proxy:BP_EquipWeaponClass(tag,weapon);setup.slots[slot]=true end
+     end
+    end)end
+   end)
+  end
+ end
+ if not live()then return false,'Enemy AI detached while equipping'end
+ setup.ready=true
+ return true
+end
 local function restorePlayerPair(h)
  if h.playerPair and AI.board(h.playerPair.stub)and AI.board(h.stub)then
   local current=h.playerPair.stub:GetAttitudeTowards(h.stub)
@@ -273,7 +340,8 @@ stageActor=function(h)
  local player,playerStub,playerBoard=playerAI(h.pc)
  assert(playerBoard,'Player AI unavailable during preparation')
  h.staged=true
- h.playerPair={stub=playerStub,old=playerStub:GetAttitudeTowards(stub),set=1}
+ if not h.playerPair then h.playerPair={stub=playerStub,old=playerStub:GetAttitudeTowards(stub)}end
+ h.playerPair.set=1
  playerStub:SetAttitudeTowards(stub,1,false);stub:SetAttitudeTowards(playerStub,1,false)
  local factions=factionsFor(player);assert(valid(factions),'Factions controller unavailable')
  factions:SetAttitudeTowardsPlayer(stub,1)
@@ -289,16 +357,63 @@ function M.activate(h)
  assert(owned(h),'Unknown horde spawn handle')
  local state,actor,stub=M.status(h);local board=AI.board(stub,h.board)
  if state~='spawned'or not board then return false,'Enemy is no longer ready'end
- if not h.staged then return true end
+ if not h.staged and not h.needsActivation then return true end
  local player,playerStub,playerBoard=playerAI(h.pc)
  if not playerBoard then return false,'Player AI unavailable'end
  local factions=factionsFor(player);if not valid(factions)then return false,'Factions controller unavailable'end
  board.bMainBehaviorSuspended=false;board.bCanFight=false
+ local equipped,why=prepareEquipment(h)
+ if not equipped then return false,why end
  factions:SetAttitudeTowardsPlayer(stub,3);stub:SetAttitudeTowards(playerStub,3,false)
+ if not h.playerPair then h.playerPair={stub=playerStub,old=playerStub:GetAttitudeTowards(stub)}end
  playerStub:SetAttitudeTowards(stub,3,false);h.playerPair.set=3
  actor.bCanBeDamaged=true;actor:SetActorEnableCollision(true);actor:SetActorHiddenInGame(false)
- h.staged=false
+ h.staged=false;h.needsActivation=nil
  return true
+end
+
+function M.displayName(h)
+ assert(owned(h),'Unknown horde spawn handle')
+ if AI.board(h.stub,h.board)then
+  local ok,label=pcall(function()
+   local d=h.stub:GetNPCDefinition()
+   if valid(d)then return d.CharacterName:ToString()end
+  end)
+  if ok and type(label)=='string'and label:find('%S')then return label end
+ end
+ return h.definition.name
+end
+
+-- Equipment/AI initialization can replace the board after a pawn is staged.
+-- Rebind only this handle's existing pawn, never search for a nearby enemy or
+-- create a replacement population during combat. Limit retries to once a second.
+function M.recover(h)
+ assert(owned(h),'Unknown horde spawn handle')
+ local state,actor,stub,info=M.status(h)
+ if state~='unloaded'and not h.needsActivation then return state,actor,stub,info end
+ local player=livePlayer(h)
+ if not player or not valid(h.actor)or worldOf(h.actor)~=h.world then return state,actor,stub,info end
+ local t=now(player)
+ if t<(h.recoverAt or 0)then return 'unloaded',nil,nil,info end
+ h.recoverAt=t+1000
+ local library=AI.find('/Script/RebelAI.Default__RebelAIBlueprintFunctionLibrary')
+ if not valid(library)then return 'unloaded',nil,nil,info end
+ local fresh=library:GetAIStub(h.actor);local board=AI.board(fresh)
+ if not board then return 'unloaded',nil,nil,info end
+ if not same(fresh,h.stub)or not same(board,h.board)then
+  restorePlayerPair(h)
+  h.stub,h.board=fresh,board;h.instigator=nil;h.equipment=nil
+  h.needsActivation=true
+ end
+ if board.bIsDead then return M.status(h)end
+ if h.needsActivation then
+  local ok,accepted=pcall(function()
+   if h.staged then stageActor(h);h.needsActivation=nil;return true end
+   return M.activate(h)
+  end)
+  if not ok or not accepted then return 'unloaded',nil,nil,{reason='AI reattachment pending'}end
+ end
+ return M.status(h)
 end
 
 -- Bootstrap perception once, then let the authored combat system pick attacks.
@@ -311,6 +426,8 @@ function M.engage(h,pc)
  if not playerBoard or worldOf(player)~=h.world then return false,'Player AI is unavailable'end
  local board=AI.board(stub,h.board)
  if not board or board.bIsDead or board.bMainBehaviorSuspended or stub:IsInCinematicMode()then return false,'Enemy AI is unavailable'end
+ local equipped,why=prepareEquipment(h)
+ if not equipped then return false,why end
  if info.combat and valid(info.target)and AI.board(info.target)then return true,'Native combat owns a live target'end
  if board:HasAnyUnbreakableActiveAction()then return false,'Enemy AI is busy'end
  local combat=AI.find('/Script/RebelAI.Default__RebelAICombatBlueprintFunctionLibrary')
@@ -322,10 +439,6 @@ function M.engage(h,pc)
  end
  local forced=board:GetForcedTarget()
  if not valid(forced)or same(forced,playerStub)then board:SetForcedTarget(playerStub,8.0)end
- local component=actor:GetComponentByClass(AI.find('/Script/DogwoodCombat.CombatComponentBase'))
- if valid(component)and valid(component.EquippedWeapon)then
-  h.equipment=h.equipment or {};AI.swordCombat(stub,board,component,h.equipment)
- end
  if not AI.board(stub,h.board)then return false,'Enemy AI detached'end
  return AI.startCombat(combat,stub,board,playerStub)
 end

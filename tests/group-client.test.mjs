@@ -45,7 +45,7 @@ test('actual browser client sends each group turn once, waits for speech and res
  assert.equal(clients[1].audioStarted,undefined);
  assert.equal(micOpens,1,'Warming must not open another microphone');
  for(let turn=0;turn<3;turn++){
-  const c=clients.find(c=>c.options.characterId===g.round.speakers[turn].characterId);assert.deepEqual(c.sent,['Hello everyone']);
+  const c=clients.find(c=>c.options.characterId===g.round.speakers[turn].characterId);assert.deepEqual(c.sent,[turn===0?'Hello everyone':g.round.speakers[turn-1].name+': Reply '+(turn-1)]);
   if(turn>0)assert.match(c.context,/Reply 0/,'Later speaker should hear earlier public reply');
   c.speak('Reply '+turn);now+=2000;await tick();assert.equal(g.round.index,turn,'No handoff during speech');
   c.state.isSpeaking=false;c.handlers.stateChange();now+=1500;await tick();assert.equal(g.round.index,turn+1);

@@ -10,13 +10,24 @@ import {encodeFrame, parseTarget, parseSpatial} from './protocol.mjs';
 import {TextRequests} from './text-requests.mjs';
 import {ActionQueue,parseQuests} from './game-context.mjs';
 import {knowledge as questKnowledge,recipient} from './quest-knowledge.mjs';
-import {parseRelationships,relationshipKnowledge,relationshipProfiles} from './relationships.mjs';
+import {parseRelationships,relationshipKnowledge,relationshipProfiles,hasSharedRomance,groupRomanceContext} from './relationships.mjs';
+import {battleContext} from './battle-context.mjs';
 let relationships=null;
-const knowledge=(snapshot,npc)=>relationshipKnowledge(questKnowledge(snapshot,npc),relationships,npc);
+const knowledge=(snapshot,npc)=>{
+ const base=relationshipKnowledge(questKnowledge(snapshot,npc),relationships,npc);
+ const audience=target.active&&target.mode==='group'&&Date.now()-companions.state.updated<5000
+  ?group.audience(target,companions.state.members):[];
+ const banter=groupRomanceContext(relationships,npc,audience);
+ // Both /target and /group-context use this, so prepared replies receive the
+ // same relationship context as the speaker currently playing aloud.
+ const battle=battleContext(battleRaw,npc);
+ return {...base,revision:base.revision+(banter?':shared-romance-group-v2':'')+':'+battle.revision,
+  text:[banter,battle.text,base.text].filter(Boolean).join('\n\n')};
+};
 import {environmentContext} from './environment.mjs';
 import {heartbeatMs} from './heartbeat.mjs';
 import {Companions} from './companions.mjs';
-let environmentRaw='',spatialRaw='',lastSpatialRead=0,hordeText='';
+let environmentRaw='',battleRaw='',spatialRaw='',lastSpatialRead=0,hordeText='';
 let microphone={enabled:false,id:'initial',generation:0};let lastMicFocus=0,lastVoiceDiagnostic='',lastVoiceStamp=0;
 const actionQueue=new ActionQueue();let questMemory=null,lastQuestRead=0,lastMemoryReport='';
 const textRequests=new TextRequests();
@@ -56,6 +67,7 @@ setInterval(async () => {
       hordeText=fresh&&horde[3]==='1'&&horde[4]==='rest'&&Number.isFinite(remaining)&&remaining>0&&level<=levels
         ?`Level ${level} / ${levels} begins in ${Math.ceil(remaining)} s`:'';
       environmentRaw=await readFile(resolve(runtime,'environment.txt'),'utf8').catch(()=>'');
+      battleRaw=await readFile(resolve(runtime,'battle-context.tsv'),'utf8').catch(()=>'');
       try{relationships=parseRelationships(await readFile(resolve(runtime,'relationships.tsv'),'utf8'));}catch{}
       try{questMemory=parseQuests(await readFile(resolve(runtime,'quests.txt'),'utf8'));await atomic('quest-memory.json',JSON.stringify(questMemory));}catch{questMemory=null;}
     }
@@ -111,7 +123,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='POST' && path==='/text'){
       let body='';for await(const chunk of req){body+=chunk;if(body.length>8192){res.writeHead(413).end();return;}}
-      try{const value=JSON.parse(body);if(target.mode==='group')group.start(value,target,companions.state.members);else textRequests.enqueue(value,target);res.writeHead(204).end();}catch(e){res.writeHead(409).end(e.message);}return;
+      try{const value=JSON.parse(body);if(target.mode==='group')group.start(value,target,companions.state.members,Date.now(),false,hasSharedRomance(relationships));else textRequests.enqueue(value,target);res.writeHead(204).end();}catch(e){res.writeHead(409).end(e.message);}return;
     }
     if(req.method==='POST' && path==='/frame') {
       let body='';for await(const chunk of req) {body+=chunk;if(body.length>65536){res.writeHead(413).end();return;}}
@@ -121,7 +133,7 @@ const server=http.createServer(async(req,res)=>{
       textRequests.acknowledge(data.generation,data.ackTextIds);
       actionQueue.add(target,data.actionRequests);
       if(data.groupVoice&&microphone.enabled&&target.mode==='group'){
-        group.start({...data.groupVoice,generation:target.generation},target,companions.state.members,Date.now(),true);
+        group.start({...data.groupVoice,generation:target.generation},target,companions.state.members,Date.now(),true,hasSharedRomance(relationships));
         microphone={...microphone,enabled:false};
       }
       if(data.groupDone)group.complete(data.groupDone,target,companions.state.members);

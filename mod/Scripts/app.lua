@@ -32,7 +32,11 @@ local lookingAwaySince=nil
 local groupOrigin=nil
 local inspectionCache=nil
 local composeController,inputLease=nil,nil
-local function log(s) print('[DawnwalkerConvai] '..tostring(s)..'\n') end
+local function log(s)
+    local kind=type(s)
+    local value=(kind=='string'or kind=='number')and s or 'Non-text Lua error'
+    pcall(print,'[DawnwalkerConvai] '..value..'\n')
+end
 local function valid(o) return o and o:IsValid() end
 local function safe(f) local ok,r=pcall(f); if not ok then log(r) end; return ok,r end
 local function playerController()
@@ -834,21 +838,22 @@ LoopAsync(16,function()
         if ticket~=dispatchSerial then return end
         local tickOk=safe(function()
             if partyDue then Settings.poll()end
-            FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen()or composeController~=nil)
+            -- Text/voice chat owns input, not the viewpoint. Keep first person
+            -- throughout single/group chat; native scenes still yield inside tick.
+            FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())
             if not ordinaryDue then return end
             if partyDue then Horde.tick(false)end
             NativeMenu.tick()
             uiCommand()
             if partyDue then Companions.tick(playerController(),selected);groupCommand()end
-            if os.time()-lastRelationshipRead>=2 then
+            if (selected or NativeMenu.isOpen())and os.time()-lastRelationshipRead>=2 then
                 lastRelationshipRead=os.time()
                 local ok,snapshot=pcall(Romance.snapshot,playerController())
                 if ok then write('relationships.tsv',snapshot)else write('relationship-status.txt',tostring(snapshot))end
             end
-            -- Conversation context must refresh immediately for an active speaker.
-            -- Otherwise defer background snapshots while the companion menu is open;
-            -- retaining their due times makes overdue work resume after it closes.
-            if selected or not NativeMenu.isOpen()then
+            -- Journal/environment reads are conversation work. Leave them idle
+            -- while simply playing; opening chat refreshes overdue snapshots.
+            if selected then
                 questMemory()
                 environmentContext()
             end

@@ -24,6 +24,17 @@ for _,wave in ipairs(waves)do
  for _,kind in ipairs({'units','bosses'})do for i,id in ipairs(wave[kind])do wave[kind][i]=definition(id)end end
 end
 local M={waves=waves}
+-- Keep wave identity separate from round number. Choose the first theme,
+-- then draw without replacement so a run never repeats a cleared theme.
+function M.order(first,count,seed)
+ first=math.max(1,math.min(#waves,math.floor(first or 1)))
+ count=math.max(1,math.min(#waves,math.floor(count or #waves)))
+ local pool={};for i=1,#waves do if i~=first then pool[#pool+1]=i end end
+ local state=math.floor(seed or os.time())%2147483647;if state==0 then state=1 end
+ for i=#pool,2,-1 do state=(state*48271)%2147483647;local j=state%i+1;pool[i],pool[j]=pool[j],pool[i]end
+ local order={first};for i=1,count-1 do order[#order+1]=pool[i]end
+ return order
+end
 function M.preview()
  local result={}
  for i,w in ipairs(waves)do

@@ -56,6 +56,8 @@ Dawnwalker/
 
 `Payload/runtime/support-report.txt` is generated when **F5 → Help → Copy logs** is used. It contains a sanitized support report rather than the complete unredacted logs.
 
+The helper's browser profile lives in `%LOCALAPPDATA%\LLMNPCCompanions\WebView\`, in a separate folder for each installation. This keeps browser cache files out of Mod Settings' mod scan. On upgrade, the helper moves its previous `Payload/runtime/webview-profile` data there, preserving stored conversation identities and sessions.
+
 ## What each archive supplies
 
 | Archive | Installed content |

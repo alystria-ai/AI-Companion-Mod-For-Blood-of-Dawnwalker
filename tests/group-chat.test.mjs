@@ -15,14 +15,14 @@ test('addressed first, closest clone skipped, friends preferred, explicit topic 
 test('sequential turns require Lua handoff, deduplicate retries, cancel old rooms and skip missing speakers',()=>{
  const g=new GroupChat(()=> 'round1'),members=[member('leonica'),member('vicho')];
  g.start({generation:5,id:'send1',text:'Hello'},target,members,100);
- assert.equal(g.view(target).request.id,'round1-0');assert.equal(g.command(),'');
+ assert.equal(g.view(target).request.text,'Hello');assert.equal(g.view(target).request.id,'round1-0');assert.equal(g.command(),'');
  g.start({generation:5,id:'send1',text:'Hello'},target,members,150);assert.equal(g.round.started,100);
  assert.equal(g.complete({token:'old',text:'Wrong'},target,members,200),false);
  assert.equal(g.complete({token:'round1-0',text:'Anca reply'},target,members,200),true);
  assert.match(g.command(),/room1\tround1-1\tleonica\t5/);assert.equal(g.view(target).request,null);
  const next={...target,generation:7,actor:'Actor leonica',turn:'round1-1',name:'Leonica'};
  g.tick(next,members,true,250);assert.equal(g.view(next).request.generation,7);
- assert.match(g.view(next).context,/Anca reply/);
+ assert.equal(g.view(next).request.text,'Anca: Anca reply');assert.match(g.view(next).context,/Anca reply/);
  g.complete({token:'round1-1',text:'Leonica reply'},next,members,300);
  g.tick(next,members,true,350,'round1-2\tfailed');assert.equal(g.round.stage,'done');
  assert.equal(g.round.heard.length,3);assert.equal(g.view(next).request,null);
@@ -35,7 +35,7 @@ test('voice round does not resend the first utterance; group hearing excludes ab
  g.complete({token:'voice1-0',text:'A reply'},target,members,200);
  assert.deepEqual(g.round.heard[1].listeners,['anca','leonica']);
  const next={...target,generation:7,actor:'Actor leonica',turn:'voice1-1',name:'Leonica'};
- g.tick(next,members,true,250);assert.equal(g.view(next).request.text,'A spoken question');
+ g.tick(next,members,true,250);assert.equal(g.view(next).request.text,'Anca: A reply');
  g.tick(next,members,false,300);assert.equal(g.round,null);
 });
 test('three distinct speakers finish in order, brief action delays wait and final audio releases the hold',()=>{
@@ -48,7 +48,7 @@ test('three distinct speakers finish in order, brief action delays wait and fina
  g.tick(second,members,true,8300);assert.equal(g.view(second).request.id,'three-1');
  g.complete({token:'three-1',text:'Second'},second,members,8500);
  const third={...target,generation:9,actor:'Actor sara',turn:'three-2'};
- g.tick(third,members,true,8600);assert.match(g.view(third).context,/Second/);
+ g.tick(third,members,true,8600);assert.equal(g.view(third).request.text,'leonica: Second');assert.match(g.view(third).context,/Second/);
  g.complete({token:'three-2',text:'Third'},third,members,9000);
  assert.equal(g.round.stage,'done');assert.equal(g.command(),'GROUPEND\t1\troom1\tthree-3\t9\n');
  assert.equal(g.round.heard.length,4);assert.deepEqual(g.diagnostic().speakers,['anca','leonica','sara']);

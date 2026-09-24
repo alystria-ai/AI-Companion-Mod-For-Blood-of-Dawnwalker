@@ -1,6 +1,6 @@
 -- Synchronous, game-thread-only adapter for the narrow native ABI bridge.
 -- Native outputs are data; no returned text is evaluated as Lua.
-local M={};local invoke,invokeAssets,invokeProtection;local counter=0;local loadedClasses={};local loadedAssets={}
+local M={};local invoke,invokeAssets,invokeProtection,invokeSimulation;local counter=0;local loadedClasses={};local loadedAssets={}
 local root=require('runtime_path')
 -- One-time recovery of the recorded v0.21 owner after its async action was
 -- collected. The native v2 registry is retired, never read/unloaded again.
@@ -35,6 +35,13 @@ function M.run(operation,arguments)
         assert(fn,'Native companion bridge unavailable: '..tostring(err));invoke=fn
     end
     local dispatch=invoke
+    if operation=='animationbudget'then
+        if not invokeSimulation then
+            local fn,err=package.loadlib(root..'/../bridge/native/companion_simulation_v1.dll','companion_native_run')
+            assert(fn,'Companion simulation helper unavailable: '..tostring(err));invokeSimulation=fn
+        end
+        dispatch=invokeSimulation
+    end
     if operation:match('^protect')then
         if not invokeProtection then
             local fn,err=package.loadlib(root..'/../bridge/native/companion_protection_v2.dll','companion_native_run')
@@ -67,10 +74,25 @@ end
 function M.probe()return M.run('probe')end
 function M.requestClass(player,classPath)return M.run('loadclassasync',{path(player),classPath})end
 function M.requestAsset(player,assetPath)return M.run('loadassetasync',{path(player),assetPath})end
+local function cachedObject(cache,assetPath)
+    local function matches(object)
+        -- UE4SS can report IsValid after a saved pointer's address has been
+        -- reused for an unrelated UObject. Validate identity before GetCDO or
+        -- any asset-specific operation, not just validity/loading flags.
+        return object and object:IsValid()and object:GetFullName():match('^%S+ (.+)$')==assetPath
+    end
+    local object=cache[assetPath]
+    if not matches(object)then cache[assetPath]=nil;object=StaticFindObject(assetPath)end
+    if not matches(object)then return nil end
+    cache[assetPath]=object
+    return object
+end
+function M.clearAssetCache()
+    loadedClasses={};loadedAssets={}
+end
 function M.loadedAsset(assetPath)
-    local object=loadedAssets[assetPath]
-    if not object or not object:IsValid()then object=StaticFindObject(assetPath)end
-    if not object or not object:IsValid()then return nil end
+    local object=cachedObject(loadedAssets,assetPath)
+    if not object then return nil end
     local f=EObjectFlags
     if object:HasAnyFlags(f.RF_BeginDestroyed|f.RF_FinishDestroyed)then loadedAssets[assetPath]=nil;return nil end
     loadedAssets[assetPath]=object
@@ -78,9 +100,8 @@ function M.loadedAsset(assetPath)
     return object
 end
 function M.loadedClass(classPath)
-    local object=loadedClasses[classPath]
-    if not object or not object:IsValid()then object=StaticFindObject(classPath)end
-    if object and object:IsValid()then
+    local object=cachedObject(loadedClasses,classPath)
+    if object then
         local destroyed=EObjectFlags.RF_BeginDestroyed|EObjectFlags.RF_FinishDestroyed
         if object:HasAnyFlags(destroyed)then loadedClasses[classPath]=nil;return nil end
         loadedClasses[classPath]=object

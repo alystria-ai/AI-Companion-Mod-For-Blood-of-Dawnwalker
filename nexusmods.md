@@ -13,6 +13,7 @@ The next release adds first-person POV, Horde mode, custom eye, hair and armour 
 - Single-character and group conversations with up to three distinct speakers.
 - Character-specific biographies, speaking rules and relationships, with curated quest knowledge based on detected journal progress.
 - Relevant location, time and environmental context when the game exposes it; shared conversation sessions for duplicate copies of a character.
+- Recent battle context, including observed enemy types and cleared horde waves, available during the rest between waves.
 - Native F5 menu with Summon, Party, Horde, Settings, Controls and Help pages.
 - 21 named-character summon entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, and 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons, without an artificial party cap.
@@ -32,7 +33,7 @@ The next release adds first-person POV, Horde mode, custom eye, hair and armour 
 
 - The Blood of Dawnwalker 1.05 on Windows x64.
 - [UE4SS for Dawnwalker](https://www.nexusmods.com/thebloodofdawnwalker/mods/18), custom 1.2.1 RC6 build for this game version, installed separately.
-- [Dawnwalker Mod Menu](https://www.nexusmods.com/thebloodofdawnwalker/mods/271) 1.0.6.2 or later, installed separately.
+- [Dawnwalker Mod Menu](https://www.nexusmods.com/thebloodofdawnwalker/mods/271) 1.0.7 or later, installed separately.
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
 - Internet access for conversations.
 
@@ -48,7 +49,7 @@ The main mod has three download choices, plus an optional language pack:
 For a split installation, you must install **both Scripts and Runtime for version 0.30.9**. They are two halves of one install.
 
 1. Close the game.
-2. Install UE4SS 1.2.1 RC6 and Dawnwalker Mod Menu 1.0.6.2 or later.
+2. Install UE4SS 1.2.1 RC6 and Dawnwalker Mod Menu 1.0.7 or later.
 3. Extract **Complete**, or both **Scripts** and **Runtime**, into the game installation folder and merge the included `Dawnwalker` folder.
 4. Verify that the mod is exactly here:
 

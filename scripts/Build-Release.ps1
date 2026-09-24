@@ -14,6 +14,7 @@ try{
  & ./scripts/Build-CompanionNative.ps1
  & ./scripts/Build-CompanionNative.ps1 -AssetLoader
  & ./scripts/Build-CompanionNative.ps1 -Protection
+ & ./scripts/Build-CompanionNative.ps1 -Simulation
  & ./scripts/Build-BackgroundLauncher.ps1
  & ./scripts/Build-Prebuilt.ps1 -BundleSharedKey -StableNames
 }finally{

@@ -37,7 +37,7 @@ test('eye, hair and armour parameters are scoped to their correct mesh slots',()
  assert(M.category('Weapon Mesh','MI_Ambrus_Chainmail',info({'Decal 1 Color 1'}))==nil)
 `));
 
-test('a changed colour reapplies immediately and reset restores the original material',()=>run(`
+test('summoned copies retain separate colours while future preferences change',()=>run(`
  local function object(name,fields)
   local o=fields or {};o.name=name
   function o:GetFullName()return self.name end
@@ -64,8 +64,19 @@ test('a changed colour reapplies immediately and reset restores the original mat
  M.set('anca','eyes','crimson');M.apply(member,1000)
  assert(mesh.current~=material and mesh.current.colors.IrisColor1.R==.55)
  M.set('anca','eyes','emerald');M.apply(member,1100)
- assert(mesh.created==2 and mesh.current.colors.IrisColor1.G==.34,'revision bypasses scan delay')
- M.reset('anca');M.apply(member,1200)
- assert(mesh.current==material and #member.appearanceLeases==0)
- assert(mesh.writes==2,'only owned material instances were restored')
+ assert(mesh.created==1 and mesh.current.colors.IrisColor1.R==.55,'menu changes must not recolour the first copy')
+ local queued=M.capture('anca')
+ M.set('anca','eyes','violet')
+ local secondMesh=object('Face Mesh /AncaCopy',{current=material,writes=0,created=0})
+ for _,key in ipairs({'GetNumMaterials','GetMaterial','SetMaterial','CreateAndSetMaterialInstanceDynamic'})do secondMesh[key]=mesh[key]end
+ local secondActor=object('Anca copy');function secondActor:K2_GetComponentsByClass()return {secondMesh}end
+ local second={actor=secondActor,characterId='anca',appearancePreset=M.capture('anca',queued)}
+ M.apply(second,1150);assert(secondMesh.current.colors.IrisColor1.G==.34,'queued copy must keep its colour despite later edits')
+ M.reset('anca');M.apply(member,31000);M.apply(second,31000)
+ assert(mesh.current.colors.IrisColor1.R==.55 and secondMesh.current.colors.IrisColor1.G==.34,'reset must only affect future summons')
+ local original=M.capture('anca');M.set('anca','eyes','hot_pink')
+ assert(next(M.capture('anca',original))==nil,'Original must remain an explicit snapshot')
+ M.release(member);M.release(second)
+ assert(mesh.current==material and secondMesh.current==material,'cleanup restores only owned materials')
+ assert(member.appearancePreset.eyes=='crimson'and second.appearancePreset.eyes=='emerald','recovery must retain both presets')
 `));

@@ -33,9 +33,10 @@ function M.read(pc)
  for key,tag in pairs(facts)do
   local story=db:FactGetInt({TagName=FName(tag)})==1
   local completed=math.max(0,math.min(100000,db:FactGetInt({TagName=FName(historyTag(key))})))
-  result.characters[key]={story=story,completed=completed,unlocked=story or completed>0 or Settings.values[key=='anca'and 'AncaRomance'or 'LacraRomance']==1}
+  result.characters[key]={story=story,completed=completed,unlocked=false}
  end
  Settings.setRomanceStory(result.characters.anca.story or result.characters.anca.completed>0,result.characters.lacra.story or result.characters.lacra.completed>0)
+ for key,value in pairs(result.characters)do value.unlocked=Settings.effective(key=='anca'and 'AncaRomance'or 'LacraRomance')==1 end
  return result,db
 end
 function M.snapshot(pc)

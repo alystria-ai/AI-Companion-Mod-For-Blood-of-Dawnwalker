@@ -25,6 +25,17 @@ end
 -- Reflected RebelLocomotion APIs: KeepInFOV lets head/torso aim before a native
 -- turn, and FaceDirection feeds the animation-driven rotation path. Never rotate
 -- the capsule directly. Each push is paired with its own pop handle.
+local function ownsAttentionFocus(state)
+    local actor=state.controller:GetFocusActor()
+    if not state.focusPoint then return AI.same(actor,state.player)end
+    if valid(actor)then return false end
+    local p=state.controller:GetFocalPoint();local q=state.focusPoint
+    return (p.X-q.X)^2+(p.Y-q.Y)^2+(p.Z-q.Z)^2<1
+end
+local function sideFocus(a,p,degrees)
+    local angle=math.rad(degrees);local x,y=p.X-a.X,p.Y-a.Y
+    return {X=a.X+x*math.cos(angle)-y*math.sin(angle),Y=a.Y+x*math.sin(angle)+y*math.cos(angle),Z=p.Z+65}
+end
 function M.releaseAttention(state)
     if not state then return end
     local function attempt(fn)local ok,e=pcall(fn);if not ok then state.log('Attention restore: '..tostring(e))end end
@@ -34,7 +45,7 @@ function M.releaseAttention(state)
     end
     state.lookHandle=nil;state.rotationHandle=nil
     if valid(state.actor)and valid(state.controller)and state.focusOwned then attempt(function()
-        if not AI.same(state.controller:GetFocusActor(),state.player)then return end
+        if not ownsAttentionFocus(state)then return end
         if valid(state.oldFocus)then state.controller:K2_SetFocus(state.oldFocus)
         elseif state.oldPoint then state.controller:K2_SetFocalPoint(state.oldPoint)
         else state.controller:K2_ClearFocus()end
@@ -43,18 +54,33 @@ function M.releaseAttention(state)
     if state.changes then restore(state)end
 end
 local attentionRetry={}
-function M.attend(state,actor,player,log,held)
+function M.attend(state,actor,player,log,held,options)
+    local sideAngle=options and options.sideAngle or 0
+    local range=options and options.range or 450
+    if state and (not AI.same(state.actor,actor)or not AI.same(state.player,player)or state.sideAngle~=sideAngle)then
+        M.releaseAttention(state);state=nil
+    end
     local key=valid(actor)and actor:GetFullName()or ''
     if not state and os.time()<(attentionRetry[key]or 0)then return nil end
     local ok,result=pcall(function()
         if not valid(actor)or not valid(player)then return false end
-        local stub=state and state.stub or stubFor(actor);local board=AI.board(stub)
+        local stub=state and state.stub or stubFor(actor);local board=AI.board(stub,state and state.board)
         if not board or board.bIsDead or stub:IsInCombat()or board.Combat.bInCombat or stub:IsInCinematicMode()or board:HasAnyUnbreakableActiveAction()or (board.bMainBehaviorSuspended and not held)then return false end
         local p,a=player:K2_GetActorLocation(),actor:K2_GetActorLocation()
         local velocity=actor:GetVelocity()
-        if not held and ((p.X-a.X)^2+(p.Y-a.Y)^2+(p.Z-a.Z)^2>450^2 or velocity.X^2+velocity.Y^2>25^2)then return false end
-        if state then return AI.same(state.actor,actor)and AI.same(state.player,player)and AI.same(state.controller:GetFocusActor(),player)end
-        state={actor=actor,player=player,stub=stub,board=board,changes={},controller=actor:GetController(),movement=actor:GetMovementComponent(),log=log}
+        if not held and ((p.X-a.X)^2+(p.Y-a.Y)^2+(p.Z-a.Z)^2>range^2 or velocity.X^2+velocity.Y^2>25^2)then return false end
+        if state then
+            if not valid(state.controller)or not valid(state.movement)then return false end
+            if not ownsAttentionFocus(state)then attentionRetry[key]=os.time()+2;return false end
+            if sideAngle~=0 then
+                local q=sideFocus(a,p,sideAngle);local old=state.focusPoint
+                if (q.X-old.X)^2+(q.Y-old.Y)^2+(q.Z-old.Z)^2>=50^2 then
+                    state.controller:K2_SetFocalPoint(q);state.focusPoint=q
+                end
+            end
+            return true
+        end
+        state={actor=actor,player=player,stub=stub,board=board,sideAngle=sideAngle,changes={},controller=actor:GetController(),movement=actor:GetMovementComponent(),log=log}
         assert(valid(state.controller)and valid(state.movement),'Native attention controls unavailable')
         change(state,function()return actor end,'bUseControllerRotationYaw',false)
         change(state,function()return state.movement end,'bOrientRotationToMovement',false)
@@ -64,7 +90,10 @@ function M.attend(state,actor,player,log,held)
             local p=state.controller:GetFocalPoint()
             if type(p.X)=='number'and type(p.Y)=='number'and type(p.Z)=='number'and math.abs(p.X)<1e12 and math.abs(p.Y)<1e12 and math.abs(p.Z)<1e12 then state.oldPoint={X=p.X,Y=p.Y,Z=p.Z}end
         end
-        state.focusOwned=true;state.controller:K2_SetFocus(player)
+        state.focusOwned=true
+        if sideAngle~=0 then
+            state.focusPoint=sideFocus(a,p,sideAngle);state.controller:K2_SetFocalPoint(state.focusPoint)
+        else state.controller:K2_SetFocus(player)end
         state.rotationHandle=state.movement:PushRotationMode(2,50)
         assert(type(state.rotationHandle)=='number'and state.rotationHandle>=0,'Native rotation lease rejected')
         state.lookHandle=state.movement:PushLookAtMode(4,50)

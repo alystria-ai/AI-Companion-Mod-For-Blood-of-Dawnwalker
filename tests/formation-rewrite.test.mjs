@@ -6,7 +6,7 @@ const path=process.env.DAWNWALKER_LUA||'mod/Scripts';
 const [recovery,planner,native]=await Promise.all(['companion_recovery','party_formation','formation_native'].map(n=>readFile(`${path}/${n}.lua`,'utf8')));
 function run(s){const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);try{const rc=lauxlib.luaL_dostring(L,to_luastring(s));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}}
 const planning=`local R=(function()${recovery}end)();local function require()return R end;local P=(function()${planner}end)()`;
-test('whole-party plan mirrors spawn seats for ten and forty members, stays fixed during approaches, removes old members',()=>run(`${planning}
+test('whole-party arrival seats stay compact and separated, remain fixed during approaches and release dismissed members',()=>run(`${planning}
  for _,count in ipairs({10,40})do
   local p=P.new();local rows={}
   for i=1,count do rows[i]={id=tostring(i),ordinal=i,slot=i,pitch=190,radius=55,position={X=i*12,Y=0,Z=0}}end
@@ -15,9 +15,10 @@ test('whole-party plan mirrors spawn seats for ten and forty members, stays fixe
   p:update(rows,{X=1000,Y=0,Z=0},0,600,1000)
   local g=p:update(rows,{X=1100,Y=0,Z=0},90,0,2000)
   for i=1,count do
-   local q=g[tostring(i)].point;local radius,angles,index=R.summonArc(i,190);local a=math.rad(angles[index+1])
-   assert(math.abs(q.X-(1100-math.cos(a)*radius))<.001 and math.abs(q.Y-math.sin(a)*radius)<.001,'Rear arc symmetry lost')
-   for j=1,i-1 do local v=g[tostring(j)].point;assert((q.X-v.X)^2+(q.Y-v.Y)^2>=190^2,'Assigned seats overlap')end
+   local q=g[tostring(i)].point;local radius=R.summonArc(i,190)
+   local dx,dy=q.X-1100,q.Y
+   assert(dx<0 and dx*dx+dy*dy<radius*radius,'Arrival seat was not brought closer behind Coen')
+   for j=1,i-1 do local v=g[tostring(j)].point;assert((q.X-v.X)^2+(q.Y-v.Y)^2>=160^2,'Assigned seats overlap')end
   end
   local before=g['1'].point
   p:update(rows,{X=1150,Y=50,Z=0},180,0,3000)
@@ -70,6 +71,18 @@ test('native ownership preserves a foreign movement target and cleans up detache
  assert(bb.values.target==foreign and stops==0 and destroyed==1,'Another native action was cancelled')
  bb.values.target=nil;assert(N.update(m,goal,2000));stub.AIBoard={};N.release(m.formationLease)
  assert(destroyed==2,'Detached pawn leaked its private marker')
+`));
+test('arrival stops the path once and small idle motion does not restart it',()=>run(`${boundary}
+ goal.epoch=1;assert(N.update(m,goal,0))
+ actor.K2_GetActorLocation=function()return {X=450,Y=0,Z=0}end
+ goal.distance=50;assert(N.update(m,goal,250));assert(stops==1 and m.formationLease.settled)
+ for now=500,4000,250 do goal.distance=110;assert(N.update(m,goal,now))end
+ assert(calls==1 and stops==1 and not b.Follower.bFollowerModeEnabled,'Idle correction restarted following')
+ goal.moving=true;goal.epoch=2;goal.point={X=1000,Y=0,Z=0};goal.distance=550
+ assert(N.update(m,goal,4250));assert(calls==2 and not m.formationLease.settled,'Real departure did not resume')
+ assert(marker.point.X==1100,'Resumed navigation used the old arrival point')
+ goal.moving=false;goal.distance=40;N.update(m,goal,4500);N.release(m.formationLease)
+ assert(b.Follower.bFollowerModeEnabled and bb.values.follow==false and bb.values.track==false,'Idle lease failed to restore flags')
 `));
 test('native route stalls have bounded rebinds and yield after measured failure',()=>run(`${boundary}
  for now=0,18000,250 do N.update(m,goal,now)end

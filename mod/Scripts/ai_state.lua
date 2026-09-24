@@ -8,9 +8,16 @@ local objects={}
 -- before reuse, and never cache a failed lookup as if it were a live object.
 function M.find(path)
  local value=objects[path]
- if not M.valid(value)then value=StaticFindObject(path);objects[path]=value end
+ -- Unloaded asset addresses may be reused for another valid UObject. Check
+ -- the exact path before returning a cached class/profile/library reference.
+ if not M.valid(value)or value:GetFullName():match('^%S+ (.+)$')~=path then
+  objects[path]=nil;value=StaticFindObject(path)
+  if not M.valid(value)or value:GetFullName():match('^%S+ (.+)$')~=path then return nil end
+  objects[path]=value
+ end
  return value
 end
+function M.clearFindCache()objects={}end
 function M.valid(o)
  if not o or not o:IsValid()then return false end
  return not o:HasAnyFlags(EObjectFlags.RF_BeginDestroyed|EObjectFlags.RF_FinishDestroyed)
@@ -298,7 +305,7 @@ function M.acquireFormation(stub,expected,state,controller)
  if not ok then M.releaseFormation(state);return false end
  return M.ownsFormation(state,stub,expected)==true
 end
-function M.travelPace(stub,expected,state,movement,profile,speed,formation)
+function M.travelPace(stub,expected,state,movement,profile,speed,formation,targetSpeed,now)
  local b=M.board(stub,expected)
  if not b or b.bIsDead or stub:IsInCombat()or b.Combat.bInCombat or stub:IsInCinematicMode()or b.bMainBehaviorSuspended and not M.ownsFormation(formation,stub,expected)or b:HasAnyUnbreakableActiveAction()then
   M.releaseTravelProfile(state);return false
@@ -306,6 +313,28 @@ function M.travelPace(stub,expected,state,movement,profile,speed,formation)
  -- Check the live value; a cached request is not proof the native task kept it.
  if b.Follower.FollowerSpeed~=speed then b.Follower.FollowerSpeed=speed end
  if speed==0 or not M.valid(movement)or not M.valid(profile)then M.releaseTravelProfile(state);return true end
+ -- Match fast travel on foot with a private copy of the authored locomotion
+ -- profile. Shared NPC assets and combat/attack animation speed are untouched.
+ local baseSpeed=profile.MovementConfig.MaxSpeed
+ if targetSpeed and baseSpeed>0 and targetSpeed>baseSpeed+75 then
+  local desired=math.floor(targetSpeed/100+.5)*100
+  if not M.valid(state.boostProfile)or not M.same(state.boostSource,profile)or not M.same(state.boostOwner,movement)then
+   local copy=StaticConstructObject(profile:GetClass(),movement,0,0,0,false,false,profile)
+   if M.valid(copy)and not M.same(copy,profile)then
+    state.boostProfile=copy;state.boostSource=profile;state.boostOwner=movement
+    state.boostSpeed=nil;state.boostAt=nil
+   end
+  end
+  if M.valid(state.boostProfile)and M.same(state.boostSource,profile)and M.same(state.boostOwner,movement)then
+   if not state.boostSpeed or math.abs(desired-state.boostSpeed)>=100 and (now or 0)-(state.boostAt or 0)>=500 then
+    M.releaseTravelProfile(state)
+    state.boostProfile.MovementConfig.MaxSpeed=desired
+    state.boostProfile.MovementConfig.RootSpeedScale=profile.MovementConfig.RootSpeedScale*desired/baseSpeed
+    state.boostSpeed=desired;state.boostAt=now or 0
+   end
+   profile=state.boostProfile
+  end
+ end
  if state.handle~=nil and (not M.same(state.movement,movement)or not M.same(state.profile,profile))then M.releaseTravelProfile(state)end
  if state.handle==nil then
   local current=movement:GetCurrentMovementProfile()

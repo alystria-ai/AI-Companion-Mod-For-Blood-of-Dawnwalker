@@ -54,7 +54,7 @@ end
 local function dependency()
  if Theme then return end
  local f=assert(io.open(root..'/mod-directory.txt','r'),'Native menu install path missing');local dir=f:read('*l');f:close()
- Theme=assert(loadfile(dir..'/../DawnwalkerModMenu/Scripts/theme.lua'),'Install Dawnwalker Mod Menu 1.0.6.2 or later')()
+ Theme=assert(loadfile(dir..'/../DawnwalkerModMenu/Scripts/theme.lua'),'Install Dawnwalker Mod Menu 1.0.7 or later')()
 end
 local function marker(value)local f=io.open(root..'/native-menu-open.txt','w');if f then f:write(value);f:close()end end
 function M.isOpen()return view~=nil end
@@ -109,11 +109,10 @@ local function updateAppearance(v)
  for _,item in ipairs(v.appearanceRows)do
   local color=v.selection and Appearance.get(v.selection.id,item.appearance)or Appearance.palette[1]
   text(item.label,color.label)
-  item.picker:SetRenderOpacity(v.selection and 1 or .4)
   for _,control in ipairs(item.controls)do enabled(control,v.selection~=nil);control.arrow:SetRenderOpacity(v.selection and 1 or .4)end
  end
  if v.appearanceReset then enabled(v.appearanceReset,v.selection~=nil and Appearance.selected(v.selection.id))end
- if v.appearanceNote then text(v.appearanceNote,v.selection and 'Saved for this character and all summoned copies.'or 'Select a character to choose their colours.')end
+ if v.appearanceNote then text(v.appearanceNote,v.selection and 'Applies to your next summon only.'or 'Select a character to choose their colours.')end
 end
 local function showSelection(v)
  if v.selection then describe(v.selection.name,v.selection.help)else describe('Choose your companions','Select a character on the left, then choose Summon. Dismiss removes the newest copy of that character. Use Party to choose a specific copy.')end
@@ -136,8 +135,13 @@ local function refresh(v,state)
   if phase=='rest'then status='Level '..tostring(run.level)..' cleared · next wave in '..tostring(run.restSeconds or 0)..' s'end
   text(v.hordeStatus,status);text(v.hordeDetail,run.message or '')
   enabled(v.hordeStart,not run.active);enabled(v.hordeEnd,run.active)
+  if v.hordeWaveLabel then
+   local index=Settings.values.HordeStartingWave;local wave=v.hordeWaves[index]
+   text(v.hordeWaveLabel,tostring(index)..'. '..tostring(wave and wave.name or 'Wave '..index))
+   for _,control in ipairs(v.hordeWaveControls or {})do enabled(control,not run.active);control.arrow:SetRenderOpacity(run.active and .4 or 1)end
+  end
  end
- if v.page=='Settings'then for _,b in ipairs(v.buttons)do if b.setting then text(b.value,Settings.label(b.setting));if b.setting.id=='AncaRomance'or b.setting.id=='LacraRomance'then enabled(b,Settings.effective(b.setting.id)==Settings.values[b.setting.id])end end end end
+ if v.page=='Settings'then for _,b in ipairs(v.buttons)do if b.setting then text(b.value,Settings.label(b.setting)) end end end
  if v.page~='Summon'then if v.feedback then text(v.feedback,v.message or '')end;return end
  enabled(v.summonButton,v.selection~=nil);enabled(v.dismissButton,latestCopy(v,state)~=nil)
  local batch=M.batch(v.requests,state)
@@ -223,11 +227,12 @@ render=function()
    -- Use the actual settings picker artwork/layout. Its stock input writes to
    -- RebelGameUserSettings, so route our own hit targets to character presets.
    -- No game setting entry is borrowed or modified.
-   picker['Is Updating']=true;picker:SetVisibility(3)
+   picker['Is Updating']=true;picker:SetVisibility(3);picker:SetRenderOpacity(0)
    picker.Slider:SetVisibility(2);picker.IndicatorBox:SetVisibility(1)
    picker.ArrowLeft:SetVisibility(2);picker.ArrowRight:SetVisibility(2)
    -- The blueprint refreshes its stock value after construction. Keep its
-   -- native picker artwork, but own the value text and arrow hit targets.
+   -- layout, but draw both arrows from the same native texture. Hide the
+   -- blueprint paint so its later refresh cannot duplicate either arrow.
    picker.Label:SetVisibility(2)
    local value=caption('',24);value:SetAutoWrapText(false);value:SetJustification(1)
    local valueBox=size(value,260,52);value.Slot:SetVerticalAlignment(2)
@@ -235,8 +240,9 @@ render=function()
    local item={appearance=channel.id,controls={},label=value,picker=picker,background=background,row=shell,focusIndex=#v.buttons+1}
    for _,direction in ipairs({-1,1})do
     local target=new('Overlay');local paint=new('Border');paint:SetBrushColor({R=0,G=0,B=0,A=0});fill(add(target,paint))
-    local arrow=caption(direction==-1 and '<'or '>',30);arrow:SetAutoWrapText(false);arrow:SetJustification(1)
-    local arrowBox=size(arrow,58,52);arrow.Slot:SetVerticalAlignment(2);fill(add(target,arrowBox))
+    local arrow=art('arrow');arrow:SetVisibility(3)
+    arrow:SetRenderTransformPivot({X=.5,Y=.5});arrow:SetRenderScale({X=direction==-1 and 1 or -1,Y=1})
+    local arrowBox=size(arrow,24,24);local arrowSlot=add(target,arrowBox);arrowSlot:SetHorizontalAlignment(2);arrowSlot:SetVerticalAlignment(2)
     local click=clickLayer(target,paint)
     local slot=add(surface,size(target,58,52));slot:SetHorizontalAlignment(direction==-1 and 1 or 3);slot:SetVerticalAlignment(0)
     local control={widget=paint,click=click,arrow=arrow,action=function()changeAppearance(v,channel.id,direction)end,enabled=true,appearance=channel.id,scroll=detailScroll,nativePicker=item}
@@ -250,7 +256,8 @@ render=function()
    v.message=ok and 'Original colours selected' or 'Could not save colours: '..tostring(why)
    updateAppearance(v);v.touched=os.time()
   end,656)
-  v.appearanceNote=caption('',20);add(detail,size(v.appearanceNote,670,46)):SetPadding({Left=0,Top=3,Right=0,Bottom=3})
+  v.appearanceNote=caption('',20);v.appearanceNote.WrapTextAt=640
+  add(detail,size(v.appearanceNote,656)):SetPadding({Left=0,Top=6,Right=0,Bottom=12})
   local actions=new('HorizontalBox');add(detail,actions):SetPadding({Left=0,Top=5,Right=0,Bottom=5})
   v.summonButton=button(actions,'Summon',function()
    if not v.selection then return end
@@ -281,7 +288,7 @@ render=function()
   if #model.members>0 then button(list,'Dismiss everyone',function()Party.enqueue('dismiss_all');v.refreshAt=0 end)else add(list,caption('No companions summoned yet.'))end
  elseif v.page=='Horde'then
   v.hordeContext=true
-  add(left,size(list,790,710));describe('Horde run','Fight through ten waves of increasingly varied enemies. Clear every enemy to advance after a short rest. Retreat or choose End horde to finish the run. Start horde resumes the game for loading; this menu closes when the full wave is ready. Esc returns to gameplay.')
+  add(left,size(list,790,710));describe('Horde run','Choose your first wave below. Later waves are random without repeats, with more enemies each round according to Settings. Clear every enemy to advance after a rest. Retreat or choose End horde to finish. The menu closes when the full wave is ready. Esc returns to gameplay.')
   add(list,caption('WAVES',32)):SetPadding({Left=0,Top=0,Right=0,Bottom=12})
   local ok,waves=pcall(function()return Horde.levels and Horde.levels()or {}end)
   if ok and type(waves)=='table'and #waves>0 then
@@ -298,9 +305,28 @@ render=function()
     add(list,size(card,764)):SetPadding({Left=0,Top=4,Right=0,Bottom=22})
    end
   else add(list,caption('Ten waves with varied enemies and rising difficulty.',24))end
-  add(detail,caption('STATUS',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=8})
-  v.hordeStatus=caption('',26);add(detail,size(v.hordeStatus,670,52))
-  v.hordeDetail=caption('',23);add(detail,size(v.hordeDetail,670,100)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
+  v.hordeWaves=ok and type(waves)=='table'and waves or {};v.hordeWaveControls={}
+  add(detail,caption('STARTING WAVE',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=4})
+  local selector=new('Overlay');add(detail,size(selector,656,56))
+  v.hordeWaveLabel=caption('',24);v.hordeWaveLabel:SetAutoWrapText(false);v.hordeWaveLabel:SetJustification(1)
+  local valueBox=size(v.hordeWaveLabel,536,52);v.hordeWaveLabel.Slot:SetVerticalAlignment(2)
+  local valueSlot=add(selector,valueBox);valueSlot:SetHorizontalAlignment(2);valueSlot:SetVerticalAlignment(2)
+  local function changeWave(direction)
+   if Horde.view().active then return end
+   local saved,why=pcall(Settings.change,'HordeStartingWave',direction)
+   if not saved then v.message='Could not save starting wave: '..tostring(why)end
+   refresh(v,Party.view())
+  end
+  local pickerGroup={}
+  for _,direction in ipairs({-1,1})do
+   local target=new('Overlay');local paint=new('Border');paint:SetBrushColor({R=0,G=0,B=0,A=0});fill(add(target,paint))
+   local arrow=art('arrow');arrow:SetVisibility(3);arrow:SetRenderTransformPivot({X=.5,Y=.5});arrow:SetRenderScale({X=direction==-1 and 1 or -1,Y=1})
+   local arrowSlot=add(target,size(arrow,24,24));arrowSlot:SetHorizontalAlignment(2);arrowSlot:SetVerticalAlignment(2)
+   local click=clickLayer(target,paint)
+   local slot=add(selector,size(target,58,52));slot:SetHorizontalAlignment(direction==-1 and 1 or 3);slot:SetVerticalAlignment(0)
+   local control={widget=paint,click=click,arrow=arrow,action=function()changeWave(direction)end,adjust=changeWave,enabled=true,scroll=detailScroll,nativePicker=pickerGroup}
+   v.buttons[#v.buttons+1]=control;v.hordeWaveControls[#v.hordeWaveControls+1]=control
+  end
   v.hordeStart=button(detail,'Start horde',function()
    local succeeded,started,message=pcall(Horde.start,v.pc)
    v.message=succeeded and (message or (started and 'Horde ready. Unpause to begin.'or 'Could not start horde.'))or tostring(started)
@@ -322,10 +348,14 @@ render=function()
    v.message=succeeded and 'Horde ended' or tostring(why)
    refresh(v,Party.view())
   end,656)
+  add(detail,caption('Next waves: random, without repeats.',21)):SetPadding({Left=0,Top=3,Right=0,Bottom=12})
+  add(detail,caption('STATUS',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=8})
+  v.hordeStatus=caption('',26);add(detail,size(v.hordeStatus,670,52))
+  v.hordeDetail=caption('',23);add(detail,size(v.hordeDetail,670,100)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
  elseif v.page=='Settings'then
-  add(left,size(list,790,710));describe('Settings','Changes save immediately. Native AI chooses attacks and powers. Fallen companions revive automatically after combat.\n\nAnca and Lacra have separate romance profile toggles, Off by default. Saved romance history automatically enables the matching profile. You can enable either profile early; memories still follow the loaded save. Horde options apply when a new run starts.')
+  add(left,size(list,790,710));describe('Settings','Changes save immediately. Native AI chooses attacks and powers. Fallen companions revive automatically after combat.\n\nAnca and Lacra have separate romance profile choices: Auto follows the loaded save, On enables the romantic profile, and Off always uses the normal profile. Memories still follow the loaded save. Horde options apply when a new run starts.')
   local group
-  for _,s in ipairs(Settings.schema)do
+  for _,s in ipairs(Settings.schema)do if not s.menuOnly then
    local section=s.group or 'Companions'
    if section~=group then local top=group and 18 or 0;group=section;add(list,caption(group,32)):SetPadding({Left=0,Top=top,Right=0,Bottom=8})end
    local item=button(list,s.label,function()changeSetting(s,1)end,nil,s.help);item.setting=s
@@ -355,7 +385,7 @@ render=function()
    local value=caption(Settings.label(s),26);value:SetAutoWrapText(false)
    local valueBox=size(value,100,52);value.Slot:SetVerticalAlignment(2)
    add(row,valueBox):SetPadding({Left=10,Top=0,Right=0,Bottom=0});item.value=value
-  end
+  end end
  elseif v.page=='Controls'then
   add(left,size(list,790,710));describe('Keyboard controls','Select an action, then press its new key. Changes save immediately to keybindings.ini.\n\nUse F1–F11, letters, numbers, Home, End, PageUp, PageDown, Insert or Delete. Each action needs a different key. Escape cancels capture.\n\nChoose keys that do not conflict with your game controls. Voice keys toggle recording: press once to speak, and again to finish.')
   for _,s in ipairs(Settings.bindingSchema)do local id=s.id
@@ -382,7 +412,7 @@ render=function()
    refresh(v,Party.view())
   end);copy.prominent=true
   add(list,caption('Copies recent diagnostic logs to your clipboard and saves support-report.txt. Conversation history and configuration are excluded.',22))
-  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the five shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved per character, including copies. Restore original colours returns the game materials.\n\nRomance profiles: Anca and Lacra have separate toggles, Off by default. Completed romance in the loaded save automatically turns the matching profile On. You can also enable one early. This changes conversations only; it does not play cutscenes.\n\nHorde: start a ten-wave run from its page, clear all enemies to advance after each rest, or retreat to end the run.')
+  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the five shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved for the next summon. Each copy keeps its own colours, including after recovery or travel. Restore original colours resets the next summon.\n\nRomance profiles: Auto follows romance history in the loaded save. On enables the romantic profile early. Off uses the normal profile even after unlocking romance. Choose separately for Anca and Lacra. This changes conversations only; it does not play cutscenes.\n\nHorde: start a ten-wave run from its page, clear all enemies to advance after each rest, or retreat to end the run.')
  end
  if not v.feedback then v.feedback=caption('',22);add(detail,v.feedback):SetPadding({Left=0,Top=20,Right=0,Bottom=0})end
  v.summary=caption('',23);v.summary:SetAutoWrapText(false);add(v.content,size(v.summary,1580,36)):SetPadding({Left=0,Top=18,Right=0,Bottom=0})
@@ -448,7 +478,8 @@ function M.input(name)
    local b=v.buttons[v.focus];pcall(function()(b.scroll or v.list):ScrollWidgetIntoView(b.widget,true,0,12)end)
  elseif name=='Enter'then v.pointerMode=false;local b=v.buttons[v.focus];if b and b.enabled then b.action()end
  elseif name=='Left'or name=='Right'then v.pointerMode=false;local b=v.buttons[v.focus];if b and b.setting then changeSetting(b.setting,name=='Left'and -1 or 1)
-  elseif b and b.appearance then changeAppearance(v,b.appearance,name=='Left'and -1 or 1)end end
+  elseif b and b.appearance then changeAppearance(v,b.appearance,name=='Left'and -1 or 1)
+  elseif b and b.enabled and b.adjust then b.adjust(name=='Left'and -1 or 1)end end
 end
 local function readInput(v)
  local f=io.open(root..'/native-menu-input.txt','r');if not f then return end

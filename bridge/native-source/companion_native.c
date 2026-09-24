@@ -156,6 +156,21 @@ static int inspectDefinition(FILE *reply,const wchar_t *path){
 /* Separate diagnostic DLL: only typed, read-only exports are reachable. It
  * never replaces the v5 DLL that owns the live population registry. */
 static int auditObject(FILE *reply,const wchar_t *path,const wchar_t *kind){
+    if(!wcscmp(kind,L"animationbudget")){
+        void *o=resolveObject(path,L"/Script/AnimationBudgetAllocator.SkeletalMeshComponentBudgeted");if(!o)return 0;
+        void *prop=findProperty(o,L"bAutoRegisterWithBudgetAllocator");
+        if(!prop||*propertyOffset(prop)!=0xf90)return fail("Unexpected animation budget layout");
+        uintptr_t base=(uintptr_t)GetModuleHandleW(NULL),*vt=*(uintptr_t**)o;
+        fprintf(reply,"tickRva\t%llx\n",(unsigned long long)(vt[0x460/8]-base));
+        void *allocator=NULL;memcpy(&allocator,(char*)o+0xf80,8);
+        int handle=0;memcpy(&handle,(char*)o+0xf88,4);fprintf(reply,"handle\t%d\n",handle);
+        MEMORY_BASIC_INFORMATION region;
+        if(allocator&&VirtualQuery(allocator,&region,sizeof(region))&&region.State==MEM_COMMIT){
+            uintptr_t *av=*(uintptr_t**)allocator;
+            for(int slot=0;slot<0x80;slot+=8)fprintf(reply,"allocator%x\t%llx\n",slot,(unsigned long long)(av[slot/8]-base));
+        }
+        return 1;
+    }
     if(!wcscmp(kind,L"cinematic")){
         void *o=resolveObject(path,L"/Script/CoreUObject.Object");if(!o)return 0;
         const wchar_t *keys[]={L"Nodes",L"LevelSequences",L"CachedData",L"DialogueMovieSet",L"StreamingMarkers",L"PlaybackRootOverride",L"Sequence",L"PlaybackRange",L"TickResolution",L"SectionRange"};
@@ -168,7 +183,7 @@ static int auditObject(FILE *reply,const wchar_t *path,const wchar_t *kind){
     if(!wcscmp(kind,L"snapshot")){
         void *o=resolveObject(path,L"/Script/CoreUObject.Object");if(!o)return 0;
         /* Fixed read-only fields; missing fields are normal across actor types. */
-        const wchar_t *keys[]={L"Follower",L"Positioning",L"Aggression",L"TicketUser",L"TicketBoard",L"Tags",L"Weapon",L"CurrentCharacterState",L"CombatMode",L"bCanFight",L"bUseTicketUser",L"bUseTicketBoard",L"CharacterStates",L"AssetTreeGeneric",L"LogicTreeGeneric",L"ServiceTree",L"bAlwaysKeepStandardTicket",L"bCanGetTicketWithoutPath",L"ChanceToPassStandardTicketToHelper",L"MinHelperTicketCooldown",L"MaxHelperTicketCooldown",L"EnemyConfig",L"EquipmentSlots",L"CombatAnimationConfigs",L"HandToHandWeapons",L"FistfightWeapons",L"DayStats",L"NightStats",L"bOverrideAttributes",L"CharacterAbilityConfig",L"EquippedWeapon",L"EquippedWeaponOffHand",L"SpawnedWeapons",L"CurrentAttack",L"AttackAbilities",L"NPCAttacks",L"CurrentState",L"Damage",L"DamageAIvsAI",L"MaxHealth",L"Health",L"MeleeDamageMultiplier",L"ClawsDamageMultiplier",L"MagicDamageMultiplier",L"SpawnedAttributes",L"bUseRVOAvoidance",L"AvoidanceConsiderationRadius",L"MaxWalkSpeed",L"DesiredMovementSpeedMultiplier",L"DamageMultiplier",L"FollowerDamageTag",L"Invert",L"MinNPCTimeBetweenAttacks",L"BaseMinimalTimeBetweenAttacks",L"AttackTargetFilterClass"};
+        const wchar_t *keys[]={L"RecentEvents",L"AIStub",L"CombatComponent",L"CombatSubsystem",L"Capsule",L"Hitboxes",L"Follower",L"Positioning",L"Aggression",L"TicketUser",L"TicketBoard",L"Tags",L"Weapon",L"CurrentCharacterState",L"CombatMode",L"bCanFight",L"bUseTicketUser",L"bUseTicketBoard",L"CharacterStates",L"AssetTreeGeneric",L"LogicTreeGeneric",L"ServiceTree",L"bAlwaysKeepStandardTicket",L"bCanGetTicketWithoutPath",L"ChanceToPassStandardTicketToHelper",L"MinHelperTicketCooldown",L"MaxHelperTicketCooldown",L"EnemyConfig",L"EquipmentSlots",L"CombatAnimationConfigs",L"HandToHandWeapons",L"FistfightWeapons",L"DayStats",L"NightStats",L"bOverrideAttributes",L"CharacterAbilityConfig",L"EquippedWeapon",L"EquippedWeaponOffHand",L"SpawnedWeapons",L"CurrentAttack",L"AttackAbilities",L"NPCAttacks",L"CurrentState",L"Damage",L"DamageAIvsAI",L"MaxHealth",L"Health",L"MeleeDamageMultiplier",L"ClawsDamageMultiplier",L"MagicDamageMultiplier",L"SpawnedAttributes",L"bUseRVOAvoidance",L"AvoidanceConsiderationRadius",L"MaxWalkSpeed",L"DesiredMovementSpeedMultiplier",L"DamageMultiplier",L"FollowerDamageTag",L"Invert",L"MinNPCTimeBetweenAttacks",L"BaseMinimalTimeBetweenAttacks",L"AttackTargetFilterClass"};
         for(unsigned i=0;i<sizeof(keys)/sizeof(keys[0]);i++)if(findProperty(o,keys[i])){
             char label[96];WideCharToMultiByte(CP_UTF8,0,keys[i],-1,label,sizeof(label),NULL,NULL);
             if(!exportField(reply,o,keys[i],label))return 0;
@@ -268,6 +283,9 @@ cleanup: frameClose(&load);frameClose(&reference);return ok;
 #endif
 #ifdef COMPANION_PROTECTION
 #include "companion_protection.h"
+#endif
+#ifdef COMPANION_SIMULATION
+#include "companion_simulation.h"
 #endif
 static int objectPath(void *p,const void *value,void *parent,wchar_t *destination){
     FString text={0};exportValue(p,&text,value,NULL,parent,0,NULL);int ok=0;
@@ -422,6 +440,9 @@ __declspec(dllexport) int companion_native_run(void *unusedLuaState){
 #ifdef COMPANION_READ_ONLY_AUDIT
         if(!wcscmp(lines[1],L"audit")&&count==4)ok=auditObject(reply,lines[2],lines[3]);
         else fail("Read-only diagnostic DLL");
+#elif defined(COMPANION_SIMULATION)
+        if(!wcscmp(lines[1],L"animationbudget")&&count==4)ok=simulationBudget(reply,lines[2],lines[3]);
+        else fail("Simulation helper accepts only animationbudget");
 #elif defined(COMPANION_ASSET_LOADER)
         if(!wcscmp(lines[1],L"loadassetasync")&&count==4)ok=loadObjectAsync(reply,lines[2],lines[3]);
         else fail("Asset-loading DLL accepts only loadassetasync");

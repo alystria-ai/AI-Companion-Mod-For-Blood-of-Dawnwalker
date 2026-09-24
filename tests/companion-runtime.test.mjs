@@ -173,16 +173,41 @@ test('async class presence is insufficient until class and defaults finish loadi
  EObjectFlags={RF_NeedInitialization=0x200,RF_NeedLoad=0x400,RF_NeedPostLoad=0x1000,RF_NeedPostLoadSubobjects=0x2000,RF_BeginDestroyed=0x8000,RF_FinishDestroyed=0x10000}
  local flags,defaultsFlags=0,0
  local defaults={IsValid=function()return true end,HasAnyFlags=function(self,mask)return (defaultsFlags&mask)~=0 end}
- local class={IsValid=function()return true end,HasAnyFlags=function(self,mask)return (flags&mask)~=0 end,GetCDO=function()assert(flags==0,'CDO touched during class postload');return defaults end}
+ local className='Class /known'
+ local class={IsValid=function()return true end,GetFullName=function()return className end,HasAnyFlags=function(self,mask)return (flags&mask)~=0 end,GetCDO=function()assert(flags==0,'CDO touched during class postload');return defaults end}
  StaticFindObject=function()return class end
  assert(M.loadedClass('/known')==class)
  for _,flag in pairs(EObjectFlags)do flags=flag;assert(M.loadedClass('/known')==nil)end
  flags=0;defaultsFlags=0x1000;assert(M.loadedClass('/known')==nil)
  defaultsFlags=0;assert(M.loadedClass('/known')==class)
+ -- Reproduce an old class wrapper whose address is now a valid waypoint actor.
+ className='Actor /world/waypoint';class.GetCDO=function()error('Wrong object used as class')end
+ local replacement={IsValid=function()return true end,GetFullName=function()return 'Class /known'end,HasAnyFlags=function()return false end,GetCDO=function()return defaults end}
+ local scans=0;StaticFindObject=function()scans=scans+1;return replacement end
+ assert(M.loadedClass('/known')==replacement,'Stale valid pointer hid the loaded class')
+ assert(M.loadedClass('/known')==replacement and scans==1,'Healthy cached class caused repeated scans')
+ local assetName='Object /asset'
+ local asset={IsValid=function()return true end,GetFullName=function()return assetName end,HasAnyFlags=function()return false end}
+ StaticFindObject=function()return asset end;assert(M.loadedAsset('/asset')==asset)
+ assetName='Actor /world/other';StaticFindObject=function()return nil end
+ assert(M.loadedAsset('/asset')==nil,'Unrelated UObject escaped the asset cache')
+ M.clearAssetCache();assert(M.loadedClass('/known')==nil,'Save reset retained a cached class')
  StaticFindObject=function()return nil end;assert(M.loadedClass('/missing')==nil)
  `;
  try{const result=lauxlib.luaL_dostring(L,to_luastring(code));assert.equal(result,lua.LUA_OK,result===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
 });
+
+test('shared lookup cache rejects reused object addresses and clears on reset',()=>check('mod/Scripts/ai_state.lua',`
+ EObjectFlags={RF_BeginDestroyed=1,RF_FinishDestroyed=2}
+ local name='Class /profile';local scans=0
+ local cached={IsValid=function()return true end,HasAnyFlags=function()return false end,GetFullName=function()return name end}
+ local fresh={IsValid=function()return true end,HasAnyFlags=function()return false end,GetFullName=function()return 'Class /profile'end}
+ StaticFindObject=function()scans=scans+1;return cached end
+ assert(M.find('/profile')==cached);assert(M.find('/profile')==cached and scans==1)
+ name='Actor /world/waypoint';StaticFindObject=function()scans=scans+1;return fresh end
+ assert(M.find('/profile')==fresh and scans==2)
+ M.clearFindCache();StaticFindObject=function()return nil end;assert(M.find('/profile')==nil)
+`));
 
 test('summon slots separate pending and live companions and face the current player',()=>check('mod/Scripts/companion_recovery.lua',`
  local function flat(p)return {X=p.X,Y=p.Y,Z=p.Z-90}end

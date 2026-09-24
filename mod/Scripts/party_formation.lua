@@ -7,7 +7,7 @@ local function gap(a,b)return math.sqrt((a.X-b.X)^2+(a.Y-b.Y)^2)end
 function M.new()
  local self={frame={},seats={},goals={}}
  function self:update(rows,player,yaw,speed,now,registered)
-  R.formationFrame(self.frame,player,yaw,speed,now)
+  R.formationFrame(self.frame,player,yaw,speed,now,#rows)
   local frame=self.frame;local present={};local locked={};local assigned={}
   table.sort(rows,function(a,b)return a.ordinal<b.ordinal end)
   for _,row in ipairs(rows)do
@@ -19,7 +19,7 @@ function M.new()
    -- Hold the local group while the player approaches one companion. A new
    -- journey releases the parked seat; turning the camera never reshuffles it.
    if not row.locked and not frame.moving and gap(row.position,player)<170 then s.parked=s.parked or copy(row.position)end
-   assigned[row.id]=s.parked or R.followPoint(frame.point,frame.yaw,row.slot,row.pitch)
+   assigned[row.id]=s.parked or R.followPoint(frame.point,frame.yaw,row.slot,row.pitch,row.count)
   end
   -- Streaming can remove the pawn without dismissing its companion instance.
   -- Preserve that journey/seat so reattachment is not mistaken for a new spawn.

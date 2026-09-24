@@ -22,14 +22,14 @@ function M.release(s)
  local b=board(s)
  if s.owned and b and AI.valid(s.controller)and AI.valid(s.blackboard)and same(s.controller.Blackboard,s.blackboard)then
   local target=s.blackboard:GetValueAsObject(s.key)
-  if same(target,s.marker)then
-   s.controller:AIStopFollowing()
+  if same(target,s.marker)or s.settled and not AI.valid(target)then
+   if not s.settled then s.controller:AIStopFollowing()end
    s.blackboard:SetValueAsBool(s.followKey,s.oldFollow)
    s.blackboard:SetValueAsBool(s.trackKey,s.oldTrack)
   end
   if b.Follower.bFollowerModeEnabled==false then b.Follower.bFollowerModeEnabled=s.oldFollower end
  end
- s.owned=false
+ s.owned=false;s.settled=nil;s.settledEpoch=nil
  if AI.valid(s.marker)then s.marker:K2_DestroyActor()end
  s.marker=nil;s.controller=nil;s.blackboard=nil;s.stub=nil;s.board=nil;s.sample=nil
 end
@@ -50,6 +50,17 @@ function M.update(m,goal,now)
  local desired=M.markerPoint(goal.point,actorPosition,s.point)
  local target=bb:GetValueAsObject(key)
  if AI.valid(target)and not same(target,s.marker)then M.release(s);return false,'Another native movement target has priority'end
+ if s.settled then
+  if not goal.moving and goal.epoch==s.settledEpoch and goal.distance<=145 then
+   m.board.Follower.bFollowerModeEnabled=false
+   if now-(s.refreshAt or 0)>=1000 then s.marker:SetLifeSpan(15);s.refreshAt=now end
+   return true,'Settled; native idle'
+  end
+  s.settled=nil;s.settledEpoch=nil
+  if not s.marker:K2_SetActorLocation(desired,false,{},true)then M.release(s);s.retryAt=now+3000;return false,'Destination movement declined'end
+  s.point=desired
+  c:AIMoveToActor(s.marker,true,true,false);s.issuedAt=now;s.issuedSeat={X=goal.point.X,Y=goal.point.Y,Z=goal.point.Z}
+ end
  if not s.owned then
   local class=AI.find('/Script/Engine.TargetPoint')
   if not AI.valid(class)then s.retryAt=now+5000;return false,'Destination actor class unavailable'end
@@ -66,20 +77,35 @@ function M.update(m,goal,now)
   -- branch run normally. Main behavior, physics and animations stay enabled.
   m.board.Follower.bFollowerModeEnabled=false;m.board:StopAllActions();c:StopMovement()
   c:AIMoveToActor(marker,true,true,false);s.issuedAt=now;s.refreshAt=now;s.issuedPoint=desired
+  s.issuedSeat={X=goal.point.X,Y=goal.point.Y,Z=goal.point.Z}
  end
  if not same(bb:GetValueAsObject(key),s.marker)then
   M.release(s);s.retryAt=now+3000;return false,'Native movement did not retain its target'
  end
  m.board.Follower.bFollowerModeEnabled=false
+ -- The compensated marker remains farther away than the real seat. Stop
+ -- chasing that last fraction of a metre once the group has arrived. Keep
+ -- the owned follower flag off so the fallback does not immediately restart.
+ -- A wider exit tolerance prevents turn-in-place root motion from waking it.
+ if not goal.moving and goal.distance<=80 then
+  c:AIStopFollowing();c:StopMovement()
+  s.settled=true;s.settledEpoch=goal.epoch;s.sample=nil;s.failures=0
+  return true,'Settled; native idle'
+ end
  local p=desired
  if not s.point or (p.X-s.point.X)^2+(p.Y-s.point.Y)^2>=20^2 or math.abs(p.Z-s.point.Z)>40 then
   if not s.marker:K2_SetActorLocation(p,false,{},true)then M.release(s);s.retryAt=now+3000;return false,'Destination movement declined'end
   s.point={X=p.X,Y=p.Y,Z=p.Z}
  end
  if now-(s.refreshAt or 0)>=1000 then s.marker:SetLifeSpan(15);s.refreshAt=now end
- if goal.moving and s.issuedPoint and now-(s.issuedAt or 0)>=1000
-  and (p.X-s.issuedPoint.X)^2+(p.Y-s.issuedPoint.Y)^2>=150^2 then
+ -- The native branch does not track the final stopping point on its own.
+ -- Refresh a changed seat once even after the player stops. Compare seats,
+ -- not the compensating marker, so approach-angle changes cannot churn paths.
+ local seat=s.issuedSeat;local threshold=goal.moving and 150 or 35
+ if seat and goal.distance>60 and now-(s.issuedAt or 0)>=1000
+  and ((goal.point.X-seat.X)^2+(goal.point.Y-seat.Y)^2>=threshold^2 or math.abs(goal.point.Z-seat.Z)>60)then
   c:AIMoveToActor(s.marker,true,true,false);s.issuedAt=now;s.issuedPoint={X=p.X,Y=p.Y,Z=p.Z}
+  s.issuedSeat={X=goal.point.X,Y=goal.point.Y,Z=goal.point.Z}
  end
  -- Measure the pawn, not request acceptance. One native rebind after a real
  -- stall is bounded; it never turns into continuous MoveTo replacement.

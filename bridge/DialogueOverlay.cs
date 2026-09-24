@@ -40,6 +40,13 @@ public sealed class DialogueOverlay : Form {
     readonly ModKeyBindings bindings=new ModKeyBindings();
     ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered;long nativeMenuStamp;
     bool NativeMenuOpen {get{return nativeMenuSession!="";}}
+    string inputDiagnostic="";DateTime inputErrorAt;
+    readonly System.Collections.Generic.Queue<string> inputHistory=new System.Collections.Generic.Queue<string>();
+    void InputDiagnostic(string value){
+        if(value==inputDiagnostic)return;inputDiagnostic=value;
+        inputHistory.Enqueue(DateTime.UtcNow.ToString("o")+" "+value);while(inputHistory.Count>16)inputHistory.Dequeue();
+        HostDiagnostics.TryWrite(Path.Combine(runtime,"input-status.txt"),String.Join(Environment.NewLine,inputHistory));
+    }
     void ClearHotkeys(){
         if(singleRegistered)UnregisterHotKey(Handle,1846);if(singleMicRegistered)UnregisterHotKey(Handle,1847);
         if(registered)UnregisterHotKey(Handle,1848);if(micRegistered)UnregisterHotKey(Handle,1849);if(menuRegistered)UnregisterHotKey(Handle,1845);
@@ -103,6 +110,7 @@ public sealed class DialogueOverlay : Form {
             NativeMenuInput(state.gameAlive&&gameFocused);
             bool eligible=state.gameAlive&&(gameFocused||ours)&&!NativeMenuOpen;
             bool shortcuts=eligible&&!editing&&!opening;
+            InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts);
             File.WriteAllText(Path.Combine(runtime,"mic-focus.txt"),(eligible?DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():0).ToString());
             if(shortcuts&&!menuRegistered)menuRegistered=RegisterHotKey(Handle,1845,0x4000,(uint)bindings["Menu"]);
             if(!shortcuts&&menuRegistered){UnregisterHotKey(Handle,1845);menuRegistered=false;}
@@ -134,9 +142,9 @@ public sealed class DialogueOverlay : Form {
                 SetBounds(origin.X+(gw-width)/2,origin.Y+gh-height-S(35),width,height);
             }
             if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(state.text))){LayoutInput();if(!Visible)Show();Invalidate();}else Hide();
-        }catch{if(!editing)Hide();}
+        }catch(Exception e){InputDiagnostic("Shortcut update failed: "+e.GetType().Name+": "+e.Message);if(DateTime.UtcNow>=inputErrorAt){inputErrorAt=DateTime.UtcNow.AddSeconds(30);HostDiagnostics.Log("Shortcut update",e);}if(!editing)Hide();}
     }
-    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
+    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
     int S(int value){return (int)Math.Round(value*scale);}
     void ApplyScale(float next){
         if(!Alive||Math.Abs(next-scale)<=0.01f)return;

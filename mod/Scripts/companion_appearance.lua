@@ -20,8 +20,33 @@ M.palette={
  {id='crimson',label='Crimson',r=.55,g=.045,b=.065},
  {id='emerald',label='Emerald',r=.055,g=.34,b=.16},
  {id='sapphire',label='Sapphire',r=.055,g=.17,b=.50},
- {id='violet',label='Violet',r=.31,g=.13,b=.48}
+ {id='violet',label='Violet',r=.31,g=.13,b=.48},
+ {id='scarlet',label='Scarlet',r=1,g=.025,b=.015},
+ {id='hot_pink',label='Hot pink',r=1,g=.025,b=.38},
+ {id='magenta',label='Magenta',r=.90,g=.015,b=.85},
+ {id='electric_blue',label='Electric blue',r=.015,g=.18,b=1},
+ {id='neon_lime',label='Neon lime',r=.48,g=1,b=.015},
+ {id='auburn',label='Auburn',r=.36,g=.09,b=.045},
+ {id='ginger',label='Ginger',r=.78,g=.27,b=.055},
+ {id='tangerine',label='Tangerine',r=1,g=.24,b=.015},
+ {id='burgundy',label='Burgundy',r=.29,g=.025,b=.09},
+ {id='ash_blonde',label='Ash blonde',r=.54,g=.46,b=.32},
+ {id='honey_blonde',label='Honey blonde',r=.82,g=.57,b=.25},
+ {id='platinum',label='Platinum',r=.83,g=.81,b=.72},
+ {id='pearl_white',label='Pearl white',r=.96,g=.93,b=.90},
+ {id='lemon',label='Lemon',r=1,g=.92,b=.015},
+ {id='rose_pink',label='Rose pink',r=.78,g=.20,b=.36},
+ {id='lavender',label='Lavender',r=.57,g=.37,b=.78},
+ {id='pastel_blue',label='Pastel blue',r=.30,g=.53,b=.85},
+ {id='cyan',label='Cyan',r=.045,g=.67,b=.80},
+ {id='teal',label='Teal',r=.025,g=.35,b=.33},
+ {id='acid_green',label='Acid green',r=.015,g=.95,b=.065},
+ {id='ultraviolet',label='Ultraviolet',r=.48,g=.015,b=1},
+ {id='turquoise',label='Turquoise',r=.015,g=.95,b=.68},
+ {id='coral',label='Coral',r=1,g=.18,b=.14}
 }
+-- Retired near-duplicate shades migrate to the remaining natural options.
+local aliases={jet_black='onyx',espresso='chestnut',chocolate='chestnut',walnut='chestnut',ash_brown='chestnut',mahogany='auburn',charcoal='onyx',forest_green='emerald'}
 local choices,values,revisions,loaded={},{},{},false
 for i,color in ipairs(M.palette)do choices[color.id]=i end
 local channels={};for _,channel in ipairs(M.channels)do channels[channel.id]=true end
@@ -31,6 +56,7 @@ function M.load()
  local f=io.open(filename,'rb');if not f then return end
  for line in f:lines()do
   local id,channel,color=line:match('^([%w_%-]+)\t([%w_%-]+)\t([%w_%-]+)$')
+  color=aliases[color]or color
   if validId(id)and channels[channel]and choices[color]and color~='default'then
    values[id]=values[id]or {};values[id][channel]=color
   end
@@ -73,6 +99,20 @@ function M.reset(id)
 end
 function M.selected(id)
  M.load();return values[id]~=nil
+end
+-- Freeze the menu selection when Summon is queued, including an empty original
+-- preset. Each member keeps its own copy through loading, recovery and travel.
+function M.capture(id,preset)
+ M.load();local source=preset or values[id]or {};local copy={}
+ for _,channel in ipairs(M.channels)do
+  local color=aliases[source[channel.id]]or source[channel.id]
+  if choices[color]and color~='default'then copy[channel.id]=color end
+ end
+ return copy
+end
+function M.hasPreset(member)
+ if not member.appearancePreset then member.appearancePreset=M.capture(member.characterId)end
+ return next(member.appearancePreset)~=nil
 end
 
 -- Inspect parameter overrides on the material and its parents. A slot is
@@ -141,17 +181,16 @@ function M.release(member)
 end
 function M.apply(member,now)
  if not member or not AI.valid(member.actor)then return end
- local id=member.characterId;M.load()
- local revision=M.revision(id)
- if not values[id]and not member.appearanceLeases then return end
+ local selected=M.hasPreset(member);local preset=member.appearancePreset
+ if not selected and not member.appearanceLeases then return end
  if member.appearanceActor and not AI.same(member.appearanceActor,member.actor)then
   member.appearanceLeases={};member.appearanceFirstAt=nil;member.appearanceChecked=nil
  end
- if member.appearanceRevision~=revision then
-  restore(member);member.appearanceRevision=revision;member.appearanceChecked=nil
+ if member.appearanceRevision~=preset then
+  restore(member);member.appearanceRevision=preset;member.appearanceChecked=nil
  end
  member.appearanceActor=member.actor
- if not values[id]then member.appearanceRevision=nil;return end
+ if not selected then member.appearanceRevision=nil;return end
  -- The appearance component can replace garment meshes after the pawn arrives.
  -- Recheck briefly during construction, then at a low rate during travel.
  local delay=member.appearanceFirstAt and now-member.appearanceFirstAt<12000 and 1500 or 30000
@@ -186,7 +225,7 @@ function M.apply(member,now)
       owned[key]=nil
       local parameters,_,materialNames=vectorParameters(material)
       local channel,names=category(meshName,materialNames,parameters)
-      local color=channel and M.get(id,channel)or M.palette[1]
+      local color=M.palette[choices[channel and preset[channel]]or 1]
       if color.id~='default'then
        local ok,dynamic=pcall(function()return mesh:CreateAndSetMaterialInstanceDynamic(slot)end)
        if ok and AI.valid(dynamic)then

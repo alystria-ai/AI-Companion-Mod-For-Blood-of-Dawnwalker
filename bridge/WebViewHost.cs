@@ -16,6 +16,57 @@ public sealed class ConvaiHost : Form {
     WebView2 view; Process server;HostServerJob serverJob; System.Windows.Forms.Timer timer;DialogueOverlay dialogue;CompanionPanel companions;
     DateTime started=DateTime.UtcNow,revision;SupportReport supportReport;
     string Runtime(string name){return Path.Combine(root,"runtime",name);}
+    static void NoLinks(string path){
+        for(var dir=new DirectoryInfo(path);dir!=null;dir=dir.Parent)
+            if(dir.Exists&&(dir.Attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("Browser profile path contains a directory link");
+    }
+    static void CopyProfile(string source,string destination){
+        NoLinks(source);Directory.CreateDirectory(destination);NoLinks(destination);
+        foreach(var file in Directory.GetFiles(source)){
+            if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)throw new IOException("Browser profile contains a file link");
+            File.Copy(file,Path.Combine(destination,Path.GetFileName(file)),true);
+        }
+        foreach(var dir in Directory.GetDirectories(source))CopyProfile(dir,Path.Combine(destination,Path.GetFileName(dir)));
+    }
+    static void CheckProfileTree(string path){
+        NoLinks(path);
+        foreach(var file in Directory.GetFiles(path))
+            if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)throw new IOException("Browser profile contains a file link");
+        foreach(var dir in Directory.GetDirectories(path))CheckProfileTree(dir);
+    }
+    async Task<string> ProfileDirectory(){
+        string key;
+        using(var hash=System.Security.Cryptography.SHA256.Create())
+            key=BitConverter.ToString(hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(root.ToUpperInvariant()))).Replace("-","").Substring(0,24);
+        var parent=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LLMNPCCompanions","WebView");
+        var destination=Path.Combine(parent,key);
+        var old=Path.GetFullPath(Runtime("webview-profile"));
+        // Keep browser identity/session storage outside UE4SS's recursive mod scan.
+        // Copy then promote on the destination volume, so cross-drive installs
+        // work and a failed migration cannot start with half a profile.
+        var expected=Path.GetFullPath(Path.Combine(root,"runtime"))+Path.DirectorySeparatorChar;
+        if(!old.StartsWith(expected,StringComparison.OrdinalIgnoreCase)||Path.GetFileName(old)!="webview-profile")throw new IOException("Invalid legacy browser profile location");
+        NoLinks(parent);Directory.CreateDirectory(parent);
+        for(int attempt=0;attempt<6;attempt++){
+            try{
+                if(Directory.Exists(old)){
+                    NoLinks(old);NoLinks(destination);
+                    if(!Directory.Exists(destination)){
+                        var staging=destination+".migrating";
+                        CopyProfile(old,staging);
+                        Directory.Move(staging,destination);
+                    }
+                    // A completed destination is authoritative on retry. Never
+                    // overwrite it from a partially removed legacy directory.
+                    CheckProfileTree(old);Directory.Delete(old,true);
+                }
+                Directory.CreateDirectory(destination);NoLinks(destination);
+                return destination;
+            }catch(IOException){if(attempt==5)throw;}
+            await Task.Delay(1000);
+        }
+        throw new IOException("Browser profile migration did not finish");
+    }
     protected override bool ShowWithoutActivation {get{return true;}}
     public ConvaiHost(){
         ShowInTaskbar=false;Opacity=0;Width=8;Height=8;FormBorderStyle=FormBorderStyle.None;
@@ -51,7 +102,8 @@ public sealed class ConvaiHost : Form {
             if(!ready)throw new Exception("Local bridge unavailable");
             var options=new CoreWebView2EnvironmentOptions();
             options.AdditionalBrowserArguments="--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-renderer-backgrounding";
-            var environment=await CoreWebView2Environment.CreateAsync(null,Runtime("webview-profile"),options);
+            var profile=await ProfileDirectory();
+            var environment=await CoreWebView2Environment.CreateAsync(null,profile,options);
             view=new WebView2();view.Dock=DockStyle.Fill;Controls.Add(view);
             await view.EnsureCoreWebView2Async(environment);
             view.CoreWebView2.PermissionRequested+=(s,e)=>{
@@ -74,6 +126,11 @@ public sealed class ConvaiHost : Form {
             timer=new System.Windows.Forms.Timer();timer.Interval=1000;
             timer.Tick+=(s,e)=>{
                 try{
+                    if(HostGamePermissions.NeedsGameLaunch()){
+                        HostDiagnostics.TryWrite(Runtime("background-status.txt"),"Matching game permissions: waiting for the in-game launcher.");
+                        HostDiagnostics.TryWrite(Runtime("background-restart.request"),"game-permissions");
+                        HostDiagnostics.ReleaseInput();Close();return;
+                    }
                     supportReport.Poll();
                     File.WriteAllText(Runtime("background-heartbeat.txt"),DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
                     long heartbeat=0;long.TryParse(File.ReadAllText(Runtime("game-heartbeat.txt")),out heartbeat);

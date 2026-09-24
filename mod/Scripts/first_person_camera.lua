@@ -33,29 +33,82 @@ local function nativeScene(pc,pawn)
 end
 
 local function viewPosition(pawn,rotation)
- local mesh=safe(function()return pawn.Mesh end)
- local socket=safe(function()return pawn.HeadSocketName end)
- local head
- if valid(mesh)and socket and safe(function()return socket:ToString()end)~='None'
-  and safe(function()return mesh:DoesSocketExist(socket)end)then
-  head=safe(function()return mesh:GetSocketLocation(socket)end)
- end
- if not head or type(head.X)~='number' or type(head.Y)~='number' or type(head.Z)~='number'then
-  local actor=safe(function()return pawn:K2_GetActorLocation()end)
-  if not actor then return end
-  local eye=safe(function()return pawn.BaseEyeHeight end)
-  head={X=actor.X,Y=actor.Y,Z=actor.Z+(type(eye)=='number'and eye or 65)}
- end
- -- A small forward shift keeps the face out of the lens without hiding or
- -- changing the player's mesh, collision, weapons, or animation.
+ -- The animated head sways and leans into the torso during walking/running.
+ -- Use the capsule-relative native eye height instead, including crouch changes.
+ local actor=safe(function()return pawn:K2_GetActorLocation()end)
+ if not actor then return end
+ local eye=safe(function()return pawn.BaseEyeHeight end)
+ if type(eye)~='number'or eye<20 or eye>150 then eye=65 end
  local yaw=math.rad(rotation.Yaw or rotation.yaw or 0)
- return {X=head.X+24*math.cos(yaw),Y=head.Y+24*math.sin(yaw),Z=head.Z+3}
+ return {X=actor.X+42*math.cos(yaw),Y=actor.Y+42*math.sin(yaw),Z=actor.Z+eye+3}
 end
 
+local function obstructsCamera(component,pawn)
+ if same(component,safe(function()return pawn.Mesh end))then return true end
+ local name=component:GetFName():ToString():lower()
+ return name=='face mesh'or name=='hair mesh'or name=='beard'or name=='eyebrows'or name=='torso mesh'
+  or name:find('eappearanceslot::headgear',1,true)~=nil
+  or name:find('eappearanceslot::torso',1,true)~=nil
+end
+local function maskBody(s)
+ s.visibility=s.visibility or {};s.visibilityError=nil
+ -- Animation/equipment updates can restore visibility between component scans.
+ -- Maintain only the small cached set each frame; discover new components at
+ -- the slower interval. Setters run only when a flag actually changed.
+ for key,item in pairs(s.visibility)do
+  local component=item.component
+  if not valid(component)or not same(component:GetOwner(),s.pawn)then s.visibility[key]=nil
+  else
+   local ok,err=pcall(function()
+    if not component.bHiddenInGame then component:SetHiddenInGame(true,false)end
+    if not component.bOwnerNoSee then component:SetOwnerNoSee(true)end
+    if not component.bCastHiddenShadow then component:SetCastHiddenShadow(true)end
+   end)
+   if not ok then s.visibilityError=type(err)=='string'and err or 'Player visibility update failed'end
+  end
+ end
+ local now=os.clock()
+ if s.visibilityAt and now<s.visibilityAt then return end
+ s.visibilityAt=now+.5;s.maskCount=0
+ local class=AI.find('/Script/Engine.PrimitiveComponent')
+ if not valid(class)then error('Player visibility class unavailable')end
+ -- Local pawn components only. Do not propagate hiding to attached hands,
+ -- weapons or other children. Restore on leaving this camera, including scenes.
+ local components=s.pawn:K2_GetComponentsByClass(class)
+ for i=1,math.min(#components,128)do
+  local component=components[i]
+  if valid(component)and same(component:GetOwner(),s.pawn)and obstructsCamera(component,s.pawn)then
+   local ok,err=pcall(function()
+    local key=component:GetFullName();local item=s.visibility[key]
+    if not item or not same(item.component,component)then
+     item={component=component,ownerNoSee=component.bOwnerNoSee,hiddenShadow=component.bCastHiddenShadow,hiddenInGame=component.bHiddenInGame}
+     s.visibility[key]=item
+    end
+    if not component.bHiddenInGame then component:SetHiddenInGame(true,false)end
+    if not component.bOwnerNoSee then component:SetOwnerNoSee(true)end
+    if not component.bCastHiddenShadow then component:SetCastHiddenShadow(true)end
+    if component.bHiddenInGame then s.maskCount=s.maskCount+1 end
+   end)
+   if not ok then s.visibilityError=type(err)=='string'and err or 'Player visibility update failed'end
+  end
+ end
+end
+local function restoreBody(s)
+ for _,item in pairs(s.visibility or {})do safe(function()
+  local component=item.component
+  if valid(component)and same(component:GetOwner(),s.pawn)then
+   if component.bOwnerNoSee then component:SetOwnerNoSee(item.ownerNoSee)end
+   if component.bHiddenInGame then component:SetHiddenInGame(item.hiddenInGame,false)end
+   if component.bCastHiddenShadow then component:SetCastHiddenShadow(item.hiddenShadow)end
+  end
+ end)end
+ s.visibility=nil
+end
 local function release()
  local s=lease
  lease=nil
  if not s then return end
+ restoreBody(s)
  -- A cinematic or another game system may have changed the view target.
  -- Restore only our own target, and only to the same live pawn and world.
  safe(function()
@@ -71,7 +124,7 @@ M.release=release
 function M.active()return lease~=nil end
 
 local function eligible(pc,suspended)
- if suspended then return nil,nil,nil,nil,'Mod menu, chat input or scene is active'end
+ if suspended then return nil,nil,nil,nil,'Mod menu or scene is active'end
  if not valid(pc)then return nil,nil,nil,nil,'Player controller is unavailable'end
  local pawn=safe(function()return pc.Pawn end)
  if not valid(pawn)then return nil,nil,nil,nil,'Player pawn is unavailable'end
@@ -90,6 +143,7 @@ local function update(s)
  if not rotation then return false end
  local position=viewPosition(s.pawn,rotation)
  if not position then return false end
+ maskBody(s)
  return s.camera:K2_SetActorLocationAndRotation(position,rotation,false,{},true)==true
 end
 
@@ -102,12 +156,15 @@ local function acquire(pc,pawn,world,manager,follow)
  local cameraClass=AI.find('/Script/Engine.CameraActor')
  if not valid(gameplay)or not valid(cameraClass)then return false end
  local transform=pawn:GetTransform()
- local camera=gameplay:BeginDeferredActorSpawnFromClass(pawn,cameraClass,transform,1,nil,0)
+ local camera=gameplay:BeginDeferredActorSpawnFromClass(pawn,cameraClass,transform,1,pawn,0)
  if not valid(camera)then return false end
  camera=gameplay:FinishSpawningActor(camera,transform,0)
  if not valid(camera)then return false end
  local s={pc=pc,pawn=pawn,world=world,manager=manager,follow=follow,camera=camera}
  lease=s
+ -- Keep camera ownership local. The temporary component mask is also needed:
+ -- the game's view setup does not consistently respect owner-only visibility.
+ camera:SetOwner(pawn)
  local component=camera.CameraComponent
  local fov=manager:GetFOVAngle()
  if valid(component)and type(fov)=='number'and fov>=40 and fov<=130 then component:SetFieldOfView(fov)end
@@ -141,7 +198,7 @@ function M.tick(pc,enabled,suspended)
   return false,why or 'Camera actor or view-target assignment was declined'
  end)
  if not ok then release();retryAt=os.time()+2;status('First-person camera unavailable: '..tostring(result));return false end
- if result then status('First-person camera active')elseif reason then status(reason)end
+ if result then status(lease and lease.visibilityError and ('First-person camera active; '..lease.visibilityError)or ('First-person camera active; hidden obstructing components: '..tostring(lease and lease.maskCount or 0)))elseif reason then status(reason)end
  return result
 end
 

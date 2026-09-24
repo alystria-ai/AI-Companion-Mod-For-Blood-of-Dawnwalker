@@ -43,7 +43,7 @@ public sealed class SupportReport {
         report.AppendLine("UTC: "+DateTime.UtcNow.ToString("o"));
         report.AppendLine("Windows: "+Environment.OSVersion.Version+"; 64-bit process: "+Environment.Is64BitProcess);
         report.AppendLine("Recent diagnostic tails only. No chat history, configuration or recordings included.");
-        foreach(var name in new[]{"reload-status.txt","horde-status.txt","camera-status.txt","background-status.txt","ui-status.txt","companion-performance.txt","companion-spawn-diagnostic.txt","spatial-status.txt","helper-errors.log","background-errors.log","webview-errors.log"}){
+        foreach(var name in new[]{"reload-status.txt","horde-status.txt","camera-status.txt","background-status.txt","ui-status.txt","input-status.txt","input-last-key.txt","companion-performance.txt","companion-spawn-diagnostic.txt","spatial-status.txt","helper-errors.log","background-errors.log","webview-errors.log"}){
             report.AppendLine("\r\n--- "+name+" ---");
             try{report.AppendLine(Sanitize(Tail(Path.Combine(directory,name),8192)));}
             catch{report.AppendLine("Unavailable (not created yet or currently locked).");}

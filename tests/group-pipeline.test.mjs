@@ -42,7 +42,7 @@ test('actual client prepares later replies before handoff, plays them sequential
  target={...target,generation:2,active:true,mode:'group',room:'room1'};group.start({generation:2,id:'send1',text:'Hello everyone'},target,members,now);await tick();
  const first=clients.find(c=>c.options.characterId==="anca");first.speak('First reply');await tick();await tick();
  const second=clients.find(c=>c.options.characterId===group.round.speakers[1].characterId);
- assert.equal(second.sent.length,1,'Next reply must start while first is speaking');assert.equal(group.round.index,0);assert.equal(audios[0].playStart,0,'Prepared reply played over the first');
+ assert.equal(second.sent[0].text,group.round.speakers[0].name+': First reply');assert.equal(second.sent.length,1,'Next reply must start while first is speaking');assert.equal(group.round.index,0);assert.equal(audios[0].playStart,0,'Prepared reply played over the first');
  second.speak('Second reply');for(let i=0;i<16;i++)await tick();second.stop();for(let i=0;i<8;i++)await tick();
  assert.equal(audios[0].finished,true);assert.equal(audios[0].playStart,0);assert.equal(group.round.index,0);
  first.stop();for(let i=0;i<6;i++)await tick();assert.equal(group.round.stage,'handoff');
@@ -50,7 +50,7 @@ test('actual client prepares later replies before handoff, plays them sequential
  handoff();const selectedAt=now;await tick();await tick();await tick();
  assert.ok(audios[0].playStart-selectedAt<=300,'Prepared audio did not start promptly at handoff');assert.equal(second.sent.length,1,'Handoff resent the prepared message');
  assert.ok(frames.some(f=>f.subtitle==='Second reply'));assert.ok(frames.some(f=>f.weights.CTRL_expressions_jawOpen>0),'Buffered lip frames were lost');
- const third=clients.find(c=>c.options.characterId===group.round.speakers[2].characterId);assert.equal(third.sent.length,1);assert.ok(third.sent[0].at<selectedAt,'Third reply did not start during the first speaker');assert.match(third.context,/Second reply/);assert.match(third.context,new RegExp('Private facts for '+third.options.characterId));
+ const third=clients.find(c=>c.options.characterId===group.round.speakers[2].characterId);assert.equal(third.sent.length,1);assert.equal(third.sent[0].text,group.round.speakers[1].name+': Second reply');assert.ok(third.sent[0].at<selectedAt,'Third reply did not start during the first speaker');assert.match(third.context,/Second reply/);assert.match(third.context,new RegExp('Private facts for '+third.options.characterId));
  third.speak('Third reply');for(let i=0;i<18;i++){await tick();assert.ok(audios.filter(a=>a.playing).length<=1,'Overlapping group voices');}
  third.stop();assert.equal(group.round.stage,'handoff');handoff();for(let i=0;i<30;i++)await tick();
  assert.equal(group.round.stage,'done');assert.ok(frames.some(f=>f.subtitle==='Third reply'));assert.equal(clients.length,3);

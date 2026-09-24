@@ -13,6 +13,12 @@ test('sprint begins as Coen sprints, closes larger gaps and has a distinct exit 
  assert(M.followPace(400,0,true,180,true).enum==2)
  assert(M.followPace(280,0,true,180,true).enum==1)
  assert(M.followPace(180,0,true,180,true).enum==0)
+ local far=M.followPace(2500,0,false,180,false)
+ assert(far.targetSpeed and far.targetSpeed>590,'Stationary player disabled distant catch-up boost')
+ local closing=M.followPace(800,0,true,180,true)
+ assert(closing.targetSpeed<far.targetSpeed,'Boost did not ease as the gap closed')
+ assert(M.followPace(280,0,true,180,true).targetSpeed==nil,'Boost remained active beside player')
+ assert(M.followPace(6000,5000,false,180,false).targetSpeed==4000,'Travel speed was not bounded')
 `));
 test('a distant old encounter regroups even when a different enemy is now beside the player',()=>check('companion_recovery',`
  local m={};local o={follow=true,encounter=true,now=0,gap=4200,spacing=180,speed=600,awaySpeed=0,combat=true,threatDistance=500,fightDistance=5000,x=0,y=0}
