@@ -5,7 +5,7 @@ local Settings=require('companion_settings')
 local facts={anca='q.s.721.fact.anca_romance',lacra='q.s.717.fact.lacra_romance'}
 local system,instance,lastLookup=nil,nil,0
 local function database(pc)
- if not AI.valid(pc)or not AI.valid(pc.Pawn)then return end
+ if not AI.playerReady(pc)then return end
  local current=AI.find('/Script/Engine.Default__GameplayStatics'):GetGameInstance(pc)
  if not AI.valid(current)then return end
  if not AI.same(instance,current)then instance=current;system=nil;lastLookup=0 end

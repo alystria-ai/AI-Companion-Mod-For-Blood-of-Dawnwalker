@@ -2,6 +2,27 @@
 
 Player-facing history for LLM NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.4: September 26, 2026
+
+[Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.4)
+
+- Added a separate **Nightmare mode** button on the Horde page. Face groups of random bosses from a 32-entry pool, including Brencis, Xanthe, Ambrus and Bakir. Clear the full group to advance; the pool carries across rounds without repeats until exhausted. Shared Horde settings control bosses per round, growth, rounds and rest time. The entire group prepares before combat and fights together.
+- Added F4 to toggle first- and third-person view, with remapping under Controls. Existing shortcut files keep their assignments.
+- Nearby talking companions respond to Coen's solo exploration observations, with no random roll and at least three minutes between reactions. This defaults to On. Scripted conversations with other characters are excluded; reactions wait until speech finishes and stay quiet during combat, cutscenes and manual chat.
+- Added optional Day and night abilities and Passives without slots settings. These use learned skills without granting new ones or changing saved quickslots; both default to Off.
+- Added optional Auto-loot for freely available nearby loot, herbs and resources. It runs only outside combat, skips locks and theft, checks visibility and respects native inventory rules.
+- Added optional loot reactions, On by default. One random nearby companion comments on a completed batch, with a 20% ordinary chance and a ten-minute minimum gap. Newly acquired Unique-tier weapons or clothing get a separate two-minute exception. Storage withdrawals stay silent.
+- Added Fast travel from anywhere, Off by default. Travel to map icons, custom waypoints and available shrines without visiting a roadshrine, outside combat and cutscenes. Press F once on a map icon or custom waypoint to begin. The native loading screen covers destination streaming and ground-clearance checks before arrival.
+- Removed the one-second delay before Travel here appears for new map markers. The open map updates its cached tooltip at the UI cadence without repeated widget scans.
+- Hardened F5 after fast travel: early menu presses wait for arrival cleanup, closed map buttons are released before departure, and native menu classes remain loaded across travel. Old-player menus and input leases no longer modify a replacement player.
+- Added Spend skill points anywhere, Off by default, using the normal Skills page while retaining native costs and prerequisites.
+- Existing configuration files gain missing settings automatically; duplicate and invalid entries are repaired before opening F5.
+- Guarded passive-ability updates during save reloads, when the native skill system temporarily loses its player reference. Updates resume only after that reference matches the loaded player. Added related player, inventory and menu checks to avoid using old-save state.
+- Fixed missed climbing observations stored in the larger shared exploration dialogue graph, while still excluding conversations with other characters.
+- Auto-loot now checks the native interaction point for visible mushrooms and herbs whose base is inside a rock or log. Locked items, stealing and obstructed pickups remain excluded.
+- Fixed missed Coen tower observations by recognizing solo Cinematic Gameplay lines as well as ordinary gameplay dialogue. Both automatic reaction settings default to On; saved choices are preserved.
+- Fixed unrelated background NPC speech discarding Coen's exploration observations. Captured lines also wait briefly for an available companion instead of being lost while a follower is busy. Scripted conversations with other characters remain excluded.
+
 ## 0.5.3: September 25, 2026
 
 [Release and downloads](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.3)

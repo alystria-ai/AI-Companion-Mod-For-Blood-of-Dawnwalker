@@ -1,4 +1,4 @@
-# LLM NPC Companions System 0.5.3
+# LLM NPC Companions System 0.5.4
 
 Talk with nearby characters through text or voice, customise companions’ eye, hair and armour colours, use a first-person viewpoint, or take your party into Horde battles. Companions follow Coen and use their native combat AI. This is a preview release: the conversation and companion framework is usable, but every character, power and combat interaction has not been validated in normal play.
 
@@ -20,13 +20,13 @@ The release contains the helper, local runtime and shared-service configuration.
 | **Scripts** | Lua game scripts only | Use only together with the matching **Runtime** archive |
 | **Runtime** | All remaining files: configuration, browser client, helper, dependencies and licenses | Use only together with the matching **Scripts** archive |
 
-**Scripts and Runtime are two halves of the same release. Install both 0.5.3 archives.** Neither split archive is a playable standalone package. Do not mix versions.
+**Scripts and Runtime are two halves of the same release. Install both 0.5.4 archives.** Neither split archive is a playable standalone package. Do not mix versions.
 
 ## Install
 
 1. Close the game.
 2. Install UE4SS 1.2.1 RC6 for game version 1.05 and Dawnwalker Mod Menu 1.0.7 or later.
-3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.5.3.
+3. Choose **Complete**, or download both **Scripts** and **Runtime** for version 0.5.4.
 4. Extract the selected archive or archives into the game installation folder, merging the included `Dawnwalker` folder.
 5. Verify this exact directory exists:
 
@@ -57,6 +57,7 @@ Do not keep multiple copies of the mod enabled. Do not delete or replace the res
 
 | Default | Action |
 | --- | --- |
+| **F4** | Toggle first- and third-person view |
 | **F5** | Open or close Summon, Party, Horde, Settings, Controls and Help |
 | **F6** | Start a single-character text conversation |
 | **F7** | Start or finish single-character voice capture |
@@ -76,11 +77,13 @@ The F5 Settings page changes companion damage and native attack frequency and sa
 - **First-person camera:** turn On in Settings for the optional viewpoint, or Off to restore the normal camera. Text and voice chat keep the viewpoint; native dialogue and cutscenes take priority.
 - **Relationship management:** use the Anca and Lacra romance profile settings. Each defaults to Auto, following detected relationship history in the loaded save. On always selects her romantic conversation profile; Off always selects her normal profile. These choices do not complete quests or play scenes.
 - **Appearance:** choose eye, hair and armour colours above Summon. Each queued copy captures its own choices. Changing a colour or restoring originals only affects future summons.
-- **Horde:** adjust counts and rest time in Settings, then start from F5 → Horde in an open area outside combat. The menu closes when the wave is ready. Defeat the available enemies to progress, or use End horde to stop. Conversation subtitles temporarily replace the rest countdown.
+- **Player:** Day and night abilities, Passives without slots, Spend skill points anywhere, Fast travel from anywhere, and Auto-loot are optional and Off by default. They preserve learned skills and native costs. Auto-loot runs only outside combat and skips locks and theft. With travel enabled, press F once on a map icon or custom waypoint.
+- **Automatic reactions:** React to Coen’s observations and React to collected loot are optional and On by default. Solo observations have a three-minute minimum gap; ordinary loot has a 20% chance and ten-minute minimum gap. Storage withdrawals and scripted conversations stay silent. Disable either independently under Conversations.
+- **Horde and Nightmare:** choose a normal starting wave or select the separate Nightmare mode button for groups of random bosses. Both follow the same counts, growth, levels and rest settings. Defaults are 8 starting enemies plus 1 additional boss, 2 more enemies per level, 10 levels and 10 seconds of rest. In Nightmare every slot is a boss, so the first round contains 9 bosses fighting together. Start outside combat in an open area; the menu closes when the wave is ready. Clear the group to advance, or use End run to stop. Conversation subtitles temporarily replace the rest countdown.
 
 Loading a save clears the summoned party, queued summons and active Horde. Supported fast-travel restoration is separate. For all setting defaults and descriptions, see the [player guide](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker#settings).
 
-Open **F5 → Controls** to remap all five shortcuts. Changes save to `keybindings.ini` in the installed mod folder and reload automatically. Supported keys are F1–F11, A–Z, 0–9, Home, End, PageUp, PageDown, Insert and Delete. Each action needs a different key; Escape, Enter and arrow keys remain reserved for menu navigation.
+Open **F5 → Controls** to remap all six shortcuts. Changes save to `keybindings.ini` in the installed mod folder and reload automatically. Supported keys are F1–F11, A–Z, 0–9, Home, End, PageUp, PageDown, Insert and Delete. Each action needs a different key; Escape, Enter and arrow keys remain reserved for menu navigation.
 
 You can also edit `config.ini` and `keybindings.ini` in the installed mod folder. Advanced conversation mappings live in `Payload/runtime/convai-config.json` and take effect after restarting the game and helper. The bundled configuration already supports normal play; no account is needed.
 

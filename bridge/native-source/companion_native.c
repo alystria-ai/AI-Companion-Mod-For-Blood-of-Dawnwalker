@@ -296,6 +296,8 @@ cleanup: frameClose(&load);frameClose(&reference);return ok;
 #endif
 #ifdef COMPANION_PROTECTION
 #include "companion_protection.h"
+#include "player_abilities.h"
+#include "player_loot.h"
 #endif
 #ifdef COMPANION_SIMULATION
 #include "companion_simulation.h"
@@ -467,7 +469,10 @@ __declspec(dllexport) int companion_native_run(void *unusedLuaState){
         if(!wcscmp(lines[1],L"loadassetasync")&&count==4)ok=loadObjectAsync(reply,lines[2],lines[3]);
         else fail("Asset-loading DLL accepts only loadassetasync");
 #elif defined(COMPANION_PROTECTION)
-        if(!wcscmp(lines[1],L"protectprepare")&&count==4)ok=prepareProtection(reply,lines[2],lines[3]);
+        if(!wcscmp(lines[1],L"protectlootquery")&&count==3)ok=queryNearbyLoot(reply,lines[2]);
+        else if(!wcscmp(lines[1],L"protectabilitieson")&&count==3)ok=applyAbilityAllowance(reply,lines[2]);
+        else if(!wcscmp(lines[1],L"protectabilitiesoff")&&count==2)ok=removeAbilityAllowance(reply);
+        else if(!wcscmp(lines[1],L"protectprepare")&&count==4)ok=prepareProtection(reply,lines[2],lines[3]);
         else if(!wcscmp(lines[1],L"protecttag")&&count==5){if(wcscmp(lines[4],L"0")&&wcscmp(lines[4],L"1"))fail("Invalid protection tag action");else ok=tagProtectionSource(reply,lines[2],lines[3],!wcscmp(lines[4],L"1"));}
         else if(!wcscmp(lines[1],L"protectapply")&&count==5)ok=applyProtection(reply,lines[2],lines[3],lines[4]);
         else if(!wcscmp(lines[1],L"protectremove")&&count==5){wchar_t tail=0;long v=0;if(swscanf(lines[3],L"%ld%lc",&v,&tail)!=1||v<=0||v>INT_MAX)fail("Invalid protection handle");else ok=removeProtection(reply,lines[2],(int32_t)v,lines[4]);}

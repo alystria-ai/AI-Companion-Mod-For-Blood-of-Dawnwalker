@@ -1,3 +1,4 @@
+import {ambientContext,parseAmbientMessage,ambientReady} from './ambient-comments.mjs';
 import {GroupChat,chooseSpeakers} from './group-chat.mjs';
 import {parseFollowUpQuestions,conversationContext} from './conversation-context.mjs';
 const group=new GroupChat();
@@ -36,15 +37,19 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const romanceVariants=JSON.parse(await readFile(resolve(root,'characters/romance-config.json'),'utf8').catch(()=>'{}'));
 const bundledConfig=JSON.parse(process.env.DAWNWALKER_DEFAULT_CONFIG||'{}');delete process.env.DAWNWALKER_DEFAULT_CONFIG;
 const runtime = process.env.DAWNWALKER_RUNTIME || resolve(root, 'runtime');
-let followUpQuestions=true;
+let followUpQuestions=true,ambientEnabled=true,lootCommentsEnabled=true,lastManual=Date.now(),lastAmbient='',lastAmbientPoll=0,lootObservation=null;
 async function readConversationSettings(){
  try{
   const directory=(await readFile(resolve(runtime,'mod-directory.txt'),'utf8').catch(()=>resolve(root,'mod'))).trim();
-  followUpQuestions=parseFollowUpQuestions(await readFile(resolve(directory,'config.ini'),'utf8'));
+  const source=await readFile(resolve(directory,'config.ini'),'utf8');
+  followUpQuestions=parseFollowUpQuestions(source);
+  const ambient=source.match(/^AmbientComments\s*=\s*([01](?:\.0+)?)\s*$/m);ambientEnabled=!ambient||Number(ambient[1])===1;
+  const loot=source.match(/^LootComments\s*=\s*([01](?:\.0+)?)\s*$/m);lootCommentsEnabled=!loot||Number(loot[1])===1;
  }catch{/* Keep the last setting if an editor temporarily holds the file. */}
 }
 await readConversationSettings();
 function conversationFor(view,index){
+ if(/^(ambient|loot)-/.test(target.room||''))return ambientContext(target.room,lootObservation?.room===target.room?lootObservation.text:'');
  const active=view&&view.stage!=='done';
  // Voice starts generating before its transcript creates the group round.
  // Predict the number of distinct eligible speakers so that first reply does
@@ -78,6 +83,7 @@ setInterval(async () => {
     if(raw) {
       const next=parseTarget(raw);
       if(next.generation!==target.generation||next.room!==target.room){
+        if(next.active&&!/^(ambient|loot)-/.test(next.room||''))lastManual=Date.now();
         // Never relabel the preceding character's subtitle/microphone frame as
         // the new conversation while the browser is acknowledging selection.
         overlay={text:'',microphoneOn:false,microphoneTranscript:'',status:'',updated:Date.now()};
@@ -112,6 +118,18 @@ setInterval(async () => {
     const groupDiagnostic=JSON.stringify(group.diagnostic());
     if(groupDiagnostic!==lastGroupDiagnostic){await atomic('group-status.json',groupDiagnostic);lastGroupDiagnostic=groupDiagnostic;}
     if(replyDiagnostic&&Date.now()-lastReplyDiagnostic>=1000){await atomic('group-reply-status.json',JSON.stringify(replyDiagnostic));lastReplyDiagnostic=Date.now();}
+    if(Date.now()-lastAmbientPoll>=250){
+      lastAmbientPoll=Date.now();
+      const raw=await readFile(resolve(runtime,'ambient-message.tsv'),'utf8').catch(()=>'');
+      const message=parseAmbientMessage(raw,target);
+      if(message&&message.id!==lastAmbient){
+        lastAmbient=message.id;
+        if(message.id.startsWith('loot-')){lootObservation={room:message.id,text:message.text};message.text='React briefly to the completed item collection described in the current context.';}
+        if((message.id.startsWith('loot-')?lootCommentsEnabled:ambientEnabled)&&!microphone.enabled&&Date.now()-lastManual>=5000)textRequests.enqueue(message,target);
+      }
+      const quiet=ambientReady({enabled:ambientEnabled||lootCommentsEnabled,now:Date.now(),lastGame,lastClient,lastManual,microphone:microphone.enabled||overlay.microphoneOn,reply:replyDiagnostic,pending:textRequests.forTarget(target).length>0,group:group.view(target),subtitle:overlay.text});
+      await atomic('ambient-ready.tsv',`${Math.floor(Date.now()/1000)}\t${quiet?1:0}`);
+    }
     await atomic('frame.txt',currentFrame || encodeFrame({generation:target.generation}));
     await atomic('overlay.json',JSON.stringify({...overlay,hordeText,active:target.active,generation:target.generation,actor:target.actor,name:target.name||'',mode:target.mode,room:target.room,microphoneRequested:microphone.enabled,gameAlive:Date.now()-lastGame<3500}));
   } catch(e) { console.error('Bridge file error:',e.message); } finally {flushing=false;}
@@ -142,6 +160,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,conversation:conversationFor(group.view(target)),relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
     if(req.method==='POST' && path==='/microphone'){
+      lastManual=Date.now();
       let body='';for await(const chunk of req){body+=chunk;if(body.length>1024){res.writeHead(413).end();return;}}
       const value=JSON.parse(body);
       if(value.id!==undefined&&value.id!==microphone.id){res.writeHead(409).end('Microphone request changed');return;}
@@ -150,6 +169,7 @@ const server=http.createServer(async(req,res)=>{
       microphone={enabled:value.enabled,generation:target.generation,id:randomBytes(12).toString('hex')};res.writeHead(204).end();return;
     }
     if(req.method==='POST' && path==='/text'){
+      lastManual=Date.now();
       let body='';for await(const chunk of req){body+=chunk;if(body.length>8192){res.writeHead(413).end();return;}}
       try{const value=JSON.parse(body);if(target.mode==='group')group.start(value,target,companions.state.members,Date.now(),false,hasSharedRomance(relationships));else textRequests.enqueue(value,target);res.writeHead(204).end();}catch(e){res.writeHead(409).end(e.message);}return;
     }
@@ -159,7 +179,7 @@ const server=http.createServer(async(req,res)=>{
       if(data.generation!==target.generation) {res.writeHead(409).end();return;}
       currentFrame=encoded;lastClient=Date.now();
       textRequests.acknowledge(data.generation,data.ackTextIds);
-      actionQueue.add(target,data.actionRequests);
+      if(!/^(ambient|loot)-/.test(target.room||''))actionQueue.add(target,data.actionRequests);
       if(data.groupVoice&&microphone.enabled&&target.mode==='group'){
         group.start({...data.groupVoice,generation:target.generation},target,companions.state.members,Date.now(),true,hasSharedRomance(relationships));
         microphone={...microphone,enabled:false};

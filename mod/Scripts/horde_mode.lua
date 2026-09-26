@@ -30,7 +30,7 @@ local function publish()
 end
 function M.view()
  if not run then return last end
- return {active=true,id=run.id,released=run.released==true,phase=run.phase,level=run.level,levels=run.levels,alive=run.alive or 0,total=#(run.queue or {})-(run.omitted or 0),
+ return {active=true,mode=run.mode,id=run.id,released=run.released==true,phase=run.phase,level=run.level,levels=run.levels,alive=run.alive or 0,total=#(run.queue or {})-(run.omitted or 0),
   restSeconds=run.phase=='rest'and math.max(0,math.ceil(run.restUntil-(run.now or run.restUntil)))or 0,message=run.message}
 end
 function M.levels()return Catalog.preview()end
@@ -39,12 +39,13 @@ local function finish(message,phase,discardBodies)
  if s then Battles.wave(s,phase=='complete'and 'complete'or 'ended');Battles.afterHorde=true end
  Battles.horde=nil
  local ok,why=Native.cleanup(not discardBodies)
- last={active=false,phase=phase or 'ended',level=s and s.level or 0,levels=s and s.levels or 10,alive=0,total=0,message=message}
+ last={active=false,mode=s and s.mode or 'horde',phase=phase or 'ended',level=s and s.level or 0,levels=s and s.levels or 10,alive=0,total=0,message=message}
  if not ok then last.message=message..' Some enemy cleanup is pending: '..tostring(why)end
  publish()
 end
 function M.stop(reason,discardBodies)finish(reason or 'Horde ended.','ended',discardBodies)end
-function M.start(pc)
+function M.start(pc,mode)
+ mode=mode=='nightmare'and 'nightmare'or 'horde'
  if run then return false,'A horde is already running.'end
  Settings.poll()
  local _,board=playerState(pc)
@@ -52,18 +53,23 @@ function M.start(pc)
  if board.Combat.bInCombat then return false,'Finish your current fight before starting a horde.'end
  local ok,why=Native.cleanup(true);if not ok then return false,'Previous horde cleanup is pending: '..tostring(why)end
  serial=serial+1
- run={pc=pc,pawn=pc.Pawn,world=pc.Pawn:GetWorld(),id=os.time()..'-'..serial,phase='preparing',level=0,
-  levels=math.floor(Settings.values.HordeLevels),start=math.floor(Settings.values.HordeStartEnemies),growth=math.floor(Settings.values.HordeEnemyGrowth),
+ run={mode=mode,pc=pc,pawn=pc.Pawn,world=pc.Pawn:GetWorld(),id=os.time()..'-'..serial,phase='preparing',level=0,
+  levels=math.min(#Catalog.waves,math.floor(Settings.values.HordeLevels)),start=math.floor(Settings.values.HordeStartEnemies),growth=math.floor(Settings.values.HordeEnemyGrowth),
   bosses=math.floor(Settings.values.HordeBosses),timeout=math.floor(Settings.values.HordeTimeout),handles={},now=clock(pc),message='Unpause to prepare the first horde.'}
- run.waveOrder=Catalog.order(Settings.values.HordeStartingWave,run.levels,os.time()+serial*7919)
+ if mode=='horde'then run.waveOrder=Catalog.order(Settings.values.HordeStartingWave,run.levels,os.time()+serial*7919)end
  if Battles.current then Battles.current.state='combat-ended';Battles.current.updated=os.time()end
  Battles.horde=run.id;Battles.current=nil
  publish();return true,'Horde queued. Unpause in an open area to begin.'
 end
 local function beginWave(s)
  Battles.witnessRequested=true
- s.level=s.level+1;s.waveIndex=s.waveOrder[s.level]
- s.queue,s.name=Catalog.wave(s.waveIndex,s.start+(s.level-1)*s.growth,s.bosses)
+ s.level=s.level+1
+ if s.mode=='nightmare'then
+  s.queue,s.name,s.bossDraw=Catalog.nightmareDraw(s.bossDraw,s.start+(s.level-1)*s.growth+s.bosses)
+ else
+  s.waveIndex=s.waveOrder[s.level]
+  s.queue,s.name=Catalog.wave(s.waveIndex,s.start+(s.level-1)*s.growth,s.bosses)
+ end
  s.handles={};s.next=1;s.alive=0;s.kills=0;s.omitted=0;s.engaged=false;s.quietSince=nil;s.loadingSince=s.now;s.pending=nil;s.released=false;s.readyAt=nil;s.lastActivationNote=nil
  s.contextCaptured=false
  s.anchor=s.pawn:K2_GetActorLocation();s.yaw=s.pc:GetControlRotation().Yaw;s.phase='loading';s.message='Preparing '..s.name..'.'
@@ -172,26 +178,32 @@ local function update(s,suspended)
   elseif phase=='spawned'then
    if not entry.activationPending then entry.missingAt=nil end
    if not AI.same(entry.stub,stub)then befriend(s,entry,stub)end
-   alive=alive+1;nearest=math.min(nearest,distance(point,actor:K2_GetActorLocation()))
-   combat=combat or info.combat;targetingPlayer=targetingPlayer or info.engagedPlayer
-   if s.released and (not info.combat or not AI.valid(info.target))and s.now>=(entry.retryAt or 0)then
+   alive=alive+1
+   if entry.released then
+    nearest=math.min(nearest,distance(point,actor:K2_GetActorLocation()))
+    combat=combat or info.combat;targetingPlayer=targetingPlayer or info.engagedPlayer
+   end
+   if s.released and entry.released and (not info.combat or not AI.valid(info.target))and s.now>=(entry.retryAt or 0)then
     local called,accepted,why=pcall(Native.engage,entry.handle,s.pc);entry.retryAt=s.now+2
     s.lastActivationNote=called and tostring(why or accepted)or 'Enemy AI is reattaching.'
    end
   elseif not omit(s,entry,'Owned enemy became unavailable')then alive=alive+1;missing=missing+1 end
  end end
+ local function activate(entry)
+  local called,accepted=pcall(Native.activate,entry.handle)
+  if called and accepted then
+   entry.activationPending=nil;entry.missingAt=nil;entry.released=true
+   return true
+  end
+  entry.activationPending=true;entry.missingAt=entry.missingAt or s.now
+  if s.now-entry.missingAt>=5 and omit(s,entry,'AI detached during activation')then alive=alive-1
+  else missing=missing+1 end
+  return false
+ end
  if not loading and not s.released and missing==0 and s.now-s.readyAt>=1 then
-  -- Check/recover the whole staged wave before exposing any healthy actors.
-  -- An attachment can still disappear inside activation; retry that entry only.
-  for _,entry in ipairs(s.handles)do if entry.ready and not entry.dead and not entry.omitted then
-   local called,accepted=pcall(Native.activate,entry.handle)
-   if called and accepted then entry.activationPending=nil;entry.missingAt=nil
-   else
-    entry.activationPending=true;entry.missingAt=entry.missingAt or s.now
-    if s.now-entry.missingAt>=5 and omit(s,entry,'AI detached during activation')then alive=alive-1
-    else missing=missing+1 end
-   end
-  end end
+  -- Both modes release the complete prepared round. Nightmare changes the
+  -- enemy pool, not the Horde counts or the number fighting simultaneously.
+  for _,entry in ipairs(s.handles)do if entry.ready and not entry.dead and not entry.omitted then activate(entry)end end
   if missing==0 then s.released=true end
  end
  s.alive=alive
@@ -201,7 +213,7 @@ local function update(s,suspended)
  if s.engaged and s.released and not s.contextCaptured then Battles.wave(s,'fighting');s.contextCaptured=true end
  if s.released and not loading and alive==0 and s.kills>0 and s.kills+s.omitted==#s.queue then
   Battles.wave(s,'cleared')
-  if s.level>=s.levels then finish('All '..s.levels..' horde levels cleared!','complete');return end
+  if s.level>=s.levels then finish('All '..s.levels..(s.mode=='nightmare'and ' Nightmare rounds cleared!'or ' horde levels cleared!'),'complete');return end
   s.phase='rest';s.restUntil=s.now+s.timeout;s.message='Level cleared. Rest before the next horde.';publish();return
  end
  if missing==0 and s.engaged and not playerCombat and not targetingPlayer and (not combat or nearest>3000)then
@@ -210,6 +222,9 @@ local function update(s,suspended)
  else s.quietSince=nil end
  s.phase=(loading or not s.released)and 'loading'or s.engaged and 'combat'or 'armed'
  s.message=not s.released and ('Preparing '..s.name..' · '..alive..' / '..(#s.queue-s.omitted)..' loaded. Combat starts when everyone is ready.')or ('Level '..s.level..': '..s.name..' · '..alive..' enemies remaining'..(not s.engaged and s.lastActivationNote and '\n'..s.lastActivationNote or ''))
+ if s.mode=='nightmare'and s.released then
+  s.message='Nightmare round '..s.level..' · '..s.kills..' defeated · '..alive..' bosses remaining'
+ end
  if missing>0 then s.message=s.message..'\nRecovering '..missing..' enemy AI attachment(s).'end
  if s.omitted>0 then s.message=s.message..'\n'..s.omitted..' unavailable enemies skipped.'end
  publish()

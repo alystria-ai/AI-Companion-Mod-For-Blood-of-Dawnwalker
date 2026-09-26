@@ -341,6 +341,8 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  package.preload.live_reload=function()return {modules={}}end
  package.preload.first_person_camera=function()return {active=function()return false end,tick=function()end,release=function()end}end
  package.preload.horde_mode=function()return {tick=function()end,stop=function()end}end
+ for _,name in ipairs({'player_abilities','player_passives','skills_anywhere','auto_loot','ambient_comments','loot_comments'})do package.preload[name]=function()return {tick=function()end,cleanup=function()end,reset=function()end}end end
+ package.preload.fast_travel=function()return {tick=function()end,cleanup=function()end,active=function()return false end,uiReady=function()return true end}end
  package.preload.companion_romance=function()return {snapshot=function()return ''end}end
  package.preload.companion_settings=function()return {values={},poll=function()end}end
  package.preload.companion_native=function()return {version=6}end
@@ -349,7 +351,7 @@ for(const mode of ['legacy','probe','stream'])test('actual mod integration: '+mo
  package.preload.companions=function()return {beforeReset=function()end,
   identity=function(actor)if ownedParty and actor==npc then return {name='Anca',characterId='anca'}end end,
   conversationAction=function(actor,action)assert(actor==npc and ownedParty);partyAction=action;return true,'Party action accepted'end,
-  selectForChat=function()return nil end,returnChatFace=function()return false end,
+  ambientSpeaker=function()return nil end,selectForChat=function()return nil end,returnChatFace=function()return false end,
   beforeConversation=function()end,afterConversation=function()end,cleanup=function()end,tick=function()end,actor=function()return npc end
  }end
  package.preload.ui_input=function()return {acquire=function()return {}end,release=function()end}end

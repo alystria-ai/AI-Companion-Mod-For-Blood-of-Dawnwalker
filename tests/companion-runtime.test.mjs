@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
-async function check(file,body){
+async function check(file,body,setup=''){
  const source=await readFile(process.env.DAWNWALKER_LUA?file.replace('mod/Scripts',process.env.DAWNWALKER_LUA):file,'utf8');const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);
- try{const result=lauxlib.luaL_dostring(L,to_luastring(`local M=(function() ${source} end)()\n${body}`));assert.equal(result,lua.LUA_OK,result===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
+ try{const result=lauxlib.luaL_dostring(L,to_luastring(`${setup}\nlocal M=(function() ${source} end)()\n${body}`));assert.equal(result,lua.LUA_OK,result===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
 }
 test('controller discovery stays out of party ticks and throttles loading retries',()=>check('mod/Scripts/targeting.lua',`
  local count=0;local live=true;local pc={IsValid=function()return live end}
@@ -20,7 +20,7 @@ test('controller discovery stays out of party ticks and throttles loading retrie
 `));
 test('overlay input lease releases capture once and restores on close or failure',()=>check('mod/Scripts/ui_input.lua',`
  local paused=false;local modes={};local move,look=0,0
- local pc={bShowMouseCursor=false,IsValid=function()return true end}
+ local pc={Pawn={},world={},bShowMouseCursor=false,IsValid=function()return true end}
  function pc:SetIgnoreMoveInput(value)move=move+(value and 1 or -1)end
  function pc:SetIgnoreLookInput(value)look=look+(value and 1 or -1)end
  local library={}
@@ -40,7 +40,11 @@ test('overlay input lease releases capture once and restores on close or failure
  local failed,why=M.acquire(pc,library,gameplay)
  assert(failed==nil and why and move==0 and not pc.bShowMouseCursor and modes[#modes]=='game')
  pc.SetIgnoreLookInput=old
-`));
+ lease=assert(M.acquire(pc,library,gameplay));local previousModes=#modes
+ pc.Pawn={};M.release(lease)
+ assert(#modes==previousModes and move==1 and look==1,'Old input lease modified the replacement player')
+ pc.Pawn=nil;assert(M.acquire(pc,library,gameplay)==nil,'Detached player accepted new input lease')
+`, `package.preload.ai_state=function()return {playerReady=function(pc)return pc and pc.Pawn,pc and pc.world end,sameInstance=function(a,b)return a==b end}end`));
 test('combat start is handed off once; lease renewals and perception gaps do not replay it',()=>check('mod/Scripts/companion_combat.lua',`
  local starts,stops,enters,leases,following=0,0,0,0,true
  local c=M.new({enter=function()enters=enters+1;following=false end,target=function()leases=leases+1 end,start=function()starts=starts+1;return true end,stop=function()stops=stops+1 end,clear=function()end,travel=function(value)following=value end})

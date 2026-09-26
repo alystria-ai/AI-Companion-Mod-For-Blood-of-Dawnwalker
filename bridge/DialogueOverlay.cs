@@ -39,7 +39,7 @@ public sealed class DialogueOverlay : Form {
     readonly Timer timer=new Timer();ComposerKeys composerKeys;
     DialogueState state=new DialogueState();IntPtr game;
     readonly ModKeyBindings bindings=new ModKeyBindings();
-    ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered;long nativeMenuStamp;
+    ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered,cameraRegistered;long nativeMenuStamp;
     bool NativeMenuOpen {get{return nativeMenuSession!="";}}
     string inputDiagnostic="";DateTime inputErrorAt;
     readonly System.Collections.Generic.Queue<string> inputHistory=new System.Collections.Generic.Queue<string>();
@@ -49,6 +49,7 @@ public sealed class DialogueOverlay : Form {
         HostDiagnostics.TryWrite(Path.Combine(runtime,"input-status.txt"),String.Join(Environment.NewLine,inputHistory));
     }
     void ClearHotkeys(){
+        if(cameraRegistered)UnregisterHotKey(Handle,1844);cameraRegistered=false;
         if(singleRegistered)UnregisterHotKey(Handle,1846);if(singleMicRegistered)UnregisterHotKey(Handle,1847);
         if(registered)UnregisterHotKey(Handle,1848);if(micRegistered)UnregisterHotKey(Handle,1849);if(menuRegistered)UnregisterHotKey(Handle,1845);
         singleRegistered=singleMicRegistered=registered=micRegistered=menuRegistered=false;
@@ -153,7 +154,7 @@ public sealed class DialogueOverlay : Form {
         KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape){e.SuppressKeyPress=true;EndCompose(false);}};
         timer.Interval=100;timer.Tick+=(s,e)=>UpdateState();if(!preview)timer.Start();
         FormClosing+=(s,e)=>{closing=true;timer.Stop();if(nativeMenuKeys!=null){nativeMenuKeys.Dispose();nativeMenuKeys=null;}if(composerKeys!=null){composerKeys.Dispose();composerKeys=null;}};
-        FormClosed+=(s,e)=>{var hwnd=IsHandleCreated?Handle:IntPtr.Zero;if(hwnd!=IntPtr.Zero){if(menuRegistered)UnregisterHotKey(hwnd,1845);if(registered)UnregisterHotKey(hwnd,1848);if(micRegistered)UnregisterHotKey(hwnd,1849);if(singleRegistered)UnregisterHotKey(hwnd,1846);if(singleMicRegistered)UnregisterHotKey(hwnd,1847);}timer.Dispose();};
+        FormClosed+=(s,e)=>{var hwnd=IsHandleCreated?Handle:IntPtr.Zero;if(hwnd!=IntPtr.Zero){if(cameraRegistered)UnregisterHotKey(hwnd,1844);if(menuRegistered)UnregisterHotKey(hwnd,1845);if(registered)UnregisterHotKey(hwnd,1848);if(micRegistered)UnregisterHotKey(hwnd,1849);if(singleRegistered)UnregisterHotKey(hwnd,1846);if(singleMicRegistered)UnregisterHotKey(hwnd,1847);}timer.Dispose();};
     }
     static string ReadShared(string path){using(var f=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var r=new StreamReader(f))return r.ReadToEnd();}
     static bool IsGame(IntPtr h){try{uint id;GetWindowThreadProcessId(h,out id);return Process.GetProcessById((int)id).ProcessName=="Dawnwalker";}catch{return false;}}
@@ -174,6 +175,8 @@ public sealed class DialogueOverlay : Form {
             bool shortcuts=eligible&&!editing&&!opening;
             InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts);
             File.WriteAllText(Path.Combine(runtime,"mic-focus.txt"),(eligible?DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():0).ToString());
+            if(shortcuts&&!cameraRegistered)cameraRegistered=RegisterHotKey(Handle,1844,0x4000,(uint)bindings["Camera"]);
+            if(!shortcuts&&cameraRegistered){UnregisterHotKey(Handle,1844);cameraRegistered=false;}
             if(shortcuts&&!menuRegistered)menuRegistered=RegisterHotKey(Handle,1845,0x4000,(uint)bindings["Menu"]);
             if(!shortcuts&&menuRegistered){UnregisterHotKey(Handle,1845);menuRegistered=false;}
             if(shortcuts&&!singleRegistered)singleRegistered=RegisterHotKey(Handle,1846,0x4000,(uint)bindings["SingleText"]);
@@ -197,7 +200,7 @@ public sealed class DialogueOverlay : Form {
             if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(DisplayText))){LayoutInput();if(!Visible)Present();else Invalidate();}else Hide();
         }catch(Exception e){InputDiagnostic("Shortcut update failed: "+e.GetType().Name+": "+e.Message);if(DateTime.UtcNow>=inputErrorAt){inputErrorAt=DateTime.UtcNow.AddSeconds(30);HostDiagnostics.Log("Shortcut update",e);}if(!editing)Hide();}
     }
-    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
+    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1844){HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"camera-toggle:"+Guid.NewGuid().ToString("N"));return;}if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
     int S(int value){return (int)Math.Round(value*scale);}
     void PositionOverlay(){
         Rect bounds;var origin=new PointNative();

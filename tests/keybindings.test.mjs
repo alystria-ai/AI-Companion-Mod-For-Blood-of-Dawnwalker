@@ -27,3 +27,8 @@ test('partial or duplicate hand edits retain the entire last good mapping',()=>r
  disk['installed/keybindings.ini']=good:gsub('SingleVoice = F7','SingleVoice = F10');M.pollBindings();assert(M.bindings.SingleVoice=='F7' and M.bindingError)
  disk['installed/keybindings.ini']=good;M.pollBindings();assert(not M.bindingError)
 `));
+test('older five-action files gain a camera key without stealing a user binding',()=>run(`
+ disk['installed/keybindings.ini']='Menu=F4\\nSingleText=F6\\nSingleVoice=F7\\nGroupText=F8\\nGroupVoice=F9\\n'
+ M.pollBindings();assert(not M.bindingError);assert(M.bindings.Menu=='F4');assert(M.bindings.Camera=='F10')
+ assert(M.bind('Camera','F3'));assert(disk['installed/keybindings.ini']:find('Camera = F3',1,true))
+`));

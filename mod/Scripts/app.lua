@@ -12,6 +12,11 @@ local Romance=require('companion_romance')
 local Settings=require('companion_settings')
 local Horde=require('horde_mode')
 local FirstPerson=require('first_person_camera')
+local Abilities=require('player_abilities')
+local FastTravel=require('fast_travel')
+local Ambient=require('ambient_comments')
+local LootComments=require('loot_comments');local SkillsAnywhere=require('skills_anywhere')
+local Passives=require('player_passives');local AutoLoot=require('auto_loot')
 local lastRelationshipRead=0
 local combatTrace=nil
 local UiInput=require('ui_input')
@@ -88,7 +93,7 @@ local function forgetConversation(message)
     generation=generation+1;status=message or 'Conversation unloaded';publish()
 end
 Companions.beforeReset(function(reason)
-    if reason=='party-reset'then FirstPerson.release();Horde.stop('Horde ended for world or party reset',true)end
+    if reason=='party-reset'then Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for world or party reset',true)end
     forgetConversation('Conversation ended for world or party reset')
 end)
 local function neutral()
@@ -138,7 +143,7 @@ local function stop(message,quiet)
     partyChat=false
     if layer and not Companions.returnChatFace(previousActor,layer)then FaceGraph.restoreLayer(layer)end
 end
-if RegisterModCleanup then RegisterModCleanup(function()FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
+if RegisterModCleanup then RegisterModCleanup(function()Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
 local function trace(nearest)
     local pc=playerController();if not valid(pc) or not valid(pc.Pawn) then return nil,'Player not ready' end
     cachedController=pc
@@ -798,8 +803,18 @@ local function uiCommand()
     end
     local f=io.open(root..'/ui-control.txt','r');if not f then return end
     local command=f:read('*a');f:close()
-    if command==lastUiCommand then return end;lastUiCommand=command
-    if command:match('^native%-menu:')then
+    if command==lastUiCommand then return end
+    -- Leave an early F5 request unread until fast-travel cleanup and possession
+    -- settle. A newer command replaces it, so repeated presses cannot stack UI.
+    if command:match('^native%-menu:')and not NativeMenu.isOpen()and not FastTravel.uiReady(playerController())then return end
+    lastUiCommand=command
+    if command:match('^camera%-toggle:')then
+        local pc=playerController()
+        if valid(pc)and valid(pc.Pawn)then
+            Settings.change('FirstPersonCamera',1)
+            FirstPerson.tick(pc,Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())
+        end
+    elseif command:match('^native%-menu:')then
         if selected then stop('Companion menu')else restoreFocusPause()end
         NativeMenu.toggle(playerController())
     elseif command:match('^party:')then
@@ -832,6 +847,22 @@ local function uiCommand()
         write('ui-ready.txt',command..'\nready')
     elseif command:match('^close:')then restoreFocusPause()end
 end
+local function ambientComment()
+ local pc=playerController()
+ local actor=Companions.ambientSpeaker()
+ local busy=NativeMenu.isOpen()or composeController~=nil
+ local line=LootComments.tick(pc,Settings.values.LootComments==1,busy,actor~=nil)
+ if line then actor=Companions.ambientSpeaker(true)
+ else line=Ambient.tick(pc,busy,actor~=nil)end
+ if not line or not actor then return end
+ conversationMode='single';conversationRoom=line.id;speakerTurn=''
+ if not reuseConversation(actor)then
+  if selected then stop('Ambient observation')end
+  toggle('compose',actor)
+ end
+ if not selected then return end
+ write('ambient-message.tsv',table.concat({line.id,tostring(generation),tostring(os.time()),clean(line.text)},'\t'))
+end
 local launchBackground
 if config.AutoStartConvai then LoopAsync(1000,function()
     local now=os.time()
@@ -855,7 +886,7 @@ if config.AutoStartConvai then LoopAsync(1000,function()
     end
     return false
 end)end
-safe(function() status='v0.5.3: companions, conversations and horde mode';publish();log(status) end)
+safe(function() status='v0.5.4: companions, conversations and horde mode';publish();log(status) end)
 -- One dispatcher owns camera and application work. A lost UE4SS callback must
 -- not leave either path permanently marked pending.
 local partyElapsed,workElapsed=0,0
@@ -865,7 +896,8 @@ LoopAsync(16,function()
     local partyDue=partyElapsed>=250;local workDue=workElapsed>=33
     local cameraDue=Settings.values.FirstPersonCamera==1 or FirstPerson.active()
     local faceDue=workDue and FaceGraph.hasAmbientFaces()
-    local ordinaryDue=workDue and (selected~=nil or partyDue or NativeMenu.isOpen())
+    local mapDue=workDue and FastTravel.active()
+    local ordinaryDue=workDue and (selected~=nil or partyDue or NativeMenu.isOpen()or mapDue)
     if not cameraDue and not ordinaryDue and not faceDue then return false end
     idleSecond=os.time()
     if pending and os.time()-dispatchAt<2 then return false end
@@ -876,7 +908,7 @@ LoopAsync(16,function()
     local queued,queueError=pcall(ExecuteInGameThread,function()
         if ticket~=dispatchSerial then return end
         local tickOk=safe(function()
-            if partyDue then Settings.poll()end
+            if partyDue then Settings.poll();safe(function()Abilities.tick(playerController(),Settings.values.AnytimeAbilities==1)end)end
             -- Text/voice chat owns input, not the viewpoint. Keep first person
             -- throughout single/group chat; native scenes still yield inside tick.
             if cameraDue or partyDue then FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())end
@@ -885,7 +917,13 @@ LoopAsync(16,function()
             if partyDue then Horde.tick(false)end
             NativeMenu.tick()
             uiCommand()
-            if partyDue then Companions.tick(playerController(),selected);groupCommand()end
+            if mapDue or partyDue then safe(function()FastTravel.tick(playerController(),Settings.values.FastTravelAnywhere==1,mapDue and 48 or 250)end)end
+            if partyDue then
+             Companions.tick(playerController(),selected);groupCommand();ambientComment()
+             safe(function()SkillsAnywhere.tick(playerController(),Settings.values.SkillsAnywhere==1)end)
+             safe(function()Passives.tick(playerController(),Settings.values.SlotlessPassives==1)end)
+             safe(function()AutoLoot.tick(playerController(),Settings.values.AutoLoot==1,NativeMenu.isOpen()or composeController~=nil,Companions.identity)end)
+            end
             if (selected or NativeMenu.isOpen())and os.time()-lastRelationshipRead>=2 then
                 lastRelationshipRead=os.time()
                 local ok,snapshot=pcall(Romance.snapshot,playerController())

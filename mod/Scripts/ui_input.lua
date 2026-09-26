@@ -1,11 +1,12 @@
 -- One balanced input lease per native overlay. Do not reapply input modes on
 -- heartbeat refreshes: that can recapture/recenter the gameplay cursor.
-local M={}
+local AI=require('ai_state');local M={}
 function M.release(lease)
     if not lease or lease.released then return end
     lease.released=true
     local pc=lease.pc
-    if not pc or not pc:IsValid()then return end
+    local pawn,world=AI.playerReady(pc)
+    if not pawn or not AI.sameInstance(pawn,lease.pawn)or not AI.sameInstance(world,lease.world)then return end
     local errors={}
     local function attempt(f)local ok,err=pcall(f);if not ok then errors[#errors+1]=tostring(err)end end
     if lease.move then attempt(function()pc:SetIgnoreMoveInput(false)end)end
@@ -19,7 +20,9 @@ function M.release(lease)
     if #errors>0 then return table.concat(errors,'; ')end
 end
 function M.acquire(pc,library,gameplay,focus)
-    local lease={pc=pc,library=library,gameplay=gameplay,cursor=pc.bShowMouseCursor}
+    local pawn,world=AI.playerReady(pc)
+    if not pawn then return nil,'Wait for the player to finish loading'end
+    local lease={pc=pc,pawn=pawn,world=world,library=library,gameplay=gameplay,cursor=pc.bShowMouseCursor}
     local ok,err=pcall(function()
         -- Verified in the game's reflected UMG signature: DoNotLock=0,
         -- visible during capture, flush stale gameplay input.

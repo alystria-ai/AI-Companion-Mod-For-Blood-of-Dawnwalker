@@ -9,6 +9,8 @@ test('party cleanup clears conversation references before native destruction and
  local status='ready';local identity={name='Anca'};local conversationMode='single';local requestId=0;local conversationRoom='room';local speakerTurn=''
  local speechLayer={};local attention={};local engagement={};local composeController={};local inputLease={};local bindings={}
  local FirstPerson={release=function()end};local Horde={stop=function()end}
+ local Abilities={cleanup=function()end};local Passives=Abilities;local SkillsAnywhere=Abilities;local FastTravel=Abilities
+ local AutoLoot={reset=function()end};local LootComments=AutoLoot;local Ambient=AutoLoot
  local Companions={};local published='';local function write(_,value)published=value end;local function clean(s)return tostring(s)end
  local M=Companions;local members={one={},two={}};local destroyed=0
  local Formation={new=function()return {frame={}}end};local Native={stopAll=function()assert(selected==nil);return true end}

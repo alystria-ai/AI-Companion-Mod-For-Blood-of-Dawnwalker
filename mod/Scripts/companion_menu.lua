@@ -58,8 +58,16 @@ local function dependency()
 end
 local function marker(value)local f=io.open(root..'/native-menu-open.txt','w');if f then f:write(value);f:close()end end
 function M.isOpen()return view~=nil end
+local function liveView(v)
+ local pawn,world=AI.playerReady(v.pc)
+ return pawn and AI.sameInstance(pawn,v.pawn)and AI.sameInstance(world,v.world)
+end
 function M.close(returnToGame)
  local old=view;view=nil;if not old then return end
+ marker('0')
+ -- Old-save menus can still be valid UObjects while their owner is detached.
+ -- Do not run button callbacks, restore input or touch the replacement player.
+ if not liveView(old)then return end
  retireButtons(old)
  if AI.valid(old.backClick)then old.backClick:ClearSelection();old.backClick:SetIsInteractionEnabled(false);old.backClick:SetIsEnabled(false)end
  if AI.valid(old.host)then pcall(function()old.host:DeactivateWidget();old.host:RemoveFromParent()end)end
@@ -133,11 +141,11 @@ local function refresh(v,state)
  text(v.summary,#state.members..' in party · '..loading..' loading')
  if v.page=='Horde'then
   local run=Horde.view();local phase=run.phase or 'idle'
-  local status=run.active and ('Wave '..tostring(run.level or 0)..' / '..tostring(run.levels or 10)..' · '..tostring(run.alive or 0)..' of '..tostring(run.total or 0)..' enemies remaining')or (phase=='complete'and 'All waves cleared' or phase=='ended'and 'Run ended' or 'No horde running')
-  if run.active and (run.level or 0)==0 then status='Preparing the first wave'end
-  if phase=='rest'then status='Level '..tostring(run.level)..' cleared · next wave in '..tostring(run.restSeconds or 0)..' s'end
+  local status=run.active and ((run.mode=='nightmare'and 'Nightmare round 'or 'Wave ')..tostring(run.level or 0)..' / '..tostring(run.levels or 10)..' · '..tostring(run.alive or 0)..' of '..tostring(run.total or 0)..(run.mode=='nightmare'and ' bosses remaining'or ' enemies remaining'))or (phase=='complete'and 'All rounds cleared' or phase=='ended'and 'Run ended' or 'No horde running')
+  if run.active and (run.level or 0)==0 then status=run.mode=='nightmare'and 'Preparing Nightmare'or 'Preparing the first wave'end
+  if phase=='rest'then status='Round '..tostring(run.level)..' cleared · next round in '..tostring(run.restSeconds or 0)..' s'end
   text(v.hordeStatus,status);text(v.hordeDetail,run.message or '')
-  enabled(v.hordeStart,not run.active);enabled(v.hordeEnd,run.active)
+  enabled(v.hordeStart,not run.active);enabled(v.nightmareStart,not run.active);enabled(v.hordeEnd,run.active)
   if v.hordeWaveLabel then
    local index=Settings.values.HordeStartingWave;local wave=v.hordeWaves[index]
    text(v.hordeWaveLabel,tostring(index)..'. '..tostring(wave and wave.name or 'Wave '..index))
@@ -224,7 +232,8 @@ render=function()
    local title=caption(channel.label,24);title:SetAutoWrapText(false)
    local titleBox=size(title,280,52);title.Slot:SetVerticalAlignment(2);title.Slot:SetPadding({Left=0,Top=0,Right=8,Bottom=0});add(row,titleBox)
    local surface=new('Overlay');add(row,size(surface,376,52))
-   local picker=v.library:Create(v.pc,Theme.asset('/Game/_Dawnwalker/UI/_Unified/Settings/WBP_Settings_Control_Picker.WBP_Settings_Control_Picker_C'),v.pc)
+   local pickerClass=AI.retainUIClass(Theme.asset('/Game/_Dawnwalker/UI/_Unified/Settings/WBP_Settings_Control_Picker.WBP_Settings_Control_Picker_C'))
+   local picker=v.library:Create(v.pc,pickerClass,v.pc)
    assert(AI.valid(picker),'Native appearance picker unavailable')
    fill(add(surface,picker))
    -- Use the actual settings picker artwork/layout. Its stock input writes to
@@ -291,7 +300,7 @@ render=function()
   if #model.members>0 then button(list,'Dismiss everyone',function()Party.enqueue('dismiss_all');v.refreshAt=0 end)else add(list,caption('No companions summoned yet.'))end
  elseif v.page=='Horde'then
   v.hordeContext=true
-  add(left,size(list,790,710));describe('Horde run','Choose your first wave below. Later waves are random without repeats, with more enemies each round according to Settings. Clear every enemy to advance after a rest. Retreat or choose End horde to finish. The menu closes when the full wave is ready. Esc returns to gameplay.')
+  add(left,size(list,790,710));describe('Choose your challenge','Fight themed Horde waves or groups of Nightmare bosses. Both use your Horde settings. Esc returns to gameplay.')
   add(list,caption('WAVES',32)):SetPadding({Left=0,Top=0,Right=0,Bottom=12})
   local ok,waves=pcall(function()return Horde.levels and Horde.levels()or {}end)
   if ok and type(waves)=='table'and #waves>0 then
@@ -307,7 +316,7 @@ render=function()
     add(card,size(boss,748)):SetPadding({Left=0,Top=5,Right=0,Bottom=0})
     add(list,size(card,764)):SetPadding({Left=0,Top=4,Right=0,Bottom=22})
    end
-  else add(list,caption('Ten waves with varied enemies and rising difficulty.',24))end
+  else add(list,caption('Ten themed waves. Choose your starting wave on the right.',24))end
   v.hordeWaves=ok and type(waves)=='table'and waves or {};v.hordeWaveControls={}
   add(detail,caption('STARTING WAVE',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=4})
   local selector=new('Overlay');add(detail,size(selector,656,56))
@@ -330,8 +339,8 @@ render=function()
    local control={widget=paint,click=click,arrow=arrow,action=function()changeWave(direction)end,adjust=changeWave,enabled=true,scroll=detailScroll,nativePicker=pickerGroup}
    v.buttons[#v.buttons+1]=control;v.hordeWaveControls[#v.hordeWaveControls+1]=control
   end
-  v.hordeStart=button(detail,'Start horde',function()
-   local succeeded,started,message=pcall(Horde.start,v.pc)
+  local function startChallenge(mode)
+   local succeeded,started,message=pcall(Horde.start,v.pc,mode)
    v.message=succeeded and (message or (started and 'Horde ready. Unpause to begin.'or 'Could not start horde.'))or tostring(started)
    if succeeded and started then
     v.hordeCloseId=Horde.view().id
@@ -345,25 +354,31 @@ render=function()
     end
    end
    refresh(v,Party.view())
-  end,656);v.hordeStart.prominent=true
-  v.hordeEnd=button(detail,'End horde',function()
+  end
+  v.hordeStart=button(detail,'Start horde',function()startChallenge('horde')end,656);v.hordeStart.prominent=true
+  local normalNote=caption('Later waves are random, without repeats.',21);normalNote.WrapTextAt=650
+  add(detail,size(normalNote,670)):SetPadding({Left=0,Top=3,Right=0,Bottom=16})
+  v.nightmareStart=button(detail,'Nightmare mode',function()startChallenge('nightmare')end,656);v.nightmareStart.prominent=true
+  local nightmareNote=caption('Random bosses fight together. Clear the group to advance. Enemy counts, growth, rounds and rest time follow your Horde settings.',21);nightmareNote.WrapTextAt=650
+  add(detail,size(nightmareNote,670)):SetPadding({Left=0,Top=5,Right=0,Bottom=16})
+  add(detail,caption('CURRENT RUN',26)):SetPadding({Left=0,Top=0,Right=0,Bottom=8})
+  v.hordeStatus=caption('',24);v.hordeStatus.WrapTextAt=650;add(detail,size(v.hordeStatus,670))
+  v.hordeDetail=caption('',21);v.hordeDetail.WrapTextAt=650;add(detail,size(v.hordeDetail,670)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
+  v.hordeEnd=button(detail,'End run',function()
    local succeeded,why=pcall(Horde.stop,'Ended from menu')
    v.message=succeeded and 'Horde ended' or tostring(why)
    refresh(v,Party.view())
   end,656)
-  add(detail,caption('Next waves: random, without repeats.',21)):SetPadding({Left=0,Top=3,Right=0,Bottom=12})
-  add(detail,caption('STATUS',26)):SetPadding({Left=0,Top=6,Right=0,Bottom=8})
-  v.hordeStatus=caption('',26);add(detail,size(v.hordeStatus,670,52))
-  v.hordeDetail=caption('',23);add(detail,size(v.hordeDetail,670,100)):SetPadding({Left=0,Top=8,Right=0,Bottom=10})
  elseif v.page=='Settings'then
   add(left,size(list,790,710));describe('Settings guide','Changes save immediately. Scroll this panel for an explanation of every option. Horde changes apply to your next run.')
   v.detailBody.WrapTextAt=650
   local notes={
+   Player='Optional player conveniences, all Off by default. Abilities keep their learned levels and native costs. Auto-loot only runs outside combat and skips locks and theft.',
    Following='Adjust how close companions gather behind Coen and how much space they leave each other. Changes apply on the next journey; stationary companions keep their current spots.',
    Companions='These settings affect summoned allies, not enemies. Native AI still chooses attacks and powers. Fallen companions recover automatically after 3 seconds out of combat.',
    Conversations='Anca and Lacra have independent profile choices. HUD controls affect mod conversations only. Hiding chat boxes takes priority over NPC subtitles; spoken replies continue.',
    Camera='Field of view and camera offsets apply while first-person mode is On. Native dialogue and cutscene cameras retain control when needed.',
-   Horde='Enemy counts exclude the additional bosses. Choose your starting theme on the Horde page; later themes are random without repeats. Changes take effect when you start a new run.'
+   Horde='Normal Horde counts exclude additional bosses. Nightmare is a separate mode: starting enemies plus additional bosses determines the number of bosses fighting together per round. Growth adds bosses each round, levels sets round count, and timeout sets rest between rounds. The starting-wave selector only affects normal Hordes. Changes apply to new runs.'
   }
   local guideGroup
   local function guideText(parent,value,points,top,bottom)
@@ -434,7 +449,7 @@ render=function()
  else
   add(left,size(list,790,710));add(list,caption('Conversations',32))
   local k=Settings.bindings
-  add(list,caption(k.SingleText..' · Single text chat\n'..k.SingleVoice..' · Single voice chat\n'..k.GroupText..' · Group text chat\n'..k.GroupVoice..' · Group voice chat\n\nPress a voice key once to start and again to finish. Aim at someone to speak to them; otherwise the closest talking companion is used.'))
+  add(list,caption(k.Camera..' · First / third person\n'..k.SingleText..' · Single text chat\n'..k.SingleVoice..' · Single voice chat\n'..k.GroupText..' · Group text chat\n'..k.GroupVoice..' · Group voice chat\n\nPress a voice key once to start and again to finish. Aim at someone to speak to them; otherwise the closest talking companion is used.'))
   add(list,caption('Support',32)):SetPadding({Left=0,Top=28,Right=0,Bottom=12})
   local copy=button(list,'Copy logs',function()
    if v.supportPending then return end
@@ -446,7 +461,7 @@ render=function()
    refresh(v,Party.view())
   end);copy.prominent=true
   add(list,caption('Copies recent diagnostic logs to your clipboard and saves support-report.txt. Conversation history and configuration are excluded.',22))
-  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the five shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved for the next summon. Each copy keeps its own colours, including after recovery or travel. Restore original colours resets the next summon.\n\nRomance profiles: Auto follows romance history in the loaded save. On enables the romantic profile early. Off uses the normal profile even after unlocking romance. Choose separately for Anca and Lacra. This changes conversations only; it does not play cutscenes.\n\nHorde: start a ten-wave run from its page, clear all enemies to advance after each rest, or retreat to end the run.')
+  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the six shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved for the next summon. Each copy keeps its own colours, including after recovery or travel. Restore original colours resets the next summon.\n\nRomance profiles: Auto follows romance history in the loaded save. On enables the romantic profile early. Off uses the normal profile even after unlocking romance. Choose separately for Anca and Lacra. This changes conversations only; it does not play cutscenes.\n\nHorde: choose from ten wave themes, or select Nightmare mode for groups of random bosses. Both use the Horde counts, growth, rounds and rest settings. The round prepares before combat; defeated bodies remain. End run or retreat to stop.')
  end
  if not v.feedback then v.feedback=caption('',22);add(detail,v.feedback):SetPadding({Left=0,Top=20,Right=0,Bottom=0})end
  v.summary=caption('',23);v.summary:SetAutoWrapText(false);add(v.content,size(v.summary,1580,36)):SetPadding({Left=0,Top=18,Right=0,Bottom=0})
@@ -455,14 +470,16 @@ render=function()
 end
 function M.toggle(pc)
  if view then M.close();return end
- assert(AI.valid(pc)and AI.valid(pc.Pawn),'Load a save first');dependency();Settings.poll();Settings.pollBindings()
+ local pawn,world=AI.playerReady(pc)
+ assert(pawn,'Wait for the player to finish loading');Settings.poll(true);dependency();Settings.pollBindings()
  serial=serial+1
- local v={pc=pc,world=pc.Pawn:GetWorld(),page='Summon',focus=1,buttons={},textCache={},touched=os.time(),message='',refreshAt=0,inputOffset=0,requests={},dismissing={},session=tostring(os.time())..'-'..serial};view=v
+ local v={pc=pc,pawn=pawn,world=world,page='Summon',focus=1,buttons={},textCache={},touched=os.time(),message='',refreshAt=0,inputOffset=0,requests={},dismissing={},session=tostring(os.time())..'-'..serial};view=v
  local ok,err=pcall(function()
+  print('[DawnwalkerConvai UI] Opening menu: resolve static assets\n')
   v.theme=Theme.resolve(function(event,detail)print('[DawnwalkerConvai UI] '..event..': '..tostring(detail)..'\n')end)
   local lib=cls('/Script/UMG.Default__WidgetBlueprintLibrary');v.library=lib
   v.host=lib:Create(pc,cls('/Script/CommonUI.CommonActivatableWidget'),pc);assert(AI.valid(v.host),'Native widget creation failed');v.tree=v.host.WidgetTree
-  v.clickClass=Theme.asset('/Game/_Dawnwalker/UI/_Unified/BaseWidgets/DWW_Button.DWW_Button_C')
+  v.clickClass=AI.retainUIClass(Theme.asset('/Game/_Dawnwalker/UI/_Unified/BaseWidgets/DWW_Button.DWW_Button_C'))
   v.emptyAction={RowName=FName('None')}
   v.host.bIsBackHandler=true;v.host.bIsModal=true;v.host.bAutoActivate=false;v.host.bAutoRestoreFocus=false
   local border=new('Border');border:SetBrushColor({R=.003,G=.004,B=.006,A=1});border:SetPadding({Left=0,Top=0,Right=0,Bottom=0});border:SetHorizontalAlignment(0);border:SetVerticalAlignment(0);v.tree.RootWidget=border
@@ -481,13 +498,16 @@ function M.toggle(pc)
   local labelSlot=add(footer,label);labelSlot:SetVerticalAlignment(2);labelSlot:SetPadding({Left=10,Top=0,Right=0,Bottom=0})
   local backOverlay=new('Overlay');fill(add(backOverlay,v.backButton));v.backClick=clickLayer(backOverlay,v.backButton)
   local slot=add(design,size(backOverlay,180,44));slot:SetHorizontalAlignment(1);slot:SetVerticalAlignment(3);slot:SetPadding({Left=leftEdge,Top=0,Right=0,Bottom=64})
+  print('[DawnwalkerConvai UI] Opening menu: build controls\n')
   render()
   for _,parent in ipairs(FindAllOf('WBP_PauseMenu_C')or {})do if AI.valid(parent)and parent:IsInViewport()and parent:IsActivated()then
    v.parent=parent;v.parentBack=parent.bIsBackHandler;v.parentEnabled=parent:GetIsEnabled();parent.bIsBackHandler=false;parent:SetIsEnabled(false);break
   end end
+  print('[DawnwalkerConvai UI] Opening menu: activate input\n')
   v.host:AddToViewport(150);v.host:ActivateWidget();v.lease=assert(Input.acquire(pc,lib,cls('/Script/Engine.Default__GameplayStatics'),v.host))
   local f=io.open(root..'/native-menu-input.txt','w');if f then f:close()end
   marker(tostring(os.time())..'\t'..v.session)
+  print('[DawnwalkerConvai UI] Menu ready\n')
  end)
  if not ok then M.close();error(err)end
 end
@@ -527,7 +547,7 @@ local function readInput(v)
 end
 function M.tick()
  local v=view;if not v then return end
- if not AI.valid(v.pc)or not AI.valid(v.pc.Pawn)or not AI.same(v.pc.Pawn:GetWorld(),v.world)or not AI.valid(v.host)or not v.host:IsActivated()then M.close();return end
+ if not liveView(v)or not AI.valid(v.host)or not v.host:IsActivated()then M.close();return end
  local horde=Horde.view()
  if v.page=='Horde'and horde.active and (horde.phase=='preparing'or horde.phase=='loading')then v.hordeCloseId=horde.id end
  if v.hordeCloseId and horde.active and horde.id==v.hordeCloseId and horde.released then M.close(true);return end

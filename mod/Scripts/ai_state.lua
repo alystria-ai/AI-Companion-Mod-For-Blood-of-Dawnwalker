@@ -18,12 +18,64 @@ function M.find(path)
  return value
 end
 function M.clearFindCache()objects={}end
+-- UE4SS can cache reflected fields of Blueprint classes after their widgets
+-- close. Keep only the static UI classes alive across travel/GC, never widgets,
+-- players or worlds. The engine referencer also survives Lua hot reloads.
+local uiReferencer
+local retainedUI={}
+function M.retainUIClass(class)
+ assert(M.valid(class)and class:IsA('/Script/CoreUObject.Class'),'Expected a static UI class')
+ local name=class:GetFullName()
+ if retainedUI[name]==class and M.valid(uiReferencer)then return class end
+ if not M.valid(uiReferencer)then
+  uiReferencer=StaticFindObject('/Engine/Transient.DawnwalkerCompanions_UIClasses')
+  if not M.valid(uiReferencer)then
+   local outer=FindObject('Package','/Engine/Transient')
+   assert(M.valid(outer),'UI asset package unavailable')
+   uiReferencer=StaticConstructObject(M.find('/Script/Engine.ObjectReferencer'),outer,FName('DawnwalkerCompanions_UIClasses'),EObjectFlags.RF_Transient,EInternalObjectFlags.RootSet)
+  end
+  assert(M.valid(uiReferencer)and uiReferencer:IsA('/Script/Engine.ObjectReferencer')and uiReferencer:HasAnyInternalFlags(EInternalObjectFlags.RootSet),'UI class retention unavailable')
+  retainedUI={}
+  for i=1,#uiReferencer.ReferencedObjects do
+   local existing=uiReferencer.ReferencedObjects[i]
+   if M.valid(existing)and existing:IsA('/Script/CoreUObject.Class')then retainedUI[existing:GetFullName()]=existing end
+  end
+ end
+ retainedUI[name]=class
+ local list={};for _,value in pairs(retainedUI)do if M.valid(value)then list[#list+1]=value end end
+ assert(#list<=32,'UI class retention limit exceeded')
+ uiReferencer.ReferencedObjects=nil;uiReferencer.ReferencedObjects=list
+ return class
+end
 function M.valid(o)
  if not o or not o:IsValid()then return false end
  return not o:HasAnyFlags(EObjectFlags.RF_BeginDestroyed|EObjectFlags.RF_FinishDestroyed)
 end
 function M.same(a,b)
  return M.valid(a)and M.valid(b)and a:GetFullName()==b:GetFullName()
+end
+function M.sameInstance(a,b)
+ return M.same(a,b)and a:GetAddress()==b:GetAddress()
+end
+-- A valid UObject can outlive possession and its world during save loading.
+-- These checks are for infrequent player utilities, not per-frame face work.
+function M.playerReady(pc)
+ if not M.valid(pc)or pc:IsActorBeingDestroyed()then return end
+ local pawn=pc.Pawn
+ if not M.valid(pawn)or pawn:IsActorBeingDestroyed()or not M.sameInstance(pawn.Controller,pc)or not M.valid(pawn.RootComponent)then return end
+ local world=pawn:GetWorld()
+ if not M.valid(world)or not M.valid(world.PersistentLevel)or not M.sameInstance(pc:GetWorld(),world)then return end
+ return pawn,world
+end
+function M.playerAbilitySystem(pc)
+ local pawn=M.playerReady(pc);if not pawn then return end
+ local asc=M.find('/Script/GameplayAbilities.Default__AbilitySystemBlueprintLibrary'):GetAbilitySystemComponent(pawn)
+ if M.valid(asc)and M.sameInstance(asc.AvatarActor,pawn)then return asc end
+end
+function M.developmentBound(dev,asc)
+ if not M.valid(dev)or not M.valid(asc)then return false end
+ local ok,current=pcall(function()return dev.PlayerASC:Get()end)
+ return ok and M.sameInstance(current,asc)
 end
 -- These leases belong only to the caller's owned DynamicSpawnPoint. Static
 -- SceneRoots reject movement; TeleportTo also does not suit a plain marker.

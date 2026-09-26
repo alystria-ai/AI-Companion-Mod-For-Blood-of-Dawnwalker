@@ -51,7 +51,7 @@ function M.run(operation,arguments)
     end
     if operation:match('^protect')then
         if not invokeProtection then
-            local fn,err=package.loadlib(root..'/../bridge/native/companion_protection_v2.dll','companion_native_run')
+            local fn,err=package.loadlib(root..'/../bridge/native/companion_protection_v5.dll','companion_native_run')
             assert(fn,'Companion protection helper unavailable: '..tostring(err));invokeProtection=fn
         end
         dispatch=invokeProtection

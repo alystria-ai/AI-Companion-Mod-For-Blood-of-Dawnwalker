@@ -40,8 +40,8 @@ Dawnwalker/
 | Installed path | Purpose |
 | --- | --- |
 | `DawnwalkerConvai/Scripts/` | Small UE4SS entry point. `runtime_path.lua` points to the packaged payload beside it. |
-| `DawnwalkerConvai/config.ini` | Companion damage, attack frequency, profile selection, camera and horde preferences. |
-| `DawnwalkerConvai/keybindings.ini` | The five configurable shortcuts. |
+| `DawnwalkerConvai/config.ini` | Companion damage, attack frequency, profile selection, camera, player conveniences, automatic reactions and Horde preferences. |
+| `DawnwalkerConvai/keybindings.ini` | The six configurable shortcuts, including F4 for camera switching. |
 | `DawnwalkerConvai/mod_settings.ini` | Metadata used by the game's Mod Settings interface. |
 | `Payload/mod/Scripts/` | Gameplay Lua: conversations, UI, companions, combat, recovery and movement. |
 | `Payload/bridge/` | Local service modules, browser client, fonts and helper support files. |

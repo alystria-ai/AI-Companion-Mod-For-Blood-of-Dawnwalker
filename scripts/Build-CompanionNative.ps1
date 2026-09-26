@@ -2,7 +2,7 @@ param([string]$OutputName,[switch]$ReadOnlyAudit,[switch]$AssetLoader,[switch]$P
 $ErrorActionPreference='Stop'
 $taskKindCount=@($ReadOnlyAudit,$AssetLoader,$Protection,$Simulation,$Gaze).Where({$_}).Count
 if($taskKindCount -gt 1){throw 'Choose one helper kind'}
-if(!$OutputName){$OutputName=if($Gaze){'companion_gaze_v2.dll'}elseif($Simulation){'companion_simulation_v1.dll'}elseif($Protection){'companion_protection_v2.dll'}elseif($AssetLoader){'companion_assets_v2.dll'}elseif($ReadOnlyAudit){'companion_audit.dll'}else{'companion_native_v9.dll'}}
+if(!$OutputName){$OutputName=if($Gaze){'companion_gaze_v2.dll'}elseif($Simulation){'companion_simulation_v1.dll'}elseif($Protection){'companion_protection_v5.dll'}elseif($AssetLoader){'companion_assets_v2.dll'}elseif($ReadOnlyAudit){'companion_audit.dll'}else{'companion_native_v9.dll'}}
 if($ReadOnlyAudit -and $OutputName -eq 'companion_native_v9.dll'){throw 'The diagnostic DLL must not replace the population-owner DLL.'}
 if($AssetLoader -and $OutputName -notmatch '^companion_assets_v[1-9][0-9]*\.dll$'){throw 'The asset loader must use its own versioned DLL name.'}
 if($Protection -and $OutputName -notmatch '^companion_protection_v[1-9][0-9]*\.dll$'){throw 'The protection helper must use its own versioned DLL name.'}

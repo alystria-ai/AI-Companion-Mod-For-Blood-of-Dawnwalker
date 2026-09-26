@@ -577,6 +577,18 @@ function M.actor(id)
  if m.board:HasAnyUnbreakableActiveAction()then return nil,true end
  return m.actor,false
 end
+function M.ambientSpeaker(randomChoice)
+ if not valid(player)then return end
+ local best,bestDistance;local candidates={}
+ for _,m in pairs(members)do
+  if conversationCandidate(m)and m.definition.chat~=false and not m.board.Combat.bInCombat and not m.board:HasAnyUnbreakableActiveAction()then
+   local d=distance(loc(m.actor),loc(player))
+   if d<=1200 then candidates[#candidates+1]=m.actor;if not bestDistance or d<bestDistance then best=m.actor;bestDistance=d end end
+  end
+ end
+ if randomChoice and #candidates>0 then return candidates[math.random(#candidates)]end
+ return best
+end
 function M.identity(actor)
  for _,m in pairs(members)do if same(m.actor,actor)then return {name=m.name,definition=m.definition.path,characterId=m.characterId,chat=m.definition.chat~=false}end end
 end
