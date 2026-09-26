@@ -5,7 +5,7 @@ Nightmare brings full waves of random bosses to the Horde page. This update also
 - **Nightmare mode:** start it from its own button on the right of F5 > Horde. Bosses are drawn from a 32-entry pool, including Brencis, Xanthe, Ambrus and Bakir, without repeats until the pool is exhausted. The full group loads before combat and fights together. Clear the wave, rest, then face the next group. Defeated bodies remain.
 - **Camera shortcut:** F4 switches between first- and third-person view. Remap it under Controls; existing key assignments are preserved.
 - **Exploration reactions:** a nearby companion can respond after Coen finishes a solo observation. There is at least a three-minute gap, and his scripted conversations with other characters are excluded.
-- **Loot reactions:** one random companion can comment after a completed batch of pickups. Ordinary loot has a 20% chance and a ten-minute minimum gap. New Unique-tier weapons or clothing have a separate two-minute exception. Storage withdrawals stay silent.
+- **Loot reactions:** one random companion can comment after a completed batch of pickups. Ordinary loot has a 20% chance and a ten-minute minimum gap. New Legendary-tier weapons or clothing have a separate two-minute exception. Storage withdrawals stay silent.
 - **Player conveniences:** use learned day and night abilities at either time, activate learned passives without slots, spend skill points away from shrines, automatically collect nearby free loot, or travel from the map to icons and custom waypoints. Each feature has its own toggle.
 
 ## Optional settings and defaults
