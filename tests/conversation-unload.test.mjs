@@ -10,7 +10,8 @@ test('party cleanup clears conversation references before native destruction and
  local speechLayer={};local attention={};local engagement={};local composeController={};local inputLease={};local bindings={}
  local FirstPerson={release=function()end};local Horde={stop=function()end}
  local Abilities={cleanup=function()end};local Passives=Abilities;local SkillsAnywhere=Abilities;local FastTravel=Abilities
- local AutoLoot={reset=function()end};local LootComments=AutoLoot;local Ambient=AutoLoot
+ local AutoLoot={reset=function()end};local LootComments=AutoLoot;local Ambient=AutoLoot;local BattleComments=AutoLoot;local CreatureService=AutoLoot;local Addons=AutoLoot
+ local subtitleClears=0;local NativeSubtitles={clear=function()subtitleClears=subtitleClears+1 end}
  local Companions={};local published='';local function write(_,value)published=value end;local function clean(s)return tostring(s)end
  local M=Companions;local members={one={},two={}};local destroyed=0
  local Formation={new=function()return {frame={}}end};local Native={stopAll=function()assert(selected==nil);return true end}
@@ -21,7 +22,7 @@ test('party cleanup clears conversation references before native destruction and
  ${party.slice(party.indexOf('local beforeReset=nil'),party.indexOf('local function readAbilities'))}
  ${app.slice(app.indexOf('local function publish()'),app.indexOf('local function neutral()'))}
  publish();assert(published:find('cached actor',1,true),'Cache must preserve selected identity without touching UObject')
- M.cleanup();assert(destroyed==2 and selected==nil and generation==11 and not protected);assert(published:find('11\\n0\\n',1,true))
+ M.cleanup();assert(destroyed==2 and selected==nil and generation==11 and not protected and subtitleClears==1);assert(published:find('11\\n0\\n',1,true))
  `;
  try{const rc=lauxlib.luaL_dostring(L,to_luastring(code));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}
 });

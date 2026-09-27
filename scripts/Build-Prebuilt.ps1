@@ -1,6 +1,7 @@
 param([switch]$BundleSharedKey,[switch]$StableNames)
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
+& (Join-Path $PSScriptRoot 'Check-LuaModules.ps1')
 $taskStamp=Get-Date -Format 'yyyyMMdd-HHmmss'
 $taskVersion=(Get-Content (Join-Path $taskRoot 'package.json') -Raw|ConvertFrom-Json).version
 if($taskVersion -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid release version'}
@@ -9,7 +10,7 @@ $taskRelease=Join-Path $taskRoot ('dist/DawnwalkerConvai-'+$taskVersion+$taskSuf
 $taskOutput=$taskRelease+'-Complete'
 $taskMod=Join-Path $taskOutput 'Dawnwalker/Binaries/Win64/ue4ss/Mods/DawnwalkerConvai'
 $taskPayload=Join-Path $taskMod 'Payload'
-foreach($taskDir in @('bridge/native','bridge/public','bridge/fonts','mod/Scripts','scripts','runtime','characters','node','licenses')){New-Item -ItemType Directory -Force -Path (Join-Path $taskPayload $taskDir)|Out-Null}
+foreach($taskDir in @('bridge/native','bridge/public','bridge/fonts','mod/Scripts','scripts','runtime','characters','node','licenses','sdk')){New-Item -ItemType Directory -Force -Path (Join-Path $taskPayload $taskDir)|Out-Null}
 $taskConfig=Get-Content -LiteralPath (Join-Path $taskRoot 'runtime/convai-config.json') -Raw | ConvertFrom-Json
 $taskConfig.PSObject.Properties.Remove('endUserId')
 $taskConfig.roster=@($taskConfig.roster | Select-Object key,id,name,kind,gender,aliases)
@@ -26,7 +27,7 @@ try {
  Copy-Item -LiteralPath (Join-Path $taskRoot 'bridge/native/ConvaiHost.distribution.exe') -Destination (Join-Path $taskPayload 'bridge/native/ConvaiHost.exe')
  foreach($taskName in @('companion_native_v9.dll','companion_assets_v2.dll','companion_protection_v5.dll','companion_simulation_v1.dll','companion_gaze_v2.dll','background_launcher_v1.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $taskRoot ('bridge/native/'+$taskName)) -Destination (Join-Path $taskPayload 'bridge/native')}
  foreach($taskFile in Get-ChildItem -LiteralPath (Join-Path $taskRoot 'bridge') -Filter '*.mjs' -File){Copy-Item -LiteralPath $taskFile.FullName -Destination (Join-Path $taskPayload 'bridge')}
- foreach($taskDir in @('bridge/public','bridge/fonts','mod/Scripts')){Get-ChildItem -LiteralPath (Join-Path $taskRoot $taskDir) -File | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $taskPayload $taskDir)}}
+ foreach($taskDir in @('bridge/public','bridge/fonts','mod/Scripts','sdk')){Get-ChildItem -LiteralPath (Join-Path $taskRoot $taskDir) -File | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $taskPayload $taskDir)}}
  foreach($taskName in @('companion-config.json','companion-lore.json','quest-knowledge.json','combat-roster.json','romance-config.json')){Copy-Item -LiteralPath (Join-Path $taskRoot ('characters/'+$taskName)) -Destination (Join-Path $taskPayload 'characters')}
  Copy-Item -LiteralPath (Join-Path $taskRoot 'scripts/Start-Background.ps1') -Destination (Join-Path $taskPayload 'scripts')
  $taskNode=(Get-Content -LiteralPath (Join-Path $taskRoot 'runtime/node-path.txt') -Raw).Trim()
@@ -36,6 +37,7 @@ try {
  Set-Content -LiteralPath (Join-Path $taskPayload 'runtime/native-ui.enabled') -Value '1' -Encoding ascii
  New-Item -ItemType Directory -Force -Path (Join-Path $taskMod 'Scripts')|Out-Null
  foreach($taskName in @('main.lua','live_reload.lua')){Copy-Item -LiteralPath (Join-Path $taskRoot ('mod/Scripts/'+$taskName)) -Destination (Join-Path $taskMod 'Scripts')}
+ & (Join-Path $PSScriptRoot 'Check-LuaModules.ps1') -ScriptsDirectory (Join-Path $taskPayload 'mod/Scripts') -BootstrapDirectory (Join-Path $taskMod 'Scripts')
  $taskBootstrap=@'
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local scripts=assert(source:match('^(.*)/[^/]+$'),'Cannot locate mod Scripts folder')

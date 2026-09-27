@@ -1,4 +1,4 @@
-# LLM NPC Companions System for The Blood of Dawnwalker
+# AI NPC Companions System for The Blood of Dawnwalker
 
 Fight themed Horde battles or bosses-only Nightmare waves, explore in first-person POV, customise your companions' eye, hair and armour colours, and manage relationships with Anca and Lacra. Summon characters such as Brencis, Bakir, Xanthe and Crake to follow Coen and fight alongside him using the game's native AI and abilities.
 
@@ -6,11 +6,14 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 ## Features
 
+- Supports the separate [Rideable Mount Companions addon](https://github.com/alystria-ai/Rideable-Mount-Companions): ride native beasts, give commands and reuse this mod's conversations and context without another runtime.
 - Text and microphone conversations with nearby supported characters, voiced replies, subtitles, facial animation and gentle distance-based volume; talk privately or in a group with up to three distinct speakers.
-- Transparent conversation HUD, with an optional microphone-only display, a separate NPC-subtitle toggle, and a shared bottom-offset control for chat and voice UI.
+- Interface language selection for English, Simplified Chinese, Traditional Chinese, Spanish, Brazilian Portuguese, French, German, Russian, Japanese and Korean. Auto follows the game language where available. This is separate from the optional multilingual conversation voices.
+- Transparent conversation HUD, with an optional microphone-only display, a separate NPC-subtitle toggle, and a shared bottom-offset control for chat and voice UI. Native subtitles above the speaker are On by default and advance in short spoken phrases; the usual HUD remains selectable.
 - Optional first-person POV, toggled with remappable **F4**, with adjustable field of view, height and forward offset, while preserving native dialogue and cutscene cameras.
 - Horde mode with ten themed waves and a separate **Nightmare mode** for groups of random bosses. Choose a starting Horde theme or start Nightmare directly from its own button. Both use the enemy-count, growth, round and rest settings; rounds prepare before combat, bodies remain, and rest countdowns make room for conversation subtitles.
 - Optional **Day and night abilities** lets Coen use learned human and vampire active abilities at either time; **Passives without slots** activates learned passives without assigning slots. Both default to Off.
+- **Battle reactions** let one nearby companion comment as a fight begins and another brief line after it ends, using observed opponent names. The closing line can include collected loot, with a ten-minute cooldown starting at the end of combat. Loading a save resets reaction cooldowns. Enabled by default; manual conversations take priority.
 - **Loot reactions** let one random nearby companion occasionally comment after a batch of pickups, with cooldowns and special handling for new Legendary-tier equipment. Storage withdrawals stay silent. Enabled by default and configurable in Settings.
 - Optional **Fast travel from anywhere** adds travel to map icons and custom waypoints, as well as unlocked shrines. Travel outside combat and cutscenes, with destination loading and a ground-clearance check.
 - Optional **Spend skill points anywhere** removes the roadshrine requirement from the native Skills page. Costs and unlock requirements still apply.
@@ -20,8 +23,8 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 - Optional multilingual pack switches conversation profiles to new IDs with voices supporting 25 languages, including Russian, Spanish, French, Arabic and Japanese.
 - More expressive conversations with smiles, blinking and emotion-driven mouth, cheek and brow movement, native head tracking and adjustable first-person gaze offsets. Optional follow-up questions keep the exchange going naturally; only the final group speaker asks Coen.
 - Adjustable follower closeness and party spacing, plus an optional narrow formation that favours front-to-back rows. Body clearance is preserved, large groups add columns to limit tail length, and changes apply on your next real follow.
-- Character-specific biographies, speaking rules and relationships, with quest knowledge based on detected journal progress and relevant location, time and environmental context.
-- Reactions to Coen's spoken exploration observations let a nearby companion comment after he finishes, without starting the microphone or interrupting your conversation. Enabled by default and configurable in Settings.
+- Character-specific biographies, speaking rules and relationships, with quest knowledge based on detected journal progress and relevant location, time and environmental context. Normal conversations also receive the currently tracked quest and revealed active objectives; the always-tracked family objective is excluded from this temporary activity context.
+- Reactions to Coen's spoken exploration observations use his actual words, relevant revealed journal objectives, character-specific quest knowledge and current surroundings. The always-tracked family-saving quest is excluded from observation context. Enabled by default and configurable in Settings.
 - Recent battle context with observed character names, enemy types and cleared Horde waves, so companions can discuss who you fought during the rest between waves.
 - 21 conversation-capable named-character entries, including Anca, Lacra, Brencis, Bakir, Xanthe, Ambrus and Crake, plus 101 combat-only character, enemy, boss and creature definitions.
 - Multiple simultaneous companions and duplicate summons without an artificial party cap; queue more summons while others load, and share conversation history between copies of a character.
@@ -33,6 +36,21 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 - Built-in Copy logs support report with sensitive values removed.
 
 ## Changelog
+
+### What changed in 0.5.5
+
+- Added support for [Rideable Mount Companions](https://github.com/alystria-ai/Rideable-Mount-Companions), including creature conversations, commands, mounted camera preferences and native following and combat. Install the separate addon to ride beasts.
+- Native overhead subtitles follow spoken phrases and account for scaled beast bodies.
+- Fixed missing shortcuts after incomplete Lua updates, false battle comments when spawning a creature, and repeated beast repositioning during small nearby movements.
+
+- Post-battle comments can combine Coen's immediate exploration remark and collected loot into one reply. A replaced facial-animation layer no longer cancels the audio, and opening a pause menu does not expire the closing window.
+- Exploration replies now receive event-specific journal context and the preceding line from the same observation. Hidden objectives and unchosen endings stay excluded; a shared exploration graph is not treated as proof of a particular mission or landmark.
+- Mounted first-person support hides the borrowed rider pose's hands and gauntlets, restoring them in third person or on dismount.
+- Loading a save now clears battle, loot and exploration reaction cooldowns, so a previous attempt does not silence the newly loaded game. Ordinary menu use and code reloads preserve them.
+- Fixed automatic battle and loot reactions being discarded when their speaker connection closed an already-inactive microphone. Fresh events now wait through brief connection transitions and queue once.
+- Added ten interface languages, with separate UI language selection and translated menu controls and settings help.
+- Added optional battle reactions, On by default. One opening and one closing comment form a pair; the ten-minute cooldown begins at combat end. Closing comments wait briefly for loot and combine both events into one response.
+- Added a versioned Lua SDK for separate companion mods to reuse character conversations, audio and subtitles without another helper. External mods retain movement and animation ownership. Add-ons can instead use silent action selection with their own permitted commands; this leaves the main companions' conversations unchanged.
 
 ### What changed in 0.5.4
 
@@ -89,9 +107,11 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.4](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.4)
+Windows · Game 1.05 · [Latest release: 0.5.5](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.5)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
+
+The interface translations, battle reactions and add-on SDK described above are in the development build and are not part of the current release download.
 
 ## Download and install
 
@@ -99,10 +119,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.4/DawnwalkerConvai-0.5.4-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.4/DawnwalkerConvai-0.5.4-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.4/DawnwalkerConvai-0.5.4-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.4/DawnwalkerConvai-0.5.4-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 
@@ -111,7 +131,7 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 3. Extract **Complete**, or **both Scripts and Runtime**, into your game installation folder. Merge the included `Dawnwalker` folders when asked.
 4. Launch the game, load a save, and press **F5**.
 
-For multilingual conversations, install the main mod first. Then close the game and copy the optional **Multilingual voices ZIP** into the same game folder, overwriting its one configuration file. English remains available in that pack. To restore the original English Kokoro voices, reinstall the matching Runtime or Complete ZIP. The optional ZIP contains only a JSON configuration file and an installation note; it does not include an executable, DLL, script, or API key. Its character copies begin separate conversation histories and memories. The game and F5 menu remain in their original language.
+For multilingual conversations, install the main mod first. Then close the game and copy the optional **Multilingual voices ZIP** into the same game folder, overwriting its one configuration file. English remains available in that pack. To restore the original English Kokoro voices, reinstall the matching Runtime or Complete ZIP. The optional ZIP contains only a JSON configuration file and an installation note; it does not include an executable, DLL, script, or API key. Its character copies begin separate conversation histories and memories. The voice pack does not change interface language. Choose the mod interface language separately in F5 Settings; the base game language is unchanged.
 
 Your installation should contain:
 
@@ -187,8 +207,10 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | Attack frequency | 180% | Adjusts the native attack-speed attribute so attacks finish faster. Native AI still chooses when to attack and which moves to use. |
 | Anca romance profile | Auto | Auto follows your save. On always uses her romantic profile; Off always uses her normal profile, even after unlocking romance. |
 | Lacra romance profile | Auto | The same Auto, On and Off choices, independent of Anca. |
-| React to collected loot | On | Waits for six seconds without inventory changes, then one random nearby companion can comment on the batch. Ordinary items have a 20% chance and a ten-minute minimum gap. New Legendary-tier weapons or clothing bypass that chance, with a separate two-minute minimum gap. Storage withdrawals are excluded, and all automatic reactions stay at least 30 seconds apart. |
-| React to Coen’s observations | On | A nearby talking companion can briefly respond to Coen’s actual voiced exploration line after he finishes. Eligible solo observations trigger without a random roll, with a three-minute minimum gap and repeated-line filtering. Excludes scripted conversations with other characters; pauses during combat, cutscenes and manual chat. Requires the conversation Runtime. |
+| Interface language | Auto | Select English, Simplified Chinese, Traditional Chinese, Spanish, Brazilian Portuguese, French, German, Russian, Japanese or Korean. Auto follows the game language where available, with a system-language fallback. Changes the mod interface, not character voices. |
+| React to battles | On | One nearby companion can comment at the start and after the end of a fight. The ten-minute cooldown begins at combat end and applies to the next battle, not to the paired closing line. Loading a save clears reaction cooldowns. The closing line waits briefly for looting and Coen's immediate exploration remark, then combines them into one response. Manual chat and cutscenes take priority. |
+| React to collected loot | On | Waits for six seconds without inventory changes, then one random nearby companion can comment on the batch. Ordinary items have a 20% chance and a ten-minute minimum gap. New Legendary-tier weapons or clothing bypass that chance, with a separate two-minute minimum gap. Storage withdrawals are excluded, and unrelated automatic reactions stay at least 30 seconds apart. A battle's own opening and closing form one pair. |
+| React to Coen’s observations | On | A nearby talking companion can briefly respond after Coen's solo exploration line. Uses relevant revealed objectives, current surroundings and character-specific knowledge, excluding the always-tracked family-saving quest. Eligible observations trigger without a random roll, with a three-minute minimum gap and repeated-line filtering. A remark immediately after combat can join the battle's closing reply. Excludes scripted conversations with other characters and does not interrupt cutscenes or manual chat. Requires the conversation Runtime. |
 | Follow-up questions | On | Companions normally end with one relevant question, skipping it for a clear reason such as a farewell, immediate danger or an intrusive moment. Only the final group speaker asks Coen. Off removes this encouragement; characters can still ask necessary clarifying questions. Applies to new replies, including romance profiles, and never starts the microphone automatically. |
 | Transparent chat HUD | On | Removes the backdrop behind subtitles, voice status and the typing field. Subtitles and status text have a dark outline for readability. Off restores the shaded panel. |
 | Hide chat boxes | Off | On hides all conversation text, including NPC subtitles. Voice input shows only a transparent microphone indicator with a Listening status and your finish shortcut. After sending a text message, the input disappears and no reply text is shown. Spoken replies continue. Horde countdowns are unaffected. |
@@ -243,6 +265,10 @@ The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai co
 
 ## License
 
-The original mod code, documentation and configuration are available under the [LLM NPC Companions System Convai Use License](LICENSE). You can use, modify and distribute them, including commercially. Distributed modifications and services with AI character conversations or generative character interactions must offer Convai as a working, selectable provider option. Other hosted providers, local models and self-hosted systems are welcome, and any provider can be the default. Users can choose another provider without using Convai. Native combat, following, Horde mode, camera and appearance features do not require Convai.
+The original mod code, documentation and configuration are available under the [AI NPC Companions System Convai Use License](LICENSE). You can use, modify and distribute them, including commercially. Distributed modifications and services with AI character conversations or generative character interactions must offer Convai as a working, selectable provider option. Other hosted providers, local models and self-hosted systems are welcome, and any provider can be the default. Users can choose another provider without using Convai. Native combat, following, Horde mode, camera and appearance features do not require Convai.
 
 This is a source-available license, not an OSI-approved open-source license. Third-party components retain their own licenses, and game assets remain subject to their owners' terms.
+
+### Subtitles above speakers
+
+**F5 > Settings > Subtitles above speakers** is On by default. Replies appear in short phrases as the character speaks, rather than a full paragraph, through the game's native overhead dialogue widget above the current speaking NPC. Captions follow group speaker changes and the game HUD's visibility. Turn this setting Off to use the usual subtitle HUD. **NPC subtitles** must be enabled, and **Hide chat boxes** still hides them. Text entry and microphone indicators keep their usual position.

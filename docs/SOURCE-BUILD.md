@@ -58,3 +58,9 @@ The existing font license is retained alongside the font files. Third-party noti
 Run `scripts/Build-Prebuilt.ps1` after all code and license files are prepared. It creates **Complete**, **Scripts** and **Runtime** ZIPs using the same game-root-relative layout. The ordinary source build expects users to configure their own account. A publisher who is authorized to distribute their service configuration can explicitly select `-BundleSharedKey`; that embeds the local shared defaults into the helper resource and excludes the local end-user identity. Never use a personal development configuration as a release credential by accident.
 
 For gameplay testing, install the resulting Complete archive over a separately configured game loader. The old development installer under `scripts/Install.ps1` is intended for a fresh loader installation and is not the player release installer. It refuses to overwrite an existing loader. See README for the game adapter, data flow and porting methodology.
+
+### Updating an existing development install
+
+Use `scripts/Sync-DevelopmentLua.ps1 -ModDirectory <installed-mod-folder>` for Lua changes. It backs up the existing Lua files, synchronizes the payload and startup files together, verifies their hashes and leaves player configuration intact. Do not update only `Payload/mod/Scripts` when changing startup code. Bootstrap changes require a new game launch; ordinary gameplay modules use the existing hot reload.
+
+Startup loads the canonical loader from the payload. The loader resolves local `require` dependencies before starting gameplay, including newly added modules, and rejects incomplete updates while retaining an already running version. Packaging checks both the source module list and the assembled startup/payload copies. `node --test tests/startup-loader.test.mjs` checks a fresh launch with a stale bootstrap copy and recovery from a missing local dependency.

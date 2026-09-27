@@ -1,4 +1,7 @@
-import {ambientContext,parseAmbientMessage,ambientReady} from './ambient-comments.mjs';
+import {ambientContext,parseAmbientMessage,parseObservationContext,ambientReady} from './ambient-comments.mjs';
+import {ReactionDelivery} from './reaction-delivery.mjs';
+import {AddonRegistry} from './addon-registry.mjs';
+import {localAddonAction} from './local-addon-actions.mjs';
 import {GroupChat,chooseSpeakers} from './group-chat.mjs';
 import {parseFollowUpQuestions,conversationContext} from './conversation-context.mjs';
 const group=new GroupChat();
@@ -10,7 +13,7 @@ import {randomBytes} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {encodeFrame, parseTarget, parseSpatial} from './protocol.mjs';
 import {TextRequests} from './text-requests.mjs';
-import {ActionQueue,parseQuests} from './game-context.mjs';
+import {ActionQueue,parseQuests,activeQuestContext} from './game-context.mjs';
 import {knowledge as questKnowledge,recipient} from './quest-knowledge.mjs';
 import {parseRelationships,relationshipKnowledge,relationshipProfiles,hasSharedRomance,groupRomanceContext} from './relationships.mjs';
 import {battleContext} from './battle-context.mjs';
@@ -27,6 +30,7 @@ const knowledge=(snapshot,npc)=>{
   text:[banter,battle.text,base.text].filter(Boolean).join('\n\n')};
 };
 import {environmentContext} from './environment.mjs';
+function conversationEnvironment(target){const result=environmentContext(environmentRaw,target),quest=target.active?activeQuestContext(questMemory):'';return {...result,revision:result.revision+quest,text:result.text+quest};}
 import {heartbeatMs} from './heartbeat.mjs';
 import {Companions} from './companions.mjs';
 let environmentRaw='',battleRaw='',spatialRaw='',lastSpatialRead=0,hordeText='';
@@ -37,7 +41,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const romanceVariants=JSON.parse(await readFile(resolve(root,'characters/romance-config.json'),'utf8').catch(()=>'{}'));
 const bundledConfig=JSON.parse(process.env.DAWNWALKER_DEFAULT_CONFIG||'{}');delete process.env.DAWNWALKER_DEFAULT_CONFIG;
 const runtime = process.env.DAWNWALKER_RUNTIME || resolve(root, 'runtime');
-let followUpQuestions=true,ambientEnabled=true,lootCommentsEnabled=true,lastManual=Date.now(),lastAmbient='',lastAmbientPoll=0,lootObservation=null;
+const addons=new AddonRegistry(runtime);
+let followUpQuestions=true,ambientEnabled=true,lootCommentsEnabled=true,battleCommentsEnabled=true,lastManual=Date.now(),lastAmbient='',lastAmbientPoll=0,lootObservation=null,observationDetails=null;
 async function readConversationSettings(){
  try{
   const directory=(await readFile(resolve(runtime,'mod-directory.txt'),'utf8').catch(()=>resolve(root,'mod'))).trim();
@@ -45,18 +50,25 @@ async function readConversationSettings(){
   followUpQuestions=parseFollowUpQuestions(source);
   const ambient=source.match(/^AmbientComments\s*=\s*([01](?:\.0+)?)\s*$/m);ambientEnabled=!ambient||Number(ambient[1])===1;
   const loot=source.match(/^LootComments\s*=\s*([01](?:\.0+)?)\s*$/m);lootCommentsEnabled=!loot||Number(loot[1])===1;
+  const battle=source.match(/^BattleComments\s*=\s*([01](?:\.0+)?)\s*$/m);battleCommentsEnabled=!battle||Number(battle[1])===1;
  }catch{/* Keep the last setting if an editor temporarily holds the file. */}
 }
 await readConversationSettings();
 function conversationFor(view,index){
- if(/^(ambient|loot)-/.test(target.room||''))return ambientContext(target.room,lootObservation?.room===target.room?lootObservation.text:'');
+ if(/^(ambient|loot|battle)-/.test(target.room||''))return ambientContext(target.room,lootObservation?.room===target.room?lootObservation.text:'',observationDetails?.room===target.room&&observationDetails.generation===target.generation?observationDetails.text:'');
  const active=view&&view.stage!=='done';
  // Voice starts generating before its transcript creates the group round.
  // Predict the number of distinct eligible speakers so that first reply does
  // not ask Coen a question ahead of the remaining companions.
  const count=active?view.count:target.mode==='group'
   ?chooseSpeakers(target,Date.now()-companions.state.updated<5000?companions.state.members:[],'',hasSharedRomance(relationships)).length:1;
- return conversationContext(followUpQuestions,target.mode,index??(active?view.index:0),count);
+ const result=conversationContext(followUpQuestions,target.mode,index??(active?view.index:0),count);
+ const external=addons.profile(target);
+ if(!external)return result;
+ const mode=external.silentReplies
+  ?'Command-only mode. Interpret Coen\'s order and request an available structured action. Do not generate spoken or written dialogue, narration, or a follow-up question. Do not invent unsupported tricks or claim an action has completed.'
+  :result.text;
+ return {...result,followUpQuestions:!external.silentReplies&&result.followUpQuestions,revision:result.revision+':addon:'+external.key+':'+external.silentReplies+':'+external.actions.join(',')+':'+external.context,text:mode+'\n\nContext from the character owning mod: '+external.context};
 }
 await mkdir(runtime, {recursive:true});
 const companions=new Companions(runtime,JSON.parse(await readFile(resolve(root,'characters/companion-config.json'),'utf8')));
@@ -66,6 +78,7 @@ const port = Number(process.env.DAWNWALKER_PORT || 32123), origin = `http://127.
 let target = {generation:0, active:false, actor:'', actorClass:'', status:'Waiting for the game'}, lastGame = 0;
 let lastClient = 0, currentFrame = '', overlay = {text:'', status:'Open the Convai setup page', updated:Date.now()}, flushing = false;
 let lastGroupDiagnostic='',replyDiagnostic=null,lastReplyDiagnostic=0;
+const reactionDelivery=new ReactionDelivery();let lastReactionDelivery='';
 // Single writer and atomic replacement: Lua never executes incoming data or reads half a frame.
 async function atomic(name, text) {
   const path = resolve(runtime, name); await writeFile(path+'.tmp',text);
@@ -83,7 +96,7 @@ setInterval(async () => {
     if(raw) {
       const next=parseTarget(raw);
       if(next.generation!==target.generation||next.room!==target.room){
-        if(next.active&&!/^(ambient|loot)-/.test(next.room||''))lastManual=Date.now();
+        if(next.active&&!/^(ambient|loot|battle)-/.test(next.room||''))lastManual=Date.now();
         // Never relabel the preceding character's subtitle/microphone frame as
         // the new conversation while the browser is acknowledging selection.
         overlay={text:'',microphoneOn:false,microphoneTranscript:'',status:'',updated:Date.now()};
@@ -95,6 +108,7 @@ setInterval(async () => {
     if(Date.now()-lastQuestRead>1000){
       lastQuestRead=Date.now();
       await readConversationSettings();
+      const registry=await addons.tick();if(registry!==null)await atomic('addon-registry.tsv',registry);
       const horde=(await readFile(resolve(runtime,'horde-state.tsv'),'utf8').catch(()=>'')).trim().split('\t');
       const fresh=horde[0]==='HORDE'&&horde[1]==='1'&&Math.abs(Date.now()/1000-Number(horde[2]))<4;
       const remaining=Number(horde[7]),level=Number(horde[5])+1,levels=Number(horde[6]);
@@ -123,12 +137,20 @@ setInterval(async () => {
       const raw=await readFile(resolve(runtime,'ambient-message.tsv'),'utf8').catch(()=>'');
       const message=parseAmbientMessage(raw,target);
       if(message&&message.id!==lastAmbient){
-        lastAmbient=message.id;
-        if(message.id.startsWith('loot-')){lootObservation={room:message.id,text:message.text};message.text='React briefly to the completed item collection described in the current context.';}
-        if((message.id.startsWith('loot-')?lootCommentsEnabled:ambientEnabled)&&!microphone.enabled&&Date.now()-lastManual>=5000)textRequests.enqueue(message,target);
+        const enabled=message.id.startsWith('battle-')?battleCommentsEnabled:message.id.startsWith('loot-')?lootCommentsEnabled:ambientEnabled;
+        reactionDelivery.observe(message,target,!enabled?'disabled':microphone.enabled?'waiting-for-microphone':Date.now()-lastManual<5000?'waiting-after-manual-input':'ready');
+        if(!enabled)lastAmbient=message.id;
+        else if(!microphone.enabled&&Date.now()-lastManual>=5000){
+          observationDetails={room:target.room,generation:target.generation,text:parseObservationContext(await readFile(resolve(runtime,'observation-context.tsv'),'utf8').catch(()=>''),target)};
+          if(/^(loot|battle)-/.test(message.id)){lootObservation={room:message.id,text:message.text};message.text=message.id.startsWith('battle-')?'React briefly to the observed battle event described in the current context.':'React briefly to the completed item collection described in the current context.';}
+          textRequests.enqueue(message,target);lastAmbient=message.id;reactionDelivery.observe(message,target,'queued');
+        }
+        // Connecting the chosen speaker may briefly close an old microphone.
+        // Keep a fresh, matching event until queued; do not consume it on wait.
       }
-      const quiet=ambientReady({enabled:ambientEnabled||lootCommentsEnabled,now:Date.now(),lastGame,lastClient,lastManual,microphone:microphone.enabled||overlay.microphoneOn,reply:replyDiagnostic,pending:textRequests.forTarget(target).length>0,group:group.view(target),subtitle:overlay.text});
+      const quiet=ambientReady({enabled:ambientEnabled||lootCommentsEnabled||battleCommentsEnabled,now:Date.now(),lastGame,lastClient,lastManual,microphone:microphone.enabled||overlay.microphoneOn,reply:replyDiagnostic,pending:textRequests.forTarget(target).length>0,group:group.view(target),subtitle:overlay.text});
       await atomic('ambient-ready.tsv',`${Math.floor(Date.now()/1000)}\t${quiet?1:0}`);
+      const delivery=reactionDelivery.snapshot(target);if(delivery!==lastReactionDelivery){await atomic('reaction-delivery.json',delivery);lastReactionDelivery=delivery;}
     }
     await atomic('frame.txt',currentFrame || encodeFrame({generation:target.generation}));
     await atomic('overlay.json',JSON.stringify({...overlay,hordeText,active:target.active,generation:target.generation,actor:target.actor,name:target.name||'',mode:target.mode,room:target.room,microphoneRequested:microphone.enabled,gameAlive:Date.now()-lastGame<3500}));
@@ -156,36 +178,43 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='GET' && path==='/group-context') {
       const params=new URL(req.url,origin).searchParams,view=group.view(target),next=view?.upcoming?.find(s=>s.token===params.get('token'));
       if(!target.active||view?.stage!=='reply'||params.get('token')!==next?.token||params.get('room')!==target.room){res.writeHead(409).end('Group selection changed');return;}
-      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({token:next.token,conversation:conversationFor(view,view.index+1+view.upcoming.indexOf(next)),questMemory:knowledge(questMemory,next.characterId),environment:environmentContext(environmentRaw,target)}));return;
+      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({token:next.token,conversation:conversationFor(view,view.index+1+view.upcoming.indexOf(next)),questMemory:knowledge(questMemory,next.characterId),environment:conversationEnvironment(target)}));return;
     }
-    if(req.method==='GET' && path==='/target') {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,conversation:conversationFor(group.view(target)),relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:environmentContext(environmentRaw,target),questMemory:knowledge(questMemory,target.active?recipient(target):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
+    if(req.method==='GET' && path==='/target') {const external=addons.profile(target);if(external?.localActionsOnly)textRequests.acknowledge(target.generation,textRequests.forTarget(target).map(item=>item.id));res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...target,externalProfile:external,conversation:conversationFor(group.view(target)),relationships:relationships&&Date.now()-relationships.updated<=10000?relationships.characters:{},spatial:parseSpatial(spatialRaw,target),partyCharacters:Date.now()-companions.state.updated<5000?companions.connectionCharacters():[],gameAlive:Date.now()-lastGame<3500,textRequests:target.mode==='group'?(group.view(target)?.request?[group.view(target).request]:[]):textRequests.forTarget(target),group:group.view(target),microphone,environment:conversationEnvironment(target),questMemory:knowledge(questMemory,target.active?(external?.key||recipient(target)):(new URL(req.url,origin).searchParams.get('memoryRecipient')||'')),actionResult:actionQueue.result}));return;}
     if(req.method==='POST' && path==='/microphone'){
-      lastManual=Date.now();
       let body='';for await(const chunk of req){body+=chunk;if(body.length>1024){res.writeHead(413).end();return;}}
       const value=JSON.parse(body);
       if(value.id!==undefined&&value.id!==microphone.id){res.writeHead(409).end('Microphone request changed');return;}
       if(typeof value.enabled!=='boolean'||value.generation!==target.generation||(value.enabled&&!target.active)){res.writeHead(409).end('Select a nearby character first');return;}
+      if(value.enabled&&addons.profile(target)?.localActionsOnly){res.writeHead(409).end('Spoken replies are Off. Use text commands for this creature.');return;}
+      if(value.enabled!==microphone.enabled)lastManual=Date.now();
+      else {res.writeHead(204).end();return;}
       if(value.enabled&&target.mode==='group')group.cancel('Listening for a new group message');
       microphone={enabled:value.enabled,generation:target.generation,id:randomBytes(12).toString('hex')};res.writeHead(204).end();return;
     }
     if(req.method==='POST' && path==='/text'){
-      lastManual=Date.now();
       let body='';for await(const chunk of req){body+=chunk;if(body.length>8192){res.writeHead(413).end();return;}}
-      try{const value=JSON.parse(body);if(target.mode==='group')group.start(value,target,companions.state.members,Date.now(),false,hasSharedRomance(relationships));else textRequests.enqueue(value,target);res.writeHead(204).end();}catch(e){res.writeHead(409).end(e.message);}return;
+      try{const value=JSON.parse(body);const external=addons.profile(target);
+      if(external?.localActionsOnly){const command=localAddonAction(value,target,external);actionQueue.current(target);if(actionQueue.pending.length>=8)throw Error('Wait for the previous commands to finish.');actionQueue.add({...target,externalProfile:external},[command]);}
+      else if(target.addon&&!external)throw Error('Creature registration expired. Select it again.');
+      else if(target.mode==='group')group.start(value,target,companions.state.members,Date.now(),false,hasSharedRomance(relationships));else textRequests.enqueue(value,target);lastManual=Date.now();res.writeHead(204).end();}catch(e){res.writeHead(409).end(e.message);}return;
     }
     if(req.method==='POST' && path==='/frame') {
       let body='';for await(const chunk of req) {body+=chunk;if(body.length>65536){res.writeHead(413).end();return;}}
-      const data=JSON.parse(body);const encoded=encodeFrame(data);
+      const data=JSON.parse(body);const external=addons.profile(target);
       if(data.generation!==target.generation) {res.writeHead(409).end();return;}
+      if(target.addon&&(!external||external.silentReplies)){data.subtitle='';data.weights={};}
+      const encoded=encodeFrame(data);
       currentFrame=encoded;lastClient=Date.now();
       textRequests.acknowledge(data.generation,data.ackTextIds);
-      if(!/^(ambient|loot)-/.test(target.room||''))actionQueue.add(target,data.actionRequests);
+      if(!/^(ambient|loot|battle)-/.test(target.room||''))if(!external?.localActionsOnly)actionQueue.add({...target,externalProfile:external},data.actionRequests);
       if(data.groupVoice&&microphone.enabled&&target.mode==='group'){
         group.start({...data.groupVoice,generation:target.generation},target,companions.state.members,Date.now(),true,hasSharedRomance(relationships));
         microphone={...microphone,enabled:false};
       }
       if(data.groupDone)group.complete(data.groupDone,target,companions.state.members);
       if(data.replyStatus&&JSON.stringify(data.replyStatus).length<2048)replyDiagnostic={updated:Date.now(),...data.replyStatus};
+      reactionDelivery.frame(target,data);
       if(data.memoryReport){const report=JSON.stringify(data.memoryReport);if(report.length<1500&&report!==lastMemoryReport){await atomic('quest-cloud-status.json',report);lastMemoryReport=report;}}
       const vd=data.voiceDiagnostic||{};
       const voice={device:String(vd.device||'').slice(0,140),level:Math.max(0,Math.min(1,Number(vd.level)||0)),trackState:String(vd.trackState||'off').slice(0,16),muted:vd.muted===true,meter:vd.meter===true,signalDetected:vd.signalDetected===true,silent:vd.silent===true};

@@ -10,7 +10,21 @@ local function snapshot(inventory)
  return counts,assets
 end
 function M.reset()pawn=nil;previous=nil;storage=nil;world=nil;lastGame=nil;batch=nil;nextPoll=0;metadata={};owned={}end
-local function observe(pc,enabled,busy,hasSpeaker)
+local function describe(done)
+ local rows={};for _,v in pairs(done.items)do rows[#rows+1]=v.name:gsub('[\r\n\t]',' ')..' x'..v.quantity end;table.sort(rows)
+ local excerpt,total={},0;for _,row in ipairs(rows)do if total+#row<=580 then excerpt[#excerpt+1]=row;total=total+#row+2 end end
+ if #excerpt==0 then return end
+ return 'Observed recent acquisitions: '..table.concat(excerpt,', ')..'. '..(done.top and 'New Legendary-tier weapon or clothing equipment was acquired. 'or '')..'Storage withdrawals are excluded. The acquisition source is unconfirmed; do not invent where these items came from.'
+end
+-- The battle coordinator reads only batch timing and text, never inventory
+-- objects. Sampling continues during its wait so nearby pickups join one line.
+function M.pending()
+ if batch then return {started=batch.started,last=batch.last,top=batch.top}end
+end
+function M.consume()
+ if not batch then return end;local done=batch;batch=nil;return describe(done)
+end
+local function observe(pc,enabled,busy,hasSpeaker,deferReaction)
  if not enabled then if previous then M.reset()end;return end
  if not hasSpeaker then if previous then M.reset()end;return end
  local now=os.time();if now<nextPoll then return end;nextPoll=now+1
@@ -48,6 +62,7 @@ local function observe(pc,enabled,busy,hasSpeaker)
  if batch and moved then batch.last=now end
  if not batch then return end
  if now-batch.last>90 then batch=nil;return end
+ if deferReaction then return end
  if now-batch.last<6 or busy or not hasSpeaker or p.bCinematicMode or AI.find('/Script/Engine.Default__GameplayStatics'):IsGamePaused(pc)then return end
  local board=AI.board(AI.find('/Script/RebelAI.Default__RebelAIBlueprintFunctionLibrary'):GetAIStub(p))
  if not board or board.bIsDead or board.Combat.bInCombat then return end
@@ -61,11 +76,9 @@ local function observe(pc,enabled,busy,hasSpeaker)
  end
  if not Policy.ready()then return end
  local done=batch;batch=nil;if not Policy.take('loot',done.top)then return end
- local rows={};for _,v in pairs(done.items)do rows[#rows+1]=v.name:gsub('[\r\n\t]',' ')..' x'..v.quantity end;table.sort(rows)
- local excerpt,total={},0;for _,row in ipairs(rows)do if total+#row<=720 then excerpt[#excerpt+1]=row;total=total+#row+2 end end
- if #excerpt==0 then return end
+ local text=describe(done);if not text then return end
  serial=serial+1
- return {id='loot-'..now..'-'..serial,text='Coen finished acquiring a batch. Observed items include: '..table.concat(excerpt,', ')..'. '..(done.top and 'This includes newly acquired Unique-tier weapon or clothing equipment.'or '')..' Storage withdrawals have been excluded. The exact acquisition source is not established; do not invent a chest, theft, battle, purchase or discovery.'}
+ return {id='loot-'..now..'-'..serial,text='Coen finished acquiring a batch. '..text}
 end
 function M.tick(...)
  local ok,result=pcall(observe,...);if ok then return result end

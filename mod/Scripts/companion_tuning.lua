@@ -69,8 +69,8 @@ function M.guardAllegiance(m,playerStub,ownedStubs,now)
  -- the original campaign actors never enter this path.
  for _,s in pairs({target,forced})do
   if protected(s)and not AI.same(s,m.stub)then
-   if m.stub:GetAttitudeTowards(s)~=1 then m.stub:SetAttitudeTowards(s,1,false)end
-   if s:GetAttitudeTowards(m.stub)~=1 then s:SetAttitudeTowards(m.stub,1,false)end
+   if m.stub:GetAttitudeTowards(s)~=1 then m.stub:SetAttitudeTowards(s,1,true)end
+   if s:GetAttitudeTowards(m.stub)~=1 then s:SetAttitudeTowards(m.stub,1,true)end
   end
  end
  if badForced then m.board:SetForcedTarget(nil,0.0);m.issuedTarget=nil end

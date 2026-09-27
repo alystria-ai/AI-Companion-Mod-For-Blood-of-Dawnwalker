@@ -13,6 +13,16 @@ function M.updateOrder(members,cursor)
 end
 -- Stable instance IDs never change. Labels depend on the CURRENT population.
 -- Shared rear arcs instead of an ever-longer single-file tail.
+function M.formationRadius(m)
+ return m.formationRadius or m.capsuleRadius or 55
+end
+function M.creatureRadius(capsule,x,y)
+ -- Mesh bounds include the muzzle and rump that a narrow collision capsule omits.
+ -- Bound decorative wings/tails so they cannot spread the whole party indefinitely.
+ local radius=math.max(1,tonumber(capsule)or 55)
+ local extent=math.max(tonumber(x)or 0,tonumber(y)or 0)
+ return math.max(radius*1.6,math.min(radius*3,extent))
+end
 function M.layout(members,settings)
  local ordered,counts={},{}
  for _,m in pairs(members)do
@@ -20,7 +30,7 @@ function M.layout(members,settings)
  end
  table.sort(ordered,function(a,b)return a.ordinal<b.ordinal end)
  local seen={};local largest=55
- for _,m in ipairs(ordered)do largest=math.max(largest,m.capsuleRadius or 55)end
+ for _,m in ipairs(ordered)do largest=math.max(largest,M.formationRadius(m))end
  local compact=#ordered>=1 and #ordered<=5
  local pitch=compact and math.max(150,largest*2+40)or math.max(180,largest*2+70)
  pitch=math.max(largest*2+(compact and 35 or 60),pitch*((settings and settings.PartySpacing or 100)/100))
@@ -31,13 +41,13 @@ function M.layout(members,settings)
   local back,side=M.followOffset(i,pitch,#ordered,narrow);points[i]={back=back,side=side}
   -- Closeness compresses rear depth, not lateral space. Clamp the requested
   -- depth using capsule clearance so the two controls cannot overlap seats.
-  local playerClearance=(m.capsuleRadius or 55)+75
+  local playerClearance=M.formationRadius(m)+75
   if math.abs(back)>1 and side*side<playerClearance^2 then
    depth=math.max(depth,math.sqrt(playerClearance^2-side*side)/math.abs(back))
   end
   for j=1,i-1 do
    local x,y=back-points[j].back,side-points[j].side
-   local clearance=(m.capsuleRadius or 55)+(ordered[j].capsuleRadius or 55)+35
+   local clearance=M.formationRadius(m)+M.formationRadius(ordered[j])+35
    if math.abs(x)>1 and y*y<clearance^2 then depth=math.max(depth,math.sqrt(clearance^2-y*y)/math.abs(x))end
   end
  end

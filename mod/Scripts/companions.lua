@@ -5,6 +5,7 @@ local Config=require('companion_config')
 local Combat=require('companion_combat')
 local Engagement=require('engagement')
 local AI=require('ai_state')
+local Addons=require('addon_api')
 local Recovery=require('companion_recovery')
 local Formation=require('party_formation')
 local FormationNative=require('formation_native')
@@ -13,6 +14,7 @@ local Settings=require('companion_settings')
 local Appearance=require('companion_appearance')
 local Tuning=require('companion_tuning')
 local Protection=require('companion_protection')
+local CreatureOrders=require('creature_orders')
 local nativeCommands={};local nativeSequence=0
 local root=require('runtime_path')
 local M={};local members={};local byId={};local lastCommand='';local ack={'','',''}
@@ -51,6 +53,19 @@ local function layoutParty()
  return Recovery.layout(members,{FollowerCloseness=layoutCloseness,PartySpacing=layoutSpacing,NarrowFormation=layoutNarrow})
 end
 local function ready(m)return valid(m.actor)and AI.board(m.stub,m.board)end
+local function refreshCreatureSpacing(m,now)
+ if not m.addonOwner or m.addonControl or now<(m.creatureSpacingCheck or 0)then return false end
+ m.creatureSpacingCheck=now+1000
+ local capsule=m.actor.CapsuleComponent;local mesh=m.actor.Mesh
+ if not valid(capsule)or not valid(mesh)then return false end
+ local radius=capsule:GetScaledCapsuleRadius()
+ if m.formationRadius and math.abs(radius-(m.capsuleRadius or 0))<1 and same(mesh,m.creatureSpacingMesh)then return false end
+ local origin,extent={},{}
+ pcall(function()AI.find('/Script/Engine.Default__KismetSystemLibrary'):GetComponentBounds(mesh,origin,extent,{})end)
+ m.capsuleRadius=radius;m.formationRadius=Recovery.creatureRadius(radius,extent.X,extent.Y)
+ m.creatureSpacingMesh=mesh
+ return true
+end
 local function clean(s)return tostring(s or ''):gsub('[\r\n\t]',' '):sub(1,500)end
 local function read(name,max)local f=io.open(root..'/'..name,'rb');if not f then return ''end;local s=f:read(max or 65536)or '';f:close();return s end
 local function write(name,s)local f=assert(io.open(root..'/'..name,'wb'));f:write(s);f:close()end
@@ -58,6 +73,7 @@ local function log(s)print('[Dawnwalker Companions] '..clean(s)..'\n')end
 -- A save load is not world travel. Keep one primitive event counter across
 -- Lua reloads; the callback never touches pawns or invokes application code.
 local seenSaveLoad
+local ReactionPolicy=require('reaction_policy')
 local function saveLoaded()
  local key='DawnwalkerConvai.SaveLoadSignal'
  local signal=package.loaded[key]
@@ -69,6 +85,12 @@ local function saveLoaded()
   if not ok then log('Save-load notification unavailable; using player/clock transitions: '..tostring(why))end
  end
  local changed=seenSaveLoad~=nil and seenSaveLoad~=signal.generation
+ -- This primitive marker survives Lua reloads with the native load signal.
+ -- Clear once at game startup and once per saved-game load, even if that
+ -- notification arrives while application code is being replaced.
+ if signal.reactionGeneration~=signal.generation then
+  ReactionPolicy.resetForSaveLoad();signal.reactionGeneration=signal.generation
+ end
  seenSaveLoad=signal.generation
  return changed
 end
@@ -89,7 +111,7 @@ local function releaseSimulation(m)
  end
 end
 local function simulation(m)
- if not ready(m)or m.mode~='follow'or m.board.bIsDead or m.stub:IsInCinematicMode()or m.board.bMainBehaviorSuspended then releaseSimulation(m);return end
+ if not ready(m)or m.mode~='follow'or m.board.bIsDead or m.stub:IsInCinematicMode()or m.board.bMainBehaviorSuspended and not m.addonControl then releaseSimulation(m);return end
  local mesh=m.actor.Mesh
  if not valid(mesh)or not same(mesh:GetOwner(),m.actor)then releaseSimulation(m);return end
  local s=m.simulationLease
@@ -126,6 +148,8 @@ local function split(s,separator)local a={};for p in (s..separator):gmatch('(.-)
 local previous=read('companions-state.tsv'):match('^PARTY\t1\t(%d+)')
 if previous then epoch=tostring(math.max(tonumber(epoch),tonumber(previous)+1))end
 for _,c in ipairs(Config.characters)do byId[c.id]=c end
+-- Addon-only definitions are included in the live loader module manifest.
+for _,c in ipairs(require('creature_catalog'))do byId[c.id]=c end
 local function loc(actor)local p=actor:K2_GetActorLocation();return {X=p.X,Y=p.Y,Z=p.Z}end
 local function distance(a,b)return math.sqrt((a.X-b.X)^2+(a.Y-b.Y)^2+(a.Z-b.Z)^2)end
 local function stub(actor)return AI.find('/Script/RebelAI.Default__RebelAIBlueprintFunctionLibrary'):GetAIStub(actor)end
@@ -216,14 +240,16 @@ local function retreatSensing(m,enabled,enemies)
  for i=1,math.min(#enemies,64)do neutral(enemies[i])end
 end
 local function restoreAttitudes(m)
- for _,a in ipairs(m.attitudes or {})do pcall(function()if AI.board(a.source)and AI.board(a.target)and a.source:GetAttitudeTowards(a.target)==(a.set or 1) then a.source:SetAttitudeTowards(a.target,a.old,false)end end)end
+ for _,a in ipairs(m.attitudes or {})do pcall(function()if AI.board(a.source)and AI.board(a.target)and a.source:GetAttitudeTowards(a.target)==(a.set or 1) then a.source:SetAttitudeTowards(a.target,a.old,a.keep==true)end end)end
  m.attitudes={}
 end
 local function friendly(m,a,b)
  if same(a,b)then return end
  local old=a:GetAttitudeTowards(b)
- a:SetAttitudeTowards(b,1,false) -- ERebelAIAttitude::Friendly in the captured dump.
- m.attitudes[#m.attitudes+1]={source=a,target=b,old=old}
+ -- Keep this instance-to-instance friendship through native perception
+ -- refreshes, including creatures that are normally hostile to human NPCs.
+ a:SetAttitudeTowards(b,1,true) -- ERebelAIAttitude::Friendly, bKeep=true.
+ m.attitudes[#m.attitudes+1]={source=a,target=b,old=old,keep=true}
 end
 -- Civilian protection is scoped to summoned copies, never campaign actors.
 local function protectCivilian(m,enemies,now)
@@ -277,6 +303,8 @@ local function enemyPair(m,a,b)
  return true
 end
 local function dismiss(m,reason)
+ assert(not m.addonControl,'Dismount this creature before dismissing it')
+ if m.addonOwner then CreatureOrders.cancel(m)end
  releaseSimulation(m)
  releaseGaze(m.id)
  releaseCivilian(m)
@@ -290,6 +318,11 @@ local function dismiss(m,reason)
  releaseCombatMovement(m);releaseTravelIdle(m);releaseFollowPace(m);releaseHold(m);restoreRetreat(m);restoreEnemies(m);restoreAttitudes(m)
  if ready(m)then m.stub:RequestDespawn(true)end
  if m.actionPath then local result,why=Native.stop(m.actionPath);assert(result,why)end
+ -- Native destruction can be deferred. A released addon actor must not remain
+ -- visible or collide while the replacement starts loading.
+ if m.addonOwner and valid(m.actor)and not m.actor:IsActorBeingDestroyed()then
+  m.actor:SetActorHiddenInGame(true);m.actor:SetActorEnableCollision(false)
+ end
  if m.stubKey then ownedStubs[m.stubKey]=nil;m.stubKey=nil end
  members[m.id]=nil;log(m.name..': '..reason)
  layoutParty()
@@ -302,14 +335,15 @@ local function resetParty(reason,preserve)
  local saved,seen={},{}
  if preserve then
   for _,entry in ipairs(pendingWorldParty and pendingWorldParty.entries or {})do saved[#saved+1]=entry;seen[entry.id]=true end
-  for _,m in pairs(members)do if not seen[m.id]then
+  for _,m in pairs(members)do if not seen[m.id]and not m.addonOwner then
    saved[#saved+1]={id=m.id,characterId=m.characterId,ordinal=m.ordinal,mode=m.mode,spawnSlot=m.spawnSlot,replacedEpoch=m.replacedEpoch,
     appearancePreset=Appearance.capture(m.characterId,m.appearancePreset),defeated=m.defeated==true or m.health==0 or ready(m)and m.board.bIsDead,peaceSince=m.peaceSince}
   end end
   table.sort(saved,function(a,b)return a.ordinal<b.ordinal end)
  end
  if beforeReset then beforeReset('party-reset')end -- Drop selected-actor references before native destruction.
- if not preserve then nativeCommands={}end
+ if not preserve then nativeCommands={}
+ else local keep={};for _,c in ipairs(nativeCommands)do if not c.addonOwner then keep[#keep+1]=c end end;nativeCommands=keep end
  formation=Formation.new();formationFrame=formation.frame;partyDeparture=false;partyPositions={}
  updateCursor=0;lastFollowWake=nil;lastPartyCatchup=nil;lastReconnectPoll=nil;lastDiagnosticTick=nil;lastAnchorUpdate=nil;travelHeading=nil;playerStub=nil
  local old={};for _,m in pairs(members)do old[#old+1]=m end
@@ -528,7 +562,7 @@ local function updateGaze(pc,now,selected)
    and m.formationLease.settledEpoch==goal.epoch
   -- AIStopFollowing clears controller focus when arrival completes. Let that
   -- one-shot cleanup finish before attention takes ownership, not afterwards.
-  if m and not p.locked and settled and goal.distance<=150 then
+  if m and not m.addonOwner and not p.locked and settled and goal.distance<=150 then
    local gap=distance(p,playerPoint);local range=math.max(650,(m.followSpacing or 250)+200)
    if gap<=range and math.abs(p.Z-playerPoint.Z)<180 then
     local v=m.actor:GetVelocity()
@@ -577,11 +611,97 @@ function M.actor(id)
  if m.board:HasAnyUnbreakableActiveAction()then return nil,true end
  return m.actor,false
 end
+-- Owned creature mounts reuse this queue and native friendship setup. Their
+-- rider controller temporarily takes locomotion, never an unrelated world NPC.
+function M.addonMember(id,owner)
+ local m=members[id]
+ if not m or m.addonOwner~=owner then return end
+ return m
+end
+function M.addonTag(request,owner)
+ for _,c in ipairs(nativeCommands)do if c.request==request then c.addonOwner=owner;return true end end
+ local m=members[request];if m then m.addonOwner=owner;return true end
+ return false
+end
+function M.addonPending(id,owner)
+ for _,c in ipairs(nativeCommands)do
+  if c.addonOwner==owner and(c.request==id or c.op=='dismiss'and c.id==id)then return true end
+ end
+ return false
+end
+function M.addonCancel(owner)
+ local keep={}
+ for _,c in ipairs(nativeCommands)do
+  if c.addonOwner~=owner then keep[#keep+1]=c
+  elseif c.op=='spawn' then
+   for _,s in ipairs(summons)do if s.id==c.request then s.phase='failed';s.message='Creature session ended';break end end
+  else local m=M.addonMember(c.id,owner);if m then m.addonDismissPending=nil;m.addonDismissError='Creature session ended'end end
+ end
+ nativeCommands=keep
+end
+function M.addonDismiss(id,owner)
+ local m=M.addonMember(id,owner)
+ if not m then
+  for i,c in ipairs(nativeCommands)do if c.addonOwner==owner and c.op=='spawn'and c.request==id then
+   table.remove(nativeCommands,i)
+   for _,s in ipairs(summons)do if s.id==id then s.phase='failed';s.message='Summon cancelled';break end end
+   return true
+  end end
+  return true -- The service has already verified ownership of an absent actor.
+ end
+ assert(not m.addonControl,'Dismount this creature before dismissing it')
+ if m.addonDismissPending then return true end
+ assert(#nativeCommands<64,'Please wait for queued commands')
+ m.addonDismissPending=true;m.addonDismissError=nil
+ nativeCommands[#nativeCommands+1]={op='dismiss',id=id,addonOwner=owner};return true
+end
+function M.addonControlValid(id,owner)
+ local m=M.addonMember(id,owner);local s=m and m.addonControl
+ return s~=nil and ready(m)and not m.actor:IsActorBeingDestroyed()and not m.board.bIsDead
+  and AI.sameInstance(m.actor,s.actor)and AI.sameInstance(player,s.player)and AI.sameInstance(m.actor:GetWorld(),s.world)
+  and not m.stub:IsInCinematicMode()and not m.stub:IsInCombat()and not m.board.Combat.bInCombat
+  and not (AI.board(playerStub)and (playerStub:IsInCombat()or playerStub.AIBoard.Combat.bInCombat))
+  and not m.board:HasAnyUnbreakableActiveAction()and AI.ownsRiding(s,m.stub,m.board)==true
+end
+function M.addonControl(id,owner,on,retired)
+ local m=assert(M.addonMember(id,owner),'Owned creature no longer exists')
+ if not on then
+  if m.addonControl then
+   if not retired then AI.releaseRiding(m.addonControl)end
+   m.addonControl=nil
+  end
+  if not retired then
+   -- Riding replaces a previous Stop order. Once Coen is safely detached,
+   -- return to ordinary allied combat and following, never a forced attack.
+   m.mode='follow';m.talkFollowing=true;m.returning=nil;m.noEngageUntil=nil
+   restoreRetreat(m);restoreEnemies(m)
+  end
+  m.lastTick=nil;m.lastFollowTick=nil;m.status='Following Coen';return true
+ end
+ assert(ready(m)and not m.board.bIsDead and not m.actor:IsActorBeingDestroyed(),'Creature is not ready')
+ assert(valid(player)and AI.sameInstance(player:GetWorld(),m.actor:GetWorld()),'Creature belongs to a retired world')
+ assert(not (AI.board(playerStub)and (playerStub:IsInCombat()or playerStub.AIBoard.Combat.bInCombat)),'Finish combat before riding')
+ if m.addonControl then assert(M.addonControlValid(id,owner),'Previous rider control must be restored first');return true end
+ assert(not m.stub:IsInCombat()and not m.board.Combat.bInCombat and not m.stub:IsInCinematicMode()and not m.board:HasAnyUnbreakableActiveAction(),'Wait until the creature is idle')
+ CreatureOrders.cancel(m)
+ releaseFormation(m);releaseGaze(m.id);releaseCombatMovement(m);releaseFollowPace(m);releaseHold(m)
+ local state={actor=m.actor,player=player,world=m.actor:GetWorld()}
+ m.addonControl=state
+ local acquired,reason=AI.acquireRiding(m.stub,m.board,state,m.controller)
+ assert(acquired,reason or 'Native creature AI is busy')
+ m.mountError=nil;m.status='Mounted control';return true
+end
+local function registeredReaction(m)
+ if not m.addonOwner or not ready(m)or m.board.bIsDead or m.stub:IsInCinematicMode()then return false end
+ local e=Addons.identity(m.actor)
+ return e and not e.silentReplies and not e.localActionsOnly and not e.cameraLease
+end
 function M.ambientSpeaker(randomChoice)
  if not valid(player)then return end
  local best,bestDistance;local candidates={}
  for _,m in pairs(members)do
-  if conversationCandidate(m)and m.definition.chat~=false and not m.board.Combat.bInCombat and not m.board:HasAnyUnbreakableActiveAction()then
+  if (conversationCandidate(m)or registeredReaction(m)and not m.board.bMainBehaviorSuspended)
+   and not m.stub:IsInCombat()and not m.board.Combat.bInCombat and not m.board:HasAnyUnbreakableActiveAction()then
    local d=distance(loc(m.actor),loc(player))
    if d<=1200 then candidates[#candidates+1]=m.actor;if not bestDistance or d<bestDistance then best=m.actor;bestDistance=d end end
   end
@@ -591,6 +711,23 @@ function M.ambientSpeaker(randomChoice)
 end
 function M.identity(actor)
  for _,m in pairs(members)do if same(m.actor,actor)then return {name=m.name,definition=m.definition.path,characterId=m.characterId,chat=m.definition.chat~=false}end end
+end
+function M.battleSpeaker()
+ if not valid(player)then return end
+ local candidates={}
+ for _,m in pairs(members)do
+  if (m.definition.chat~=false or registeredReaction(m))and ready(m)and not m.board.bIsDead and not m.stub:IsInCinematicMode()
+   and distance(loc(m.actor),loc(player))<=2000 then candidates[#candidates+1]=m.actor end
+ end
+ if #candidates>0 then return candidates[math.random(#candidates)]end
+end
+function M.selectForReaction(actor)
+ for _,m in pairs(members)do if same(m.actor,actor)then
+  if not ready(m)or m.board.bIsDead or m.stub:IsInCinematicMode()then return false end
+  -- A bark never acquires movement, focus, posture or a facial animation layer.
+  m.talkFollowing=true;return true
+ end end
+ return false
 end
 function M.selectForChat(actor,takeFace)
  for _,m in pairs(members)do if same(m.actor,actor)then
@@ -859,7 +996,7 @@ local function catchup(m,now)
   log(m.name..' caught up from '..math.floor(gap/100)..' metres')
  else m.catchupNote='Native collision check declined arrival'end
 end
-local function spawn(id,now,request,preset)
+local function spawn(id,now,request,preset,addonOwner)
  assert(not members[request],'Spawn request already exists')
  local c=assert(byId[id],'Unknown companion')
  local used={};for _,other in pairs(members)do if other.spawnSlot then used[other.spawnSlot]=true end end
@@ -874,7 +1011,7 @@ local function spawn(id,now,request,preset)
  spawnOrdinal=spawnOrdinal+1
  local label=id=='matriarch'and 'Bakr-Erga'or id=='marat'and 'Crake'or c.name
  local m={id=request,characterId=id,archetype=c.archetype~=''and c.archetype or id,label=label,baseName=label,ordinal=spawnOrdinal,name=c.name,definition=c,loading='character',spawnSlot=slot,position=position,yaw=yaw,created=now,mode='follow',status='Loading character',detail='',attitudes={}}
- m.appearancePreset=Appearance.capture(id,preset)
+ m.addonOwner=addonOwner;m.appearancePreset=Appearance.capture(id,preset)
  members[request]=m -- A distinct game actor; the Convai identity stays c.id.
  layoutParty()
  m.request=request
@@ -954,11 +1091,12 @@ local function pollLoading(m,now)
  summonStage(m,'spawning','Bringing companion into the world')
 end
 local function replaceMissingMember(m,now)
+ local addonOwner=m.addonOwner
  local id,character,ordinal,mode,epoch=m.id,m.characterId,m.ordinal,m.mode,m.travelEpoch
  local preset=Appearance.capture(character,m.appearancePreset)
  dismiss(m,'Recreating an unavailable travel owner')
- spawn(character,now,id,preset)
- local replacement=members[id];replacement.ordinal=ordinal;replacement.mode=mode;replacement.replacedEpoch=epoch
+ spawn(character,now,id,preset,addonOwner)
+ local replacement=members[id];replacement.ordinal=ordinal;replacement.mode=mode;replacement.replacedEpoch=epoch;replacement.addonOwner=addonOwner
  layoutParty()
  log(replacement.name..' owner recreated after travel streaming did not recover')
 end
@@ -1158,6 +1296,22 @@ function M.conversationAction(actor,name)
  end end
  return nil -- World NPC actions use the ordinary conversation adapter.
 end
+local function addonContext(m,now,enemies)
+ return {player=player,playerStub=playerStub,now=now,enemies=enemies or enemyCache,eligible=eligible,apply=apply,
+  project=project,combatController=combatController,
+  prepare=function(member)
+   releaseHold(member);releaseFormation(member);releaseGaze(member.id);releaseFollowPace(member);releaseCombatMovement(member)
+  end,
+  dismiss=function(id)return M.addonDismiss(id,m.addonOwner)end}
+end
+function M.addonAction(id,owner,op)
+ local m=assert(M.addonMember(id,owner),'Owned creature no longer exists')
+ assert(not m.addonControl,'Dismount before giving this order')
+ assert(ready(m)and valid(player)and AI.sameInstance(player:GetWorld(),m.actor:GetWorld()),'Creature is unavailable')
+ local ok,why=CreatureOrders.action(m,op,addonContext(m,lastGameTime or m.now or 0))
+ if ok then m.talkFollowing=true end
+ return ok,why
+end
 function M.view()
  local rows={};for _,m in pairs(members)do rows[#rows+1]={id=m.id,name=m.name,status=m.status,ordinal=m.ordinal or 0,characterId=m.characterId,loading=m.loading~=nil or m.created~=nil,defeated=m.defeated==true}end
  table.sort(rows,function(a,b)return a.ordinal<b.ordinal end)
@@ -1175,13 +1329,30 @@ function M.enqueue(op,id)
  end
  nativeCommands[#nativeCommands+1]={op=op,id=id,request=request,appearancePreset=op=='spawn'and Appearance.capture(id)or nil};lastFault=nil;return request
 end
+function M.enqueueCreature(id,owner)
+ local d=assert(byId[id],'Unknown creature model')
+ assert(d.chat==false,'Only creature definitions are eligible')
+ local allowed=false
+ for _,word in ipairs({'wolf','bear','boar','dog','gargoyle','tatzelwurm','mare','balaur'})do
+  if id:find(word,1,true)then allowed=true;break end
+ end
+ assert(allowed,'This character is not a rideable creature candidate')
+ local request=M.enqueue('spawn',id);assert(M.addonTag(request,owner),'Creature ownership could not be recorded');return request
+end
 local function nativeCommand(now,selected)
  local c=table.remove(nativeCommands,1);if not c then return end
  if c.op=='spawn' then
-  local ok,why=pcall(spawn,c.id,now,c.request,c.appearancePreset)
+  local ok,why=pcall(spawn,c.id,now,c.request,c.appearancePreset,c.addonOwner)
   if not ok then
    for _,s in ipairs(summons)do if s.id==c.request then s.phase='failed';s.message=clean(why);break end end
    lastFault=clean(why);log('Summon failed: '..lastFault)
+  end
+ elseif c.addonOwner and c.op=='dismiss'then
+  local m=M.addonMember(c.id,c.addonOwner)
+  if m then
+   m.addonDismissPending=nil
+   local ok,why=pcall(function()dismiss(m,'Dismissed')end)
+   if not ok then m.addonDismissError=clean(why);lastFault=m.addonDismissError end
   end
  elseif c.op=='dismiss_all'then for _,m in pairs(members)do assert(not same(m.actor,selected),'Close conversation first');dismiss(m,'Dismissed')end
  else local m=assert(members[c.id],'Companion no longer present');assert(not same(m.actor,selected),'Close conversation first');dismiss(m,'Dismissed')end
@@ -1230,6 +1401,8 @@ local function command(now,selected)
 end
 local function update(m,now,enemies,selected)
  m.now=now
+ if m.addonControl then m.status='Mounted control';return end
+ if m.addonOrder and(not ready(m)or m.board.bIsDead)then CreatureOrders.cancel(m)end
  if travelKind then m.travelEpoch=travelEpoch end
  if m.formationLease and m.formationLease.owned and (not ready(m)or m.board.bIsDead or m.stub:IsInCombat()or m.board.Combat.bInCombat or m.stub:IsInCinematicMode()or m.board:HasAnyUnbreakableActiveAction())then releaseFormation(m)end
  if m.fault then return end
@@ -1240,13 +1413,13 @@ local function update(m,now,enemies,selected)
   m.status=battle and 'Fallen · waiting for combat to end'or 'Fallen · recovering'
   if Tuning.canRespawn(m,now,battle,true,Settings.respawnDelay)then
    if same(m.actor,selected)and beforeReset then beforeReset()end
-   local id,character,ordinal=m.id,m.characterId,m.ordinal
+   local id,character,ordinal,addonOwner=m.id,m.characterId,m.ordinal,m.addonOwner
    local preset=Appearance.capture(character,m.appearancePreset)
-   dismiss(m,'Returning after combat');spawn(character,now,id,preset);members[id].ordinal=ordinal;layoutParty()
+   dismiss(m,'Returning after combat');spawn(character,now,id,preset,addonOwner);members[id].ordinal=ordinal;layoutParty()
   end
   return
  end
- if not same(m.actor,selected)and (not ready(m)or not m.board.bIsDead and not m.stub:IsInCinematicMode()and not m.board.bMainBehaviorSuspended)then measured('spawn anchor '..m.name,syncSpawnAnchor,m,now)end
+ if (m.addonOwner or not same(m.actor,selected))and (not ready(m)or not m.board.bIsDead and not m.stub:IsInCinematicMode()and not m.board.bMainBehaviorSuspended)then measured('spawn anchor '..m.name,syncSpawnAnchor,m,now)end
  if m.loading then pollLoading(m,now);return end
  if not m.actor then pollSpawn(m,now);return end
  if not ready(m)then if measured('reconnect '..m.name,reconnect,m,now)=='replace'then replaceMissingMember(m,now)end;return end
@@ -1272,10 +1445,12 @@ local function update(m,now,enemies,selected)
   end
   m.status='Restoring allegiance';return
  end
- if same(m.actor,selected)and not m.talkFollowing then releaseCombatMovement(m);releaseFollowPace(m);m.status='In conversation';m.conversationAt=m.conversationAt or now;return end
+ if not m.addonOwner and same(m.actor,selected)and not m.talkFollowing then releaseCombatMovement(m);releaseFollowPace(m);m.status='In conversation';m.conversationAt=m.conversationAt or now;return end
  if m.stub:IsInCinematicMode()or m.board.bMainBehaviorSuspended and not m.hold then
+  if m.addonOrder then CreatureOrders.cancel(m)end
   releaseCombatMovement(m);releaseTravelIdle(m);releaseFollowPace(m);releaseHold(m);restoreRetreat(m);restoreEnemies(m);m.status='Native scene owns AI';m.conversationAt=m.conversationAt or now;return
  end
+ if m.addonOwner and CreatureOrders.tick(m,now,addonContext(m,now,enemies))then return end
  -- Following, retreat distance and native exit acknowledgement are cheap and
  -- run at 250 ms; enemy discovery remains shared and throttled to 750 ms.
  m.lastTick=now;m.conversationAt=nil
@@ -1419,6 +1594,7 @@ function M.tick(pc,selected)
    -- Quickload can reuse the same world name. Never carry its old party or
    -- queued summons into the newly loaded save, even if its time is later.
    resetParty('Dismissed after save / player reset')
+   ReactionPolicy.resetForSaveLoad()
    pendingWorldParty=nil;summons={};nativeCommands={};travelState={epoch=0}
    epoch=tostring(tonumber(epoch)+1);playerEpoch=playerEpoch+1;lastGameTime=nil;subsystem=nil;enemyCache={};lastEnemyQuery=nil
   elseif worldName and worldName~=currentWorld then
@@ -1461,7 +1637,11 @@ function M.tick(pc,selected)
   local capture=fighting and not Combat.battles.current and not Combat.battles.horde and not Combat.battles.afterHorde
   if capture or Combat.battles.witnessRequested then
    local witnesses={}
-   for _,m in pairs(members)do if ready(m)and not m.board.bIsDead and distance(loc(m.actor),playerPoint)<6000 then witnesses[m.characterId]=true end end
+   for _,m in pairs(members)do if ready(m)and not m.board.bIsDead and distance(loc(m.actor),playerPoint)<6000 then
+    witnesses[m.characterId]=true
+    local e=m.addonOwner and Addons.identity(m.actor)
+    if e then witnesses['addon:'..e.addon..':'..e.addonActor..':'..e.profileId]=true end
+   end end
    Combat.battles.witnesses=witnesses;Combat.battles.witnessRequested=nil
   end
   if capture then
@@ -1528,11 +1708,15 @@ function M.tick(pc,selected)
   end
   -- Read each live position once for the shared space coordinator. A stationary
   -- conversation/scene/combat participant never gets an avoidance MoveTo.
+  local creatureLayoutChanged=false
+  for _,m in pairs(members)do if m.addonOwner and ready(m)and refreshCreatureSpacing(m,now)then creatureLayoutChanged=true end end
+  if creatureLayoutChanged then layoutParty()end
   partyPositions={}
   for _,m in pairs(members)do if ready(m)then
-   local p=loc(m.actor);p.id=m.id;p.ordinal=m.ordinal;p.radius=m.capsuleRadius or 55
+   local p=loc(m.actor);p.id=m.id;p.ordinal=m.ordinal;p.radius=Recovery.formationRadius(m)
+   p.creature=m.addonOwner~=nil;p.settledEpoch=p.creature and m.formationLease and m.formationLease.settled and m.formationLease.settledEpoch
    p.position={X=p.X,Y=p.Y,Z=p.Z};p.slot=m.formationSlot;p.pitch=m.formationPitch;p.count=m.formationCount;p.distanceScale=m.formationDistanceScale;p.narrow=m.formationNarrow
-   p.locked=m.mode~='follow'or same(m.actor,selected)and not m.talkFollowing or m.hold~=nil
+   p.locked=m.mode~='follow'or not m.addonOwner and same(m.actor,selected)and not m.talkFollowing or m.hold~=nil or m.addonControl~=nil or m.addonOrder~=nil
     or m.stub:IsInCombat()or m.board.Combat.bInCombat or m.stub:IsInCinematicMode()
     or m.board.bMainBehaviorSuspended or m.board.bIsDead or m.board:HasAnyUnbreakableActiveAction()
     or m.combat and m.combat.phase~='travel'

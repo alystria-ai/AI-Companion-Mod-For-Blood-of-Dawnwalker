@@ -31,6 +31,7 @@ const setup=`
  local function playerController()return pc end
  local UE={GetKismetMathLibrary=function()return {GetForwardVector=function()return forward end}end}
  local NativeMenu={close=function()end}
+ local Addons={identity=function()return nil end}
  local Companions={identity=function(a)if a.owned then return {definition='NPCDef_'..a:GetFullName()}end end}
  Targeting.identify=function(a)return {definition=a.definition or 'NPCDef_'..a:GetFullName()}end
  local candidates={};FindAllOf=function()return candidates end

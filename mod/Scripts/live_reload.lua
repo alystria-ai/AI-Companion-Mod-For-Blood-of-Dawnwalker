@@ -1,6 +1,39 @@
 -- Stable callback router: swapping application code never registers duplicate keys/timers.
 local M={}
-M.modules={'app','fast_travel','reaction_policy','loot_comments','skills_anywhere','auto_loot','player_passives','player_abilities','ambient_comments','config','targeting','engagement','face_inspector','jali_probe','jali_preview','face_graph','companion_config','companion_native','companions','ui_input','companion_combat','ai_state','companion_recovery','companion_damage','party_formation','formation_native','companion_settings','companion_appearance','companion_romance','first_person_camera','horde_catalog','horde_native','horde_mode','companion_tuning','companion_menu','companion_protection'}
+M.modules={'app','native_subtitles','creature_catalog','creature_service','creature_orders','mount_failsafe','battle_comments','addon_api','ui_localization','ui_translations','ui_font','fast_travel','reaction_policy','loot_comments','skills_anywhere','auto_loot','player_passives','player_abilities','ambient_comments','config','targeting','engagement','face_inspector','jali_probe','jali_preview','face_graph','companion_config','companion_native','companions','ui_input','companion_combat','ai_state','companion_recovery','companion_damage','party_formation','formation_native','companion_settings','companion_appearance','companion_romance','first_person_camera','horde_catalog','horde_native','horde_mode','companion_tuning','companion_menu','companion_protection'}
+-- Resolve the complete local dependency closure before constructing a candidate.
+-- Newly required files must not fall through to UE4SS's separate bootstrap
+-- directory just because an older manifest omitted their names.
+local dependencyCache={}
+function M.snapshot(source,read)
+    read=read or function(name)
+        local f=io.open(source..'/'..name..'.lua','r')
+        if not f then return nil end
+        local text=f:read('*a');f:close();return text
+    end
+    local files,parts,pending,seen={},{},{},{}
+    local external={UEHelpers=true,runtime_path=true,live_reload=true}
+    local function add(name)
+        if not seen[name]and not external[name]then seen[name]=true;pending[#pending+1]=name end
+    end
+    for _,name in ipairs(M.modules)do add(name)end
+    local index=1
+    while index<=#pending do
+        local name=pending[index];index=index+1
+        local text=read(name)
+        if not text then return nil,'Missing local Lua module: '..name..'.lua; finish installing the Scripts package.'end
+        files[name]=text
+        local cached=dependencyCache[name]
+        if not cached or cached.text~=text then
+            cached={text=text,names={}};dependencyCache[name]=cached
+            for dependency in text:gmatch('%f[%a_]require%s*%(?%s*[\'"]([%w_]+)[\'"]')do cached.names[#cached.names+1]=dependency end
+        end
+        for _,dependency in ipairs(cached.names)do add(dependency)end
+    end
+    table.sort(pending)
+    for _,name in ipairs(pending)do parts[#parts+1]=name..':'..#files[name]..':'..files[name]end
+    return files,table.concat(parts,'\0')
+end
 function M.new(base,externalRequire,queue,report)
     local self={active=nil,last=nil,observed=nil,rejected=nil,pending=false}
     M.router=self -- Version migrations can hand off a cached module explicitly.
@@ -28,7 +61,7 @@ function M.new(base,externalRequire,queue,report)
             if not fn then report('Reload rejected: '..tostring(err));return false end
         end
         local ok,err=pcall(function()env.require('app')end)
-        if not ok then report('Reload initialization failed; previous version retained: '..tostring(err));return false end
+        if not ok then report('Reload initialization failed; '..(self.active and 'previous version retained: 'or 'gameplay not started: ')..tostring(err));return false end
         local old=self.active
         if old and old.cleanup then
             ok,err=pcall(old.cleanup)

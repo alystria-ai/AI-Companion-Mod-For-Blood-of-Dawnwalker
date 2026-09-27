@@ -18,3 +18,9 @@ test('actions require active matching generation, allowlisted verbs and matching
  queue.add(target,[command]);assert.equal(queue.pending.length,0);
  queue.add(target,[{...command,id:'event-2'}]);assert.equal(queue.current({...target,generation:8}),undefined);
 });
+test('creature verbs require a verified add-on profile which explicitly permits them',()=>{
+ const queue=new ActionQueue(),base={generation:7,active:true},command={generation:7,id:'attack',name:'Attack Nearby Enemies'};
+ queue.add(base,[command]);queue.add({...base,addon:'creature'},[command]);assert.equal(queue.pending.length,0);
+ queue.add({...base,addon:'creature',externalProfile:{actions:['Leave']}},[command]);assert.equal(queue.pending.length,0);
+ queue.add({...base,addon:'creature',externalProfile:{actions:['Attack Nearby Enemies']}},[command]);assert.equal(queue.pending.length,1);
+});

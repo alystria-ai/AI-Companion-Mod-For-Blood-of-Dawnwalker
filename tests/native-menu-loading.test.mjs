@@ -1,8 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
 const source=readFileSync('mod/Scripts/companion_menu.lua','utf8');
+const localization=['ui_translations','ui_localization','ui_font'].map(name=>`package.preload.${name}=function()\n${readFileSync(`mod/Scripts/${name}.lua`,'utf8')}\nend`).join('\n');
 function run(body){const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);try{const rc=lauxlib.luaL_dostring(L,to_luastring(`
  for _,name in ipairs({'ai_state','ui_input','companions','companion_settings','companion_appearance','horde_mode'})do package.preload[name]=function()return {}end end
  package.preload.runtime_path=function()return 'test'end
+ ${localization}
  local M=(function() ${source} end)()
  ${body}`));assert.equal(rc,lua.LUA_OK,rc===lua.LUA_OK?'':to_jsstring(lua.lua_tostring(L,-1)));}finally{lua.lua_close(L);}}
 test('each rapid summon has independent progress; one arrival cannot finish the batch',()=>run(`

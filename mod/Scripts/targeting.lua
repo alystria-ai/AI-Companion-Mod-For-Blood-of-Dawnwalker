@@ -50,6 +50,89 @@ function M.identify(actor)
     return result
 end
 local cachedJournal=nil
+function M.resetJournal()cachedJournal=nil end
+local function liveJournal()
+    if cachedJournal and cachedJournal:IsValid()then return cachedJournal end
+    for _,candidate in ipairs(FindAllOf('Journal')or{})do
+        if candidate:IsValid()and candidate:GetFullName():find('/Engine/Transient.',1,true)then
+            if cachedJournal then cachedJournal=nil;error('Multiple live journals')end
+            cachedJournal=candidate
+        end
+    end
+    return cachedJournal
+end
+-- Event-only context: inspect the live dialogue owner and revealed journal
+-- objectives. Never load quest assets, hidden stages or unchosen endings.
+function M.observationContext(dialogue)
+    local rows={};local function add(s)
+        s=tostring(s):gsub('[\r\n\t]',' ')
+        if #s>600 then local cut=utf8.offset(s,0,601);s=s:sub(1,cut-1)..'...'end
+        rows[#rows+1]=s
+    end
+    local function valid(o)return o and o:IsValid()end
+    local source=dialogue.TemplateAsset
+    local path=(valid(source)and source or dialogue):GetFullName()
+    local ownerPath=''
+    pcall(function()local owner=dialogue:GetOwner();if valid(owner)then ownerPath=owner:GetFullName()end end)
+    -- IDs are matched as full authored quest tokens, never translated words.
+    local tokens={}
+    for token in (path..' '..ownerPath):lower():gmatch('[%a]+%d+')do
+        if token:match('^q%d+$')or token:match('^sq%d+$')or token:match('^oa%d+$')or token:match('^poi%d+$')then tokens[token]=true end
+    end
+    local journal=liveJournal();if not valid(journal)then return 'Observation journal context unavailable.'end
+    local tracked=journal:GetTrackedQuest();local matches={};local all={}
+    local states=StaticFindObject('/Script/Quest.EQuestState')
+    states:ForEachName(function(name,value)
+        local label=name:ToString():match('([^:]+)$')
+        if label=='EQS_Active'or label=='EQS_Success'or label=='EQS_Failure'then
+            local quests={};journal:GetQuests(value,quests)
+            for i=1,math.min(#quests,512)do
+                local q=quests[i]
+                if valid(q)then
+                    local id=q.InstanceId:ToString():lower()
+                    local stable=id
+                    if #id>32 and id:sub(-32):match('^%x+$')then stable=id:sub(1,-33)end
+                    stable=stable:gsub('^journal_','')
+                    local token=stable:match('^([%a]+%d+)$')or stable:match('^([%a]+%d+)_')
+                    local assetToken=q:GetFullName():lower():match('journal_([%a]+%d+)[_%.:]')
+                    local linked=tokens[assetToken or token]==true
+                    if linked and #matches<2 then matches[#matches+1]={q=q,state=label}end
+                    -- This umbrella objective stays tracked throughout the game
+                    -- and is not useful context for incidental exploration.
+                    if not id:find('dawnwalker_main',1,true)and valid(tracked)and q:GetAddress()==tracked:GetAddress()then all.tracked={q=q,state=label}end
+                end
+            end
+        end
+    end)
+    local function describe(record,relation)
+        local q=record.q;add(relation..': '..q.Title:ToString()..' ('..record.state:gsub('EQS_','')..').')
+        local emitted=0;local descriptionAdded=false
+        for pass=1,2 do
+            for i=math.min(#q.Objectives,256),1,-1 do
+                local o=q.Objectives[i]
+                if(pass==1 and o.State==1)or(pass==2 and(o.State==2 or o.State==3))then
+                    local text=o.Text:ToString();if text~=''then
+                        add((o.State==1 and 'Visible active objective: 'or o.State==2 and 'Visible completed objective: 'or 'Visible failed objective: ')..text)
+                        if o.State==1 and not descriptionAdded then
+                            local description=o.ActiveObjectiveDescription:ToString()
+                            if description~=''then add('Current revealed journal description: '..description);descriptionAdded=true end
+                        end
+                        emitted=emitted+1;if emitted>=4 then break end
+                    end
+                end
+            end
+            if emitted>=4 then break end
+        end
+    end
+    if #matches==0 then add('No exact quest link is established for this observation. The shared exploration graph does not identify a unique object; use the actual spoken words and confirmed region, without inventing a landmark name.')end
+    for _,r in ipairs(matches)do describe(r,'Quest linked by the authored dialogue or its owner')end
+    if all.tracked then
+        local duplicate=false;for _,r in ipairs(matches)do if r.q:GetAddress()==all.tracked.q:GetAddress()then duplicate=true end end
+        if not duplicate then describe(all.tracked,'Currently tracked journal quest, background only, not a confirmed source of this remark')end
+    end
+    add('Journal details describe Coen\'s visible progress, not proof that the companion witnessed it. Keep private knowledge subject to the character-specific facts supplied separately.')
+    return table.concat(rows,'\n')
+end
 function M.questSnapshot()
     local journal=cachedJournal
     if not journal or not journal:IsValid()then
@@ -67,6 +150,7 @@ function M.questSnapshot()
     local states={}
     enum:ForEachName(function(name,value)states[#states+1]={name=name:ToString(),value=value}end)
     local lines={}
+    local tracked=journal:GetTrackedQuest()
     for _,state in ipairs(states)do
         local label=state.name:match('([^:]+)$')or state.name
         if not label:lower():find('max',1,true)then
@@ -85,7 +169,18 @@ function M.questSnapshot()
                         end
                     end
                     local function clean(s)return (tostring(s):gsub('[\r\n\t]',' '))end
-                    lines[#lines+1]=table.concat({clean(quest.InstanceId:ToString()),clean(label),clean(title),clean(ending)},'\t')
+                    local objectives={}
+                    if label=='EQS_Active'and tracked and tracked:IsValid()and quest:GetAddress()==tracked:GetAddress()then
+                        for j=1,math.min(#quest.Objectives,256)do
+                            local o=quest.Objectives[j]
+                            if o.State==1 and #objectives<4 then
+                                local text=o.Text:ToString();local description=o.ActiveObjectiveDescription:ToString()
+                                if text~=''then objectives[#objectives+1]=text..(description~=''and ': '..description or '')end
+                            end
+                        end
+                    end
+                    local current=tracked and tracked:IsValid()and quest:GetAddress()==tracked:GetAddress()
+                    lines[#lines+1]=table.concat({clean(quest.InstanceId:ToString()),clean(label),clean(title),clean(ending),current and '1'or '0',clean(table.concat(objectives,'; '))},'\t')
                 end
             end
         end

@@ -1,4 +1,4 @@
-# LLM NPC Companions System 0.5.0 - page draft
+# AI NPC Companions System 0.5.0 - page draft
 
 Summon companions such as Anca, Lacra, Brencis, Bakir, Xanthe and Crake to follow you and fight alongside Coen. Talk to them through text or voice, with spoken replies, subtitles and lipsync. Play in first-person POV, fight waves of enemies and bosses in Horde mode, customise eye, hair and armour colours, and have romantic conversations with Anca and Lacra. No Convai account or command-line setup is needed.
 

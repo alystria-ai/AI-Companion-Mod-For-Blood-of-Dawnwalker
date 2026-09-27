@@ -3,8 +3,10 @@
 -- controller's view target only during ordinary player-controlled gameplay.
 local AI=require('ai_state')
 local Settings=require('companion_settings')
+local Addons=require('addon_api')
 local M={}
 local lease
+local riderMask
 local retryAt=0
 local menuHeld=false
 local menuResumeUntil=0
@@ -48,9 +50,10 @@ local function viewPosition(pawn,rotation)
  return {X=actor.X+forward*math.cos(yaw),Y=actor.Y+forward*math.sin(yaw),Z=actor.Z+eye+3+height}
 end
 
-local function obstructsCamera(component,pawn)
+local function obstructsCamera(component,pawn,riding)
  if same(component,safe(function()return pawn.Mesh end))then return true end
  local name=component:GetFName():ToString():lower()
+ if riding and(name=='hand mesh'or name:find('eappearanceslot::gauntlets',1,true))then return true end
  return name=='face mesh'or name=='hair mesh'or name=='beard'or name=='eyebrows'or name=='torso mesh'
   or name:find('eappearanceslot::headgear',1,true)~=nil
   or name:find('eappearanceslot::torso',1,true)~=nil
@@ -82,7 +85,7 @@ local function maskBody(s)
  local components=s.pawn:K2_GetComponentsByClass(class)
  for i=1,math.min(#components,128)do
   local component=components[i]
-  if valid(component)and same(component:GetOwner(),s.pawn)and obstructsCamera(component,s.pawn)then
+  if valid(component)and same(component:GetOwner(),s.pawn)and obstructsCamera(component,s.pawn,s.riding)then
    local ok,err=pcall(function()
     local key=component:GetFullName();local item=s.visibility[key]
     if not item or not same(item.component,component)then
@@ -158,7 +161,10 @@ local function release()
  safe(function()if valid(s.gaze)then s.gaze:K2_DestroyActor()end end)
  safe(function()if valid(s.camera)then s.camera:K2_DestroyActor()end end)
 end
-M.release=release
+local function releaseRiderMask()
+ if riderMask then restoreBody(riderMask);riderMask=nil end
+end
+function M.release()release();releaseRiderMask();Addons.clearCameraAck()end
 function M.active()return lease~=nil end
 local function updateGazePosition(s)
  if not valid(s.gaze)then return end
@@ -263,6 +269,29 @@ local function acquire(pc,pawn,world,manager,follow)
 end
 
 function M.tick(pc,enabled,suspended)
+ local mounted=Addons.cameraOwner(pc)
+ if mounted then
+  -- The add-on waits for this ACK before touching the view target or player.
+  -- Relinquish both our camera and component mask before granting ownership.
+  release();retryAt=0;menuHeld=false;menuResumeUntil=0
+  -- The add-on owns the viewpoint, but shares our player-body visibility guard.
+  -- Do not hide Coen during preparation or when a native camera takes over.
+  local ok=pcall(function()
+   local pawn=pc.Pawn;local view=pc:GetViewTarget()
+   local riding=valid(pawn)and valid(view)and valid(mounted.actor)
+    and same(pawn:GetAttachParentActor(),mounted.actor)and same(view:GetOwner(),mounted.actor)
+    and view:ActorHasTag(FName('CreatureMountFirstPerson'))
+   if not riding then releaseRiderMask();return end
+   if riderMask and not same(riderMask.pawn,pawn)then releaseRiderMask()end
+   riderMask=riderMask or {pawn=pawn,riding=true}
+   maskBody(riderMask)
+  end)
+  if not ok then releaseRiderMask()end
+  Addons.ackCamera(mounted,pc);status('Camera leased to '..mounted.addon)
+  return false
+ end
+ releaseRiderMask()
+ Addons.clearCameraAck()
  if not enabled then release();retryAt=0;menuHeld=false;menuResumeUntil=0;status('First-person camera Off');return false end
  if suspended then menuHeld=true;menuResumeUntil=0
  elseif menuHeld then menuHeld=false;menuResumeUntil=os.clock()+.5;retryAt=0 end

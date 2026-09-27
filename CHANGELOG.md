@@ -1,6 +1,37 @@
 # Changelog
 
-Player-facing history for LLM NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
+Player-facing history for AI NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
+
+## 0.5.5: September 27, 2026
+
+- Settled beasts tolerate nearby steps and circling. They resume following after a meaningful move away, independently of human companions' quicker departure threshold.
+- Place rideable beast subtitles above their scaled body bounds, keeping captions clear of their heads and backs.
+- Ignore brief spawn-time combat flags without an observed hostile opponent, preventing false battle replies and memories when summoning a creature.
+- Unmounted creatures face their direction of travel and keep their heading at rest. Their follow movement no longer uses body aiming toward Coen; combat and riding restore their own controls.
+- Give following creatures clearance based on their scaled body size, including their muzzle and rump. They keep their resting spot after arriving instead of repeatedly repositioning as Coen approaches; the come command respects the same body clearance.
+- Stop ridden Gargoyles spinning toward their own rider. The riding lease temporarily suspends their automatic controller-facing update and restores it on dismount or interrupted-session recovery.
+- Fixed fresh launches losing F5 and other shortcuts when an older startup loader omitted a newly added Lua module. Startup now uses the payload loader; dependency discovery, complete development synchronization and assembled-package checks guard against partial updates.
+- Keep short overhead captions working when a voice provides audio without spoken-text events. Use the current reply during speech, retain native event timing when available, and support buffered group replies.
+- Correct native captions being attached to an inactive HUD instance, and preserve friendship between summoned creatures and human companions across native AI refreshes.
+- Use the game's native overhead dialogue widget by default, with short spoken captions instead of whole paragraphs. Captions follow the buffered audio during group replies; the normal HUD remains selectable.
+- Finish creature replacement when native ownership is released, without waiting for deferred actor destruction.
+- Use the bear's authored movement profile while riding, avoiding stacked follower speed and animation boosts.
+
+- Share journal, surroundings and recent battle context with registered speaking creatures, keeping profile-specific memories separate. Speaking mounts can use the existing reaction settings and cooldowns when unmounted.
+- Save rider positioning separately for each creature on the mount Summon page, with estimated starting positions and an individual reset.
+- Normal conversations now receive the currently tracked quest and revealed active objectives as temporary context. The persistent family objective is excluded; undiscovered stages and unchosen endings are never supplied.
+- Prepared the Rideable Mount Companions addon with individual creature profiles, ten interface languages, Kokoro and multilingual voices, native Mod Settings controls and automatic Lua reload.
+
+- Shared first-person camera preferences and the player-body visibility guard with the creature mount add-on, including F4 switching while riding.
+- Added optional local-only typed commands for registered creature companions, bypassing Convai when their spoken replies are disabled. The separate mount add-on now enables spoken replies by default and provides rider-position offsets.
+- Loading a save resets battle, loot and exploration reaction cooldowns. The normal ten-minute battle cooldown still begins at combat end during continuous play.
+- Added bounded reaction diagnostics to distinguish scheduling blocks, cooldowns, delivery, speech events and playback state without storing conversation text.
+- Added ten selectable interface languages, including Simplified and Traditional Chinese, independent of conversation profile and voice selection.
+- Added battle-opening and closing comments from one companion per event. Enabled by default, with a ten-minute cooldown measured from combat end and a combined battle-and-loot closing response.
+- Added the version 1 shared companion AI SDK for external mods. Registration is bounded, expires without a heartbeat and is tied to the current player and world. The owner keeps movement and animation control.
+- Added shared shortcut routing and native creature ownership for the separate Rideable Mount Companions development mod, including dismissal after dismounting and recovery from interrupted player sessions.
+- Riding now owns the creature's navigation tree until dismount, preventing native follower cleanup from cancelling rider control. Failed acquisitions retain their rollback guard.
+- Added an upright native rider pose and preserved player rotation settings for normal and interrupted dismounts.
 
 ## 0.5.4: September 26, 2026
 
@@ -138,7 +169,7 @@ Horde battles, first-person POV, companion colours and relationship management, 
 - Improved appearance-control arrows, text spacing, button alignment and selection behaviour.
 - Added helper recovery when Windows permission differences prevent F5–F9 shortcuts from reaching the game.
 - Serialised application updates and reduced background work with an empty party. Battle context does not continuously rescan opponents throughout a fight.
-- Updated the mod title to LLM NPC Companions System and expanded the player guide, settings descriptions and installation information.
+- Updated the mod title to AI NPC Companions System and expanded the player guide, settings descriptions and installation information.
 
 ## 0.4.0: development milestone, incorporated into 0.5
 

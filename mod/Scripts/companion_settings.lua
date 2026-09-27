@@ -1,5 +1,7 @@
+local L=require('ui_localization')
 local M={revision=0,respawnDelay=3} -- Automatic quiet period, not a user setting.
 M.schema={
+ {id='UiLanguage',label='Interface language',group='Interface',default=0,min=0,max=10,step=1,cycle=true,choices=true,help='Auto follows the game language, then Windows. Changes only this mod’s interface, not voices or replies.'},
  {id='FastTravelAnywhere',label='Fast travel from anywhere',group='Player',default=0,min=0,max=1,step=1,help='Travel through the normal map without a roadshrine. Shrines keep their native Fast Travel action; hover other map icons or custom waypoints and press F once for Travel here. The native loading screen covers destination loading. Requires safe standing room; unavailable ground cancels the trip. Outside combat and cutscenes only.'},
  {id='AnytimeAbilities',label='Day and night abilities',group='Player',default=0,min=0,max=1,step=1,help='Allow learned human and vampire active abilities at either time of day. Does not unlock skills, remove their costs or change the world clock. Off restores the native restrictions. Experimental: some movement powers can still require their native form.'},
  {id='SlotlessPassives',label='Passives without slots',group='Player',default=0,min=0,max=1,step=1,help='Activate learned passive skills without assigning ability slots. Does not unlock unlearned skills or change your saved quickslots. Native day/night conditions still apply unless Day and night abilities is On. Off restores normal passive equipment rules.'},
@@ -12,12 +14,14 @@ M.schema={
  {id='AttackFrequency',label='Attack frequency',default=180,min=50,max=250,step=10,suffix='%',help='Uses the native attack-speed attribute. Higher values shorten attacks; native AI still chooses when and what to attack. This is not a forced attack timer.'},
  {id='AncaRomance',label='Anca romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
  {id='LacraRomance',label='Lacra romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
- {id='LootComments',label='React to collected loot',group='Conversations',default=1,min=0,max=1,step=1,help='One random nearby companion may comment after you finish collecting a batch of items. Ordinary loot has a 20% chance and at least ten minutes between comments. Newly acquired Unique-tier weapons or clothing bypass that chance, with a two-minute special-item cooldown. Storage withdrawals stay silent. Requires the conversation Runtime.'},
- {id='AmbientComments',label='React to Coen’s observations',group='Conversations',default=1,min=0,max=1,step=1,help='A nearby talking companion can briefly respond after Coen finishes a spoken exploration observation. Uses the actual solo game line, without a random roll and with at least three minutes between reactions. Excludes conversations with other characters and stays quiet during combat, cutscenes and manual chat. Requires the conversation Runtime.'},
+ {id='LootComments',label='React to collected loot',group='Conversations',default=1,min=0,max=1,step=1,help='One random nearby companion may comment after you finish collecting a batch of items. Ordinary loot has a 20% chance and at least ten minutes between comments. Newly acquired Legendary weapons or clothing bypass that chance, with a two-minute special-item cooldown. Storage withdrawals stay silent. Requires the conversation Runtime.'},
+ {id='BattleComments',label='React to battles',group='Conversations',default=1,min=0,max=1,step=1,help='One companion comments when a battle begins and again after it ends. The closing comment can include collected loot. A ten-minute cooldown begins when the battle ends. Manual conversations take priority.'},
+ {id='AmbientComments',label='React to Coen’s observations',group='Conversations',default=1,min=0,max=1,step=1,help='A nearby talking companion can briefly respond after Coen finishes a spoken exploration observation. Uses the actual solo game line and relevant revealed journal context, excluding the always-tracked family quest. No random roll; at least three minutes between reactions. A post-fight remark can join the battle closing reply. Excludes conversations with other characters and stays quiet during combat, cutscenes and manual chat. Requires the conversation Runtime.'},
  {id='FollowUpQuestions',label='Follow-up questions',group='Conversations',default=1,min=0,max=1,step=1,help='Companions normally end with one natural, relevant question, skipping it when there is a clear reason to stop or avoid asking. Only the final group speaker asks Coen. Off removes this encouragement. Applies to new replies; it does not turn on your microphone automatically.'},
  {id='TransparentChatHud',label='Transparent chat HUD',group='Conversations',default=1,min=0,max=1,step=1,help='Makes subtitles, voice status and the typing field transparent. Subtitle and status text keep a dark outline for readability. Turn Off to restore the shaded panel.'},
  {id='HideChatBoxes',label='Hide chat boxes',group='Conversations',default=0,min=0,max=1,step=1,help='On keeps only the microphone indicator during voice input and hides all conversation text, including NPC subtitles. Text entry still opens with your text shortcut, then disappears after sending. Horde countdowns are unaffected.'},
  {id='ShowNpcSubtitles',label='NPC subtitles',group='Conversations',default=1,min=0,max=1,step=1,help='Shows subtitles for spoken NPC replies. Turn Off to hear replies without reading them while retaining the normal voice-input HUD. Hide chat boxes overrides this setting. This affects mod conversations only.'},
+ {id='OverheadSubtitles',label='Subtitles above speakers',group='Conversations',default=1,min=0,max=1,step=1,help='On by default. Show short spoken captions in the native dialogue style above the speaker. Off uses the usual HUD. Captions follow speech segments; long sentences advance in short phrases. NPC subtitles and Hide chat boxes still apply. Text entry and microphone indicators keep their normal position.'},
  {id='ChatHudBottomOffset',label='Chat HUD bottom offset',group='Conversations',default=0,min=0,max=40,step=1,suffix='%',help='Extra height above the original HUD position. Zero keeps the current placement; higher values move text input, NPC subtitles, voice indicators and Horde countdowns upward together, by a percentage of screen height. Tall content stays inside the screen. Applies live.'},
  {id='FirstPersonCamera',label='First-person camera',group='Camera',default=0,min=0,max=1,step=1,help='Experimental head-height gameplay camera. Native dialogue and cutscenes take priority. The mod camera is retained through the companion menu. Turn Off to restore the normal camera.'},
  {id='FirstPersonFOV',label='First-person field of view',group='Camera',default=90,min=60,max=120,step=5,suffix='°',help='Horizontal field of view for the mod camera. Higher values show more surroundings. Applies live in first person; normal gameplay and cinematic cameras are unchanged.'},
@@ -42,7 +46,7 @@ function M.poll(force)
  if not force and os.time()==lastRead then return end;lastRead=os.time()
  local path=directory()..'/config.ini';local f=io.open(path,'r')
  local text=f and f:read('*a')or '';if f then f:close()end
- if text==lastText then return end
+ if text==lastText then L.poll(M.values.UiLanguage);return end
  local repaired,values=M.repairConfig(text)
  if repaired~=text then
   -- Native choice controls require exactly one assignment even for new defaults.
@@ -53,6 +57,7 @@ function M.poll(force)
  if values.HideChatBoxes==nil and values.ShowConversationText~=nil then values.HideChatBoxes=1-values.ShowConversationText end
  for _,s in ipairs(M.schema)do local v=values[s.id];if v and v==v then M.values[s.id]=math.max(s.min,math.min(s.max,s.min+math.floor((v-s.min)/s.step+.5)*s.step))end end
  M.revision=M.revision+1
+ L.poll(M.values.UiLanguage,true)
 end
 function M.repairConfig(text)
  local original=text;text=text:gsub('^\239\187\191','')
@@ -104,7 +109,12 @@ function M.change(id,delta)
   f:close();lastText=nil;lastRead=0;M.poll();return
  end end
 end
-function M.label(s)if s.romance then return M.values[s.id]==0 and 'Auto'or M.values[s.id]==1 and 'On'or 'Off'end;local v=M.effective(s.id);return (s.min==0 and s.max==1)and (v==1 and 'On'or 'Off')or tostring(v)..(s.suffix or '')end
+function M.label(s)
+ if s.id=='UiLanguage'then return L.choice(M.values[s.id])end
+ if s.romance then return L.text(M.values[s.id]==0 and 'Auto'or M.values[s.id]==1 and 'On'or 'Off')end
+ local v=M.effective(s.id)
+ return (s.min==0 and s.max==1)and L.text(v==1 and 'On'or 'Off')or tostring(v)..(s.suffix or '')
+end
 -- These bindings are shared with the desktop input helper. Keep one file for
 -- both editors; gameplay settings must never overwrite keyboard preferences.
 M.bindings={Camera='F4',Menu='F5',SingleText='F6',SingleVoice='F7',GroupText='F8',GroupVoice='F9'}

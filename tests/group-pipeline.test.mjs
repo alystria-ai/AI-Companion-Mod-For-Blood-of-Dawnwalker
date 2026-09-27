@@ -8,7 +8,7 @@ test('actual client prepares later replies before handoff, plays them sequential
  const group=new GroupChat(()=> 'g'+(++uuid));
  class FakeAudio{
   constructor(room){this.owner=room.owner;room.audio=this;audios.push(this);this.origin=0;this.hasAudio=false;this.playStart=0;this.finished=false;this.error='';this.stopped=false;}
-  async init(){}begin(){}setPosition(){}get clock(){return now/1000;}get ready(){return this.hasAudio;}
+  async init(){}begin(){}setPosition(){}get clock(){return now/1000;}get ready(){return this.hasAudio;}get end(){return this.origin+this.capturedMs/1000;}
   get playing(){return !!this.playStart&&!this.done&&!this.stopped;}get position(){return this.origin+(this.playStart?(now-this.playStart)/1000:0);}
   get done(){return this.finished&&!!this.playStart&&now-this.playStart>=1600;}get capturedMs(){return this.hasAudio?1600:0;}
   finish(){this.finished=true;}play(){if(!this.playStart&&this.ready&&!this.stopped)this.playStart=now;}pump(){}stop(){this.stopped=true;}

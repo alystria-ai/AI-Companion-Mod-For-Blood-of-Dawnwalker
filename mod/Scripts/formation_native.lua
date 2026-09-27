@@ -14,12 +14,36 @@ function M.markerPoint(seat,actor,previous)
 end
 local function same(a,b)return AI.same(a,b)end
 local function board(s)return s and AI.board(s.stub,s.board)end
+local function creatureFacing(s,settled)
+ if not s.creature then return end
+ local movement=s.movement
+ if not AI.valid(movement)then return end
+ -- Quadrupeds should face their travel velocity, not aim their whole body at
+ -- Coen or a navigation marker. Once parked, keep the arrival heading.
+ if s.lookHandle==nil then
+  local handle=movement:PushLookAtMode(0,200)
+  assert(type(handle)=='number'and handle>=0,'Creature follow look mode rejected')
+  s.lookHandle=handle
+ end
+ local mode=settled and 0 or 1 -- None at rest; FaceVelocity on a journey.
+ if s.rotationMode~=mode then
+  local handle=movement:PushRotationMode(mode,200)
+  assert(type(handle)=='number'and handle>=0,'Creature follow rotation mode rejected')
+  if s.rotationHandle~=nil then movement:PopRotationMode(s.rotationHandle)end
+  s.rotationHandle=handle;s.rotationMode=mode
+ end
+end
 function M.owns(s,stub,expected)
  return s and s.owned and same(s.stub,stub)and same(s.board,expected)and board(s)~=nil
 end
 function M.release(s)
  if not s then return end
  local b=board(s)
+ if b and AI.valid(s.actor)and AI.valid(s.movement)and same(s.actor.CharacterMovement,s.movement)then
+  if s.rotationHandle~=nil then s.movement:PopRotationMode(s.rotationHandle)end
+  if s.lookHandle~=nil then s.movement:PopLookAtMode(s.lookHandle)end
+ end
+ s.rotationHandle=nil;s.rotationMode=nil;s.lookHandle=nil;s.movement=nil;s.actor=nil;s.creature=nil
  if s.owned and b and AI.valid(s.controller)and AI.valid(s.blackboard)and same(s.controller.Blackboard,s.blackboard)then
   local target=s.blackboard:GetValueAsObject(s.key)
   if same(target,s.marker)or s.settled and not AI.valid(target)then
@@ -51,12 +75,14 @@ function M.update(m,goal,now)
  local target=bb:GetValueAsObject(key)
  if AI.valid(target)and not same(target,s.marker)then M.release(s);return false,'Another native movement target has priority'end
  if s.settled then
-  if not goal.moving and goal.epoch==s.settledEpoch and goal.distance<=145 then
+  if not goal.moving and goal.epoch==s.settledEpoch and goal.distance<=(goal.settledTolerance or 145)then
+   creatureFacing(s,true)
    m.board.Follower.bFollowerModeEnabled=false
    if now-(s.refreshAt or 0)>=1000 then s.marker:SetLifeSpan(15);s.refreshAt=now end
    return true,'Settled; native idle'
   end
   s.settled=nil;s.settledEpoch=nil
+  creatureFacing(s,false)
   if not s.marker:K2_SetActorLocation(desired,false,{},true)then M.release(s);s.retryAt=now+3000;return false,'Destination movement declined'end
   s.point=desired
   c:AIMoveToActor(s.marker,true,true,false);s.issuedAt=now;s.issuedSeat={X=goal.point.X,Y=goal.point.Y,Z=goal.point.Z}
@@ -70,6 +96,8 @@ function M.update(m,goal,now)
   s.followKey=c.ShouldFollowTargetBBKey;s.trackKey=c.ShouldTrackTargetBBKey
   s.oldFollow=bb:GetValueAsBool(s.followKey);s.oldTrack=bb:GetValueAsBool(s.trackKey)
   s.oldFollower=m.board.Follower.bFollowerModeEnabled;s.owned=true
+  s.creature=m.addonOwner~=nil;s.actor=m.actor;s.movement=m.actor.CharacterMovement
+  creatureFacing(s,false)
   marker:SetActorHiddenInGame(true);marker:SetActorEnableCollision(false);marker:SetLifeSpan(15)
   if not AI.valid(marker.RootComponent)then M.release(s);s.retryAt=now+5000;return false,'Destination has no scene root'end
   marker.RootComponent:SetMobility(2)
@@ -87,10 +115,11 @@ function M.update(m,goal,now)
  -- chasing that last fraction of a metre once the group has arrived. Keep
  -- the owned follower flag off so the fallback does not immediately restart.
  -- A wider exit tolerance prevents turn-in-place root motion from waking it.
- local arrival=goal.smallParty and 55 or 100
- if not goal.moving and (goal.distance<=arrival or goal.distance<=(goal.smallParty and 90 or 145)and c:GetMoveStatus()==0)then
+ local arrival=goal.arrival or (goal.smallParty and 55 or 100)
+ if not goal.moving and (goal.distance<=arrival or goal.distance<=math.max(arrival,goal.smallParty and 90 or 145)and c:GetMoveStatus()==0)then
   c:AIStopFollowing();c:StopMovement()
   s.settled=true;s.settledEpoch=goal.epoch;s.sample=nil;s.failures=0
+  creatureFacing(s,true)
   return true,'Settled; native idle'
  end
  local p=desired

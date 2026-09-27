@@ -10,15 +10,16 @@ export function encodeFrame(data, now = Date.now()) {
   // A hyphenated record name cannot be interpreted as a morph channel by Lua.
   const done=data.singleDone;
   if(done!==undefined&&done!==null&&(typeof done!=='string'||!/^[A-Za-z0-9-]{1,128}$/.test(done)))throw Error('Invalid reply completion');
-  return `${data.generation}\t${Math.floor(now / 1000)}\n${weights.join('\n')}\n${done?`REPLY-END\t${done}\n`:''}`;
+  const subtitle=String(data.subtitle??'').slice(-1200).replace(/[\r\n\t\x00]/g,' ');
+  return `${data.generation}\t${Math.floor(now / 1000)}\n${weights.join('\n')}\n${subtitle?`NPC-TEXT\t${subtitle}\n`:''}${done?`REPLY-END\t${done}\n`:''}`;
 }
 export function parseTarget(raw) {
-  const [generation, active, actor = '', actorClass = '', status = '', mode = 'text', request = '1', name, definition='', bodyType='', voiceTag='',room='',turn=''] = raw.trimEnd().split(/\r?\n/);
+  const [generation, active, actor = '', actorClass = '', status = '', mode = 'text', request = '1', name, definition='', bodyType='', voiceTag='',room='',turn='',addon='',addonActor='',addonInstance=''] = raw.trimEnd().split(/\r?\n/);
   const n = Number(generation);
   if (!Number.isSafeInteger(n) || n < 0 || !['0','1'].includes(active)) throw Error('Invalid target');
   const requestId=Number(request);
   if(!Number.isSafeInteger(requestId)||requestId<0)throw Error('Invalid request ID');
-  return {...(name===undefined?{}:{name,definition,bodyType,voiceTag}),generation: n, active: active === '1', actor, actorClass, status, mode:mode==='group'?'group':'single',room,turn,requestId};
+  return {...(name===undefined?{}:{name,definition,bodyType,voiceTag}),generation: n, active: active === '1', actor, actorClass, status, mode:mode==='group'?'group':'single',room,turn,requestId,...(addon&&addonActor?{addon,addonActor,addonInstance}:{})};
 }
 export function parseSpatial(raw,target,now=Date.now()){
   if(!target.active||typeof raw!=='string'||raw.length>256)return null;

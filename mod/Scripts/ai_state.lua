@@ -357,6 +357,65 @@ function M.acquireFormation(stub,expected,state,controller)
  if not ok then M.releaseFormation(state);return false end
  return M.ownsFormation(state,stub,expected)==true
 end
+-- Riding has a longer lifetime than a formation adjustment. The native
+-- follower tree clears bMainBehaviorSuspended during its own task cleanup,
+-- so that scratch flag cannot acknowledge exclusive riding ownership.
+function M.ownsRiding(state,stub,expected)
+ return state and state.owned==true and M.sameInstance(state.stub,stub)
+  and M.sameInstance(state.board,expected)and M.board(stub,expected)~=nil
+  and M.valid(state.controller)and M.sameInstance(state.controller.BrainComponent,state.brain)
+  and state.brain:IsRunning()==false and state.brain:IsPaused()==false
+end
+function M.releaseRiding(state)
+ if not state then return end
+ local b=M.board(state.stub,state.board)
+ if b and state.suspended and b.bMainBehaviorSuspended==true then b.bMainBehaviorSuspended=state.previous end
+ state.suspended=nil
+ if state.controllerTickOwned and M.valid(state.controller)and M.valid(state.actor)
+  and state.controller:GetFullName()==state.controllerName and state.controller:GetAddress()==state.controllerAddress
+  and state.actor:GetFullName()==state.actorName and state.actor:GetAddress()==state.actorAddress
+  and M.sameInstance(state.actor.Controller,state.controller)and M.sameInstance(state.controller.Pawn,state.actor)
+  and M.valid(state.actor:GetWorld())and state.actor:GetWorld():GetFullName()==state.worldName
+  and state.actor:GetWorld():GetAddress()==state.worldAddress then
+  if state.controller:IsActorTickEnabled()==false then state.controller:SetActorTickEnabled(state.previousControllerTick)end
+ end
+ state.controllerTickOwned=nil
+ if state.restartBrain and b and M.valid(state.controller)
+  and M.sameInstance(state.controller.BrainComponent,state.brain)then
+  -- Start only the brain this lease stopped. A native takeover or pause keeps
+  -- its ownership; repeated cleanup must not restart its current behavior.
+  if state.brain:IsRunning()==false and state.brain:IsPaused()==false then state.brain:StartLogic()end
+ end
+ state.restartBrain=nil;state.owned=false
+end
+function M.acquireRiding(stub,expected,state,controller)
+ local b=M.board(stub,expected)
+ if not b or b.bIsDead or stub:IsInCombat()or b.Combat.bInCombat or stub:IsInCinematicMode()
+  or b.bMainBehaviorSuspended or b:HasAnyUnbreakableActiveAction()or not M.valid(controller)then return false,'Native creature AI is busy'end
+ local brain=controller.BrainComponent
+ if not M.valid(brain)or brain:IsRunning()~=true or brain:IsPaused()~=false then return false,'Creature navigation is not ready'end
+ state.stub=stub;state.board=b;state.controller=controller;state.brain=brain;state.previous=b.bMainBehaviorSuspended
+ -- Record restoration before calling native code. The host keeps its rollback
+ -- guard even if a later operation fails during this acquisition.
+ state.restartBrain=true;brain:StopLogic('Creature rider control')
+ assert(M.board(stub,b)and M.sameInstance(controller.BrainComponent,brain),'Creature changed while acquiring rider control')
+ assert(brain:IsRunning()==false and brain:IsPaused()==false,'Creature navigation is still stopping')
+ b:StopAllActions();controller:StopMovement()
+ -- AIController's tick can recompute ControlRotation toward the seated rider
+ -- even with the brain stopped. This is especially visible on directional
+ -- locomotion. Suspend that controller tick for every exclusive riding control
+ -- lease; creature movement, animation and perception components stay active.
+ -- Keep restoration here so host recovery also restores it if the addon fails.
+ if M.valid(state.actor)then
+  state.controllerName=controller:GetFullName();state.controllerAddress=controller:GetAddress()
+  state.actorName=state.actor:GetFullName();state.actorAddress=state.actor:GetAddress()
+  state.worldName=state.actor:GetWorld():GetFullName();state.worldAddress=state.actor:GetWorld():GetAddress()
+  state.previousControllerTick=controller:IsActorTickEnabled()
+  state.controllerTickOwned=true;controller:SetActorTickEnabled(false)
+ end
+ b.bMainBehaviorSuspended=true;state.suspended=true;state.owned=true
+ return M.ownsRiding(state,stub,b)==true
+end
 function M.travelPace(stub,expected,state,movement,profile,speed,formation,targetSpeed,now)
  local b=M.board(stub,expected)
  if not b or b.bIsDead or stub:IsInCombat()or b.Combat.bInCombat or stub:IsInCinematicMode()or b.bMainBehaviorSuspended and not M.ownsFormation(formation,stub,expected)or b:HasAnyUnbreakableActiveAction()then

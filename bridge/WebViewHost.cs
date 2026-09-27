@@ -38,8 +38,15 @@ public sealed class ConvaiHost : Form {
         string key;
         using(var hash=System.Security.Cryptography.SHA256.Create())
             key=BitConverter.ToString(hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(root.ToUpperInvariant()))).Replace("-","").Substring(0,24);
-        var parent=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LLMNPCCompanions","WebView");
+        var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var parent=Path.Combine(local,"AINPCCompanions","WebView");
         var destination=Path.Combine(parent,key);
+        // Preserve the existing identity when upgrading installations branded before AI NPC.
+        var legacy=Path.Combine(local,"LLMNPCCompanions","WebView",key);
+        if(!Directory.Exists(destination)&&Directory.Exists(legacy)){
+            NoLinks(legacy);NoLinks(parent);Directory.CreateDirectory(parent);
+            CheckProfileTree(legacy);Directory.Move(legacy,destination);
+        }
         var old=Path.GetFullPath(Runtime("webview-profile"));
         // Keep browser identity/session storage outside UE4SS's recursive mod scan.
         // Copy then promote on the destination volume, so cross-drive installs

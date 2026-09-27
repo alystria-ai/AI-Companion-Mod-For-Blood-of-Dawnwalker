@@ -1,7 +1,10 @@
--- Stable bootstrap. Gameplay code in app.lua is reloaded directly from the workspace.
+-- Stable bootstrap. The payload owns both the loader and gameplay modules.
 local root=require('runtime_path')
 local source=root..'/../mod/Scripts'
-local Loader=require('live_reload')
+-- Do not require the duplicate bootstrap copy: an in-place update can leave it
+-- older than the payload. One canonical loader serves cold launches and reloads.
+local Loader=assert(loadfile(source..'/live_reload.lua'))()
+package.loaded.live_reload=Loader
 local function report(message)
     print('[DawnwalkerConvai LiveReload] '..message..'\n')
     local f=io.open(root..'/reload-status.txt','w')
@@ -16,16 +19,7 @@ local function gameQueue(fn)
     work[#work+1]=fn
 end
 local router=Loader.new(_G,require,gameQueue,report)
-local function snapshot()
-    local files,parts={},{}
-    for _,name in ipairs(Loader.modules)do
-        local f,err=io.open(source..'/'..name..'.lua','r')
-        if not f then return nil,err end
-        local text=f:read('*a');f:close();files[name]=text
-        table.insert(parts,name..':'..#text..':'..text)
-    end
-    return files,table.concat(parts,'\0')
-end
+local function snapshot()return Loader.snapshot(source)end
 for _,key in ipairs({Key.F5,Key.F6,Key.F7,Key.F8})do
     RegisterKeyBind(key,function()gameQueue(function()router:key(key)end)end)
 end
@@ -36,6 +30,7 @@ else report('Cannot load workspace Lua: '..tostring(fingerprint))end
 local elapsed=0
 local inFlight=false
 local lastErrorAt=0
+local snapshotFailure
 local function pump()
     onGameThread=true
     local ok,err=pcall(function()
@@ -46,7 +41,10 @@ local function pump()
         if elapsed>=1000 then
             elapsed=0
             local nextFiles,nextFingerprint=snapshot()
-            if nextFiles then router:poll(nextFiles,nextFingerprint)end
+            if nextFiles then snapshotFailure=nil;router:poll(nextFiles,nextFingerprint)
+            elseif snapshotFailure~=nextFingerprint then
+                snapshotFailure=nextFingerprint;report('Lua update incomplete: '..tostring(nextFingerprint))
+            end
         end
     end)
     onGameThread=false

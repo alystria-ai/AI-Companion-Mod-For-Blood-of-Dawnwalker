@@ -1,4 +1,4 @@
-# LLM NPC Companions System 0.5.4
+# AI NPC Companions System 0.5.4
 
 Talk with nearby characters through text or voice, customise companions’ eye, hair and armour colours, use a first-person viewpoint, or take your party into Horde battles. Companions follow Coen and use their native combat AI. This is a preview release: the conversation and companion framework is usable, but every character, power and combat interaction has not been validated in normal play.
 

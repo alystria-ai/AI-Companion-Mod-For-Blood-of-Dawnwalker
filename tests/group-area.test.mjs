@@ -14,6 +14,7 @@ test('actual Lua group handoff cannot interpret looking at the first speaker as 
  local selected='first';local generation=5;local speakerTurn='';local status;local root='test';local speechLayer=nil
  local function restoreFocusPause()end;local function releaseConversation()end;local function neutral()end
  local function publish()end;local function log()end;local function write()end
+ local NativeSubtitles={clear=function()end}
  ${policy}
  local text='GROUP\\t1\\troom1\\tturn1\\tmember1\\t5'
  io.open=function()return {read=function()return text end,close=function()end}end

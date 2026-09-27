@@ -1,8 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {lua,lauxlib,lualib,to_luastring,to_jsstring} from 'fengari';
 const source=readFileSync('mod/Scripts/companion_settings.lua','utf8');
+const localization=['ai_state','ui_translations','ui_localization'].map(name=>`package.preload.${name}=function()\n${readFileSync(`mod/Scripts/${name}.lua`,'utf8')}\nend`).join('\n');
 function run(body){const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);try{const rc=lauxlib.luaL_dostring(L,to_luastring(`
  local disk={['runtime/mod-directory.txt']='installed'}
  package.preload.runtime_path=function()return 'runtime'end
+ ${localization}
  io.open=function(path,mode)
   if mode=='w'then disk[path]='';return {write=function(_,...) for _,s in ipairs({...})do disk[path]=disk[path]..s end end,close=function()end}end
   if not disk[path]then return nil end

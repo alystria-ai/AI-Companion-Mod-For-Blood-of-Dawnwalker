@@ -2,13 +2,14 @@ import type {ConvaiClient} from '@convai/web-sdk/vanilla';
 import {METAHUMAN_ORDER_251} from '@convai/web-sdk/lipsync-helpers';
 import {ReplyTracker} from './reply-tracker';
 import {ReplyAudio} from './reply-audio';
+import {SpokenCaptions} from './spoken-captions';
 import {FacialExpression,supportedFaceCurve,type EmotionSignal} from './facial-expression';
 type Face={at:number;weights:Record<string,number>};
 export class PreparedReply {
  readonly reply=new ReplyTracker();readonly audio:ReplyAudio;
  readonly expression=new FacialExpression();private emotions:{at:number;signal:EmotionSignal}[]=[];private emotionIndex=0;
- private unlisten:(()=>void)[]=[];private faces:Face[]=[];private captions:{at:number;text:string}[]=[];
- private faceIndex=0;private captionIndex=0;private previous=performance.now();private carry=0;private started=0;
+ private unlisten:(()=>void)[]=[];private faces:Face[]=[];private captions=new SpokenCaptions();
+ private faceIndex=0;private previous=performance.now();private carry=0;private started=0;
  sent=false;error='';cancelled=false;activated=false;actions:{name:string;target?:string}[]=[];private finishedAt=0;
  constructor(readonly client:ConvaiClient,readonly identity:string,readonly token:string,readonly scope:string){this.audio=new ReplyAudio(client.room);}
  private on(e:string,f:(...args:any[])=>void){this.unlisten.push(this.client.on(e,f));}
@@ -17,7 +18,8 @@ export class PreparedReply {
   this.reply.begin(this.token,this.client.chatMessages||[]);this.started=Date.now();
   this.on('messagesChange',m=>this.reply.observe(m));
   this.on('stateChange',()=>this.reply.state(!!this.client.state.isThinking,!!this.client.state.isSpeaking));
-  this.on('botOutput',d=>{if(d.text&&(d.spoken||['in-progress','completed'].includes(d.spokenStatus))){this.reply.audio();this.captions.push({at:this.audio.clock,text:d.text});}});
+  this.on('botOutput',d=>{if(d.text&&(d.spoken||['in-progress','completed'].includes(d.spokenStatus))){this.reply.audio();this.captions.receive(d,this.audio.clock);}});
+  this.on('botTtsText',d=>this.captions.receive(d,this.audio.clock,true));
   this.on('actionResponse',d=>this.actions.push(...d.actions.slice(0,8-this.actions.length)));
   this.on('emotionChange',(signal:EmotionSignal)=>this.emotions.push({at:this.activated?this.audio.clock:0,signal}));
   this.on('error',()=>{this.error='Prepared Convai response failed';});
@@ -42,9 +44,10 @@ export class PreparedReply {
    const done=this.reply.complete({thinking:!!this.client.state.isThinking,speaking:!!this.client.state.isSpeaking,queued:!!(q.length||q.isBotSpeaking()),drained:q.isConversationEnded()});
    if(done)this.finishedAt=Date.now();
   }
+  this.captions.fallbackText(this.reply.text,this.audio.clock,this.audio.hasAudio&&!this.audio.finished,this.audio.origin);
   // Allow the final decoded audio block to reach the main thread before closing capture.
   if(this.finishedAt&&Date.now()-this.finishedAt>=150&&!this.audio.finished){
-   this.audio.finish();
+   this.audio.finish();this.captions.finish(this.audio.end);
    if(!this.audio.hasAudio&&this.reply.text)this.error='Convai finished speaking but remote audio capture was empty';
   }
   if(this.activated)this.audio.play();this.audio.pump();
@@ -57,10 +60,9 @@ export class PreparedReply {
   // future group member's reaction while a different character is speaking.
   if(this.activated)while(this.emotionIndex<this.emotions.length&&(this.emotions[this.emotionIndex].at<=at||this.audio.done)){this.expression.receive(this.emotions[this.emotionIndex++].signal);}
   while(this.faceIndex+1<this.faces.length&&this.faces[this.faceIndex+1].at<=at)this.faceIndex++;
-  while(this.captionIndex+1<this.captions.length&&this.captions[this.captionIndex+1].at<=at)this.captionIndex++;
   const speech=this.audio.playing&&this.faces[this.faceIndex]?.at<=at?this.faces[this.faceIndex].weights:{};
   return {weights:this.expression.mix(speech,this.audio.playing),
-   subtitle:this.audio.playing?(this.captions[this.captionIndex]?.at<=at?this.captions[this.captionIndex].text:this.reply.text):'',
+   subtitle:this.audio.playing?this.captions.text(at):'',
    done:!this.error&&this.audio.done&&this.reply.finished};
  }
  stop(completed=false){

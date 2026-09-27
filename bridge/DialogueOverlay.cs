@@ -32,14 +32,18 @@ public sealed class DialogueOverlay : Form {
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h,int attribute,ref int value,int size);
     [DllImport("gdi32.dll",CharSet=CharSet.Unicode)] static extern int AddFontResourceEx(string path,uint flags,IntPtr reserved);
     readonly PrivateFontCollection gameFonts=new PrivateFontCollection();
-    Font GameFont(float size,FontStyle style=FontStyle.Regular){return gameFonts.Families.Length>0?new Font(gameFonts.Families[0],size*96f/72f,style,GraphicsUnit.Pixel):new Font("Georgia",size*96f/72f,style,GraphicsUnit.Pixel);}
+    Font GameFont(float size,FontStyle style=FontStyle.Regular){return UiLocalization.Cjk?UiLocalization.CjkFont(size*96f/72f,style):gameFonts.Families.Length>0?new Font(gameFonts.Families[0],size*96f/72f,style,GraphicsUnit.Pixel):new Font("Georgia",size*96f/72f,style,GraphicsUnit.Pixel);}
+    static string T(string source){return UiLocalization.Text(source);}
+    static string F(string source,params object[] args){return UiLocalization.Format(source,args);}
     readonly string runtime,token; readonly bool preview;
     readonly JavaScriptSerializer json=new JavaScriptSerializer();
     readonly TextBox input=new TextBox();
     readonly Timer timer=new Timer();ComposerKeys composerKeys;
     DialogueState state=new DialogueState();IntPtr game;
     readonly ModKeyBindings bindings=new ModKeyBindings();
-    ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered,cameraRegistered;long nativeMenuStamp;
+    ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered,cameraRegistered,addonMenuRegistered,addonRideRegistered;long nativeMenuStamp;
+    Keys addonMenuKey=Keys.F5,addonRideKey=Keys.F6;
+    DateTime addonUiReadAt;bool addonMenuAvailable;
     bool NativeMenuOpen {get{return nativeMenuSession!="";}}
     string inputDiagnostic="";DateTime inputErrorAt;
     readonly System.Collections.Generic.Queue<string> inputHistory=new System.Collections.Generic.Queue<string>();
@@ -49,6 +53,8 @@ public sealed class DialogueOverlay : Form {
         HostDiagnostics.TryWrite(Path.Combine(runtime,"input-status.txt"),String.Join(Environment.NewLine,inputHistory));
     }
     void ClearHotkeys(){
+        if(addonMenuRegistered)UnregisterHotKey(Handle,1850);addonMenuRegistered=false;
+        if(addonRideRegistered)UnregisterHotKey(Handle,1851);addonRideRegistered=false;
         if(cameraRegistered)UnregisterHotKey(Handle,1844);cameraRegistered=false;
         if(singleRegistered)UnregisterHotKey(Handle,1846);if(singleMicRegistered)UnregisterHotKey(Handle,1847);
         if(registered)UnregisterHotKey(Handle,1848);if(micRegistered)UnregisterHotKey(Handle,1849);if(menuRegistered)UnregisterHotKey(Handle,1845);
@@ -65,14 +71,55 @@ public sealed class DialogueOverlay : Form {
         if(session!=""){
             ClearHotkeys();
             nativeMenuKeys=new ComposerKeys(this,()=>Alive&&NativeMenuOpen&&IsGame(GetForegroundWindow()),(key,copy,shift,ctrl)=>{
-                if(ctrl||shift)return;
+                if(ctrl)return;
+                if(shift){
+                    if(nativeMenuSession.StartsWith("creature-mounts-",StringComparison.Ordinal)){
+                        Keys supported;if(ModKeyBindings.Parse(ModKeyBindings.Name(key),out supported))File.AppendAllText(Path.Combine(runtime,"native-menu-input.txt"),nativeMenuSession+"\tShift+"+ModKeyBindings.Name(key)+"\n");
+                    }
+                    return;
+                }
                 File.AppendAllText(Path.Combine(runtime,"native-menu-input.txt"),nativeMenuSession+"\t"+ModKeyBindings.Name(key)+"\n");
             },false);
         }
     }
+    bool MountMenuAvailable(){
+        if(DateTime.UtcNow<addonUiReadAt)return addonMenuAvailable;
+        addonUiReadAt=DateTime.UtcNow.AddSeconds(1);addonMenuAvailable=false;
+        ReadMountBindings();
+        try{
+            var path=Path.Combine(runtime,"addon-ui-creature-companion-mounts.tsv");
+            using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete)){
+                if(stream.Length>2048)return false;
+                using(var reader=new StreamReader(stream)){var row=reader.ReadToEnd().TrimEnd().Split('\t');long stamp;
+                    addonMenuAvailable=row.Length==7&&row[0]=="COMPANION-UI"&&row[1]=="1"&&long.TryParse(row[2],out stamp)&&Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds()-stamp)<=3&&(row[3]=="0"||row[3]=="1")&&row[5].Length>0&&row[6].Length>0;
+                }
+            }
+        }catch(IOException){}catch(UnauthorizedAccessException){}
+        return addonMenuAvailable;
+    }
+    void ReadMountBindings(){
+        try{
+            var path=Path.Combine(runtime,"addon-ui-creature-companion-mounts.keys.tsv");
+            using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete)){
+                if(stream.Length>256)return;
+                using(var reader=new StreamReader(stream)){
+                    var row=reader.ReadToEnd().TrimEnd().Split('\t');Keys menu,ride;
+                    if(row.Length!=4||row[0]!="COMPANION-UI-KEYS"||row[1]!="1"||!row[2].StartsWith("Shift+",StringComparison.Ordinal)||!row[3].StartsWith("Shift+",StringComparison.Ordinal)||!ModKeyBindings.Parse(row[2].Substring(6),out menu)||!ModKeyBindings.Parse(row[3].Substring(6),out ride)||menu==ride)return;
+                    if(menu==addonMenuKey&&ride==addonRideKey)return;
+                    if(addonMenuRegistered)UnregisterHotKey(Handle,1850);addonMenuRegistered=false;
+                    if(addonRideRegistered)UnregisterHotKey(Handle,1851);addonRideRegistered=false;
+                    addonMenuKey=menu;addonRideKey=ride;
+                }
+            }
+        }catch(IOException){}catch(UnauthorizedAccessException){}
+    }
+    void RequestMountMenu(bool ride=false){
+        if(!IsGame(GetForegroundWindow())||NativeMenuOpen||editing||opening||!MountMenuAvailable())return;
+        HostDiagnostics.TryWrite(Path.Combine(runtime,"addon-ui-creature-companion-mounts.request"),DateTimeOffset.UtcNow.ToUnixTimeSeconds()+"\t"+Guid.NewGuid().ToString("N")+(ride?"\tmount":""));
+    }
     bool editing,registered,sending,opening,micRegistered,micBusy,singleRegistered,singleMicRegistered,closing;float scale=1;long composeGeneration;string error="",lastOpen="";
     bool voiceGroup,micStopping;string voiceNotice="";DateTime voiceNoticeUntil;
-    bool transparentHud=true,hideChatBoxes=false,showNpcSubtitles=true;DateTime hudReadAt;string hudConfig;
+    bool transparentHud=true,hideChatBoxes=false,showNpcSubtitles=true,overheadSubtitles=true;DateTime hudReadAt;string hudConfig;
     int hudBottomPercent=0;
     readonly Stopwatch hudClock=Stopwatch.StartNew();float voiceMeter;
     readonly Color clearColour=Color.FromArgb(1,2,3);
@@ -90,12 +137,15 @@ public sealed class DialogueOverlay : Form {
         try{
             string directory=Path.GetFullPath(Path.Combine(runtime,"../mod"));
             var pointer=Path.Combine(runtime,"mod-directory.txt");if(File.Exists(pointer))directory=ReadShared(pointer).Trim();
-            var source=ReadShared(Path.Combine(directory,"config.ini"));if(String.IsNullOrWhiteSpace(source)||source==hudConfig)return;
+            var source=ReadShared(Path.Combine(directory,"config.ini"));
+            if(UiLocalization.Refresh(runtime,source)){GameControlFonts.Replace(input,GameFont(18*scale));Invalidate();}
+            if(String.IsNullOrWhiteSpace(source)||source==hudConfig)return;
             double value;
             if(ReadHudNumber(source,"TransparentChatHud",out value)&&(value==0||value==1))transparentHud=value==1;
             if(ReadHudNumber(source,"HideChatBoxes",out value)&&(value==0||value==1))hideChatBoxes=value==1;
             else if(ReadHudNumber(source,"ShowConversationText",out value)&&(value==0||value==1))hideChatBoxes=value==0;
             if(ReadHudNumber(source,"ShowNpcSubtitles",out value)&&(value==0||value==1))showNpcSubtitles=value==1;
+            if(ReadHudNumber(source,"OverheadSubtitles",out value)&&(value==0||value==1))overheadSubtitles=value==1;
             if(ReadHudNumber(source,"ChatHudBottomOffset",out value))hudBottomPercent=(int)Math.Round(Math.Max(0,Math.Min(40,value)));
             hudConfig=source;ApplyHudStyle();
         }catch(IOException){}catch(UnauthorizedAccessException){}
@@ -115,7 +165,7 @@ public sealed class DialogueOverlay : Form {
     bool VoiceNoticeVisible {get{return voiceNotice!=""&&DateTime.UtcNow<voiceNoticeUntil;}}
     bool VoiceVisible {get{return micBusy||state.microphoneRequested||state.microphoneOn||VoiceNoticeVisible;}}
     bool HordeVisible {get{return !editing&&!opening&&!sending&&!VoiceVisible&&String.IsNullOrWhiteSpace(state.text)&&!String.IsNullOrWhiteSpace(state.hordeText);}}
-    string DisplayText {get{return HordeVisible?state.hordeText:!opening&&!editing&&!micBusy&&!hideChatBoxes&&showNpcSubtitles?state.text:"";}}
+    string DisplayText {get{return HordeVisible?UiLocalization.HordeCountdown(state.hordeText):!opening&&!editing&&!micBusy&&!hideChatBoxes&&showNpcSubtitles&&!overheadSubtitles?state.text:"";}}
     string VoiceTranscript {get{return micBusy?"":state.microphoneTranscript??"";}}
     string VoiceKey {get{return (micBusy||VoiceNoticeVisible?voiceGroup:state.mode=="group")?bindings.Label("GroupVoice"):bindings.Label("SingleVoice");}}
     bool VoiceFailed {get{return !state.microphoneOn&&!String.IsNullOrEmpty(state.microphoneStatus)&&(state.microphoneStatus.StartsWith("Microphone unavailable")||state.microphoneStatus.StartsWith("Microphone control failed")||state.microphoneStatus.StartsWith("Microphone disconnected"));}}
@@ -154,7 +204,7 @@ public sealed class DialogueOverlay : Form {
         KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape){e.SuppressKeyPress=true;EndCompose(false);}};
         timer.Interval=100;timer.Tick+=(s,e)=>UpdateState();if(!preview)timer.Start();
         FormClosing+=(s,e)=>{closing=true;timer.Stop();if(nativeMenuKeys!=null){nativeMenuKeys.Dispose();nativeMenuKeys=null;}if(composerKeys!=null){composerKeys.Dispose();composerKeys=null;}};
-        FormClosed+=(s,e)=>{var hwnd=IsHandleCreated?Handle:IntPtr.Zero;if(hwnd!=IntPtr.Zero){if(cameraRegistered)UnregisterHotKey(hwnd,1844);if(menuRegistered)UnregisterHotKey(hwnd,1845);if(registered)UnregisterHotKey(hwnd,1848);if(micRegistered)UnregisterHotKey(hwnd,1849);if(singleRegistered)UnregisterHotKey(hwnd,1846);if(singleMicRegistered)UnregisterHotKey(hwnd,1847);}timer.Dispose();};
+        FormClosed+=(s,e)=>{var hwnd=IsHandleCreated?Handle:IntPtr.Zero;if(hwnd!=IntPtr.Zero){if(addonMenuRegistered)UnregisterHotKey(hwnd,1850);if(addonRideRegistered)UnregisterHotKey(hwnd,1851);if(cameraRegistered)UnregisterHotKey(hwnd,1844);if(menuRegistered)UnregisterHotKey(hwnd,1845);if(registered)UnregisterHotKey(hwnd,1848);if(micRegistered)UnregisterHotKey(hwnd,1849);if(singleRegistered)UnregisterHotKey(hwnd,1846);if(singleMicRegistered)UnregisterHotKey(hwnd,1847);}timer.Dispose();};
     }
     static string ReadShared(string path){using(var f=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var r=new StreamReader(f))return r.ReadToEnd();}
     static bool IsGame(IntPtr h){try{uint id;GetWindowThreadProcessId(h,out id);return Process.GetProcessById((int)id).ProcessName=="Dawnwalker";}catch{return false;}}
@@ -173,6 +223,11 @@ public sealed class DialogueOverlay : Form {
             if(wasMenuOpen&&!NativeMenuOpen)ReadHudSettings(true);
             bool eligible=state.gameAlive&&(gameFocused||ours)&&!NativeMenuOpen;
             bool shortcuts=eligible&&!editing&&!opening;
+            bool addonShortcut=shortcuts&&MountMenuAvailable();
+            if(addonShortcut&&!addonMenuRegistered)addonMenuRegistered=RegisterHotKey(Handle,1850,0x4004,(uint)addonMenuKey);
+            if(!addonShortcut&&addonMenuRegistered){UnregisterHotKey(Handle,1850);addonMenuRegistered=false;}
+            if(addonShortcut&&!addonRideRegistered)addonRideRegistered=RegisterHotKey(Handle,1851,0x4004,(uint)addonRideKey);
+            if(!addonShortcut&&addonRideRegistered){UnregisterHotKey(Handle,1851);addonRideRegistered=false;}
             InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts);
             File.WriteAllText(Path.Combine(runtime,"mic-focus.txt"),(eligible?DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():0).ToString());
             if(shortcuts&&!cameraRegistered)cameraRegistered=RegisterHotKey(Handle,1844,0x4000,(uint)bindings["Camera"]);
@@ -200,7 +255,7 @@ public sealed class DialogueOverlay : Form {
             if(editing||VoiceVisible||HordeVisible||(state.active&&!String.IsNullOrWhiteSpace(DisplayText))){LayoutInput();if(!Visible)Present();else Invalidate();}else Hide();
         }catch(Exception e){InputDiagnostic("Shortcut update failed: "+e.GetType().Name+": "+e.Message);if(DateTime.UtcNow>=inputErrorAt){inputErrorAt=DateTime.UtcNow.AddSeconds(30);HostDiagnostics.Log("Shortcut update",e);}if(!editing)Hide();}
     }
-    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1844){HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"camera-toggle:"+Guid.NewGuid().ToString("N"));return;}if(k==1845){if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
+    protected override void WndProc(ref Message m){if(m.Msg==0x21){m.Result=new IntPtr(3);return;}if(m.Msg==0x0312){int k=m.WParam.ToInt32();HostDiagnostics.TryWrite(Path.Combine(runtime,"input-last-key.txt"),DateTime.UtcNow.ToString("o")+" hotkey "+k);if(k==1850||k==1851){RequestMountMenu(k==1851);return;}if(k==1844){HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"camera-toggle:"+Guid.NewGuid().ToString("N"));return;}if(k==1845){if((m.LParam.ToInt64()&15)!=0)return;if(editing)EndCompose(false);HostDiagnostics.TryWrite(Path.Combine(runtime,"ui-control.txt"),"native-menu:"+Guid.NewGuid().ToString("N"));return;}if(k==1847||k==1849){ToggleMicrophone(k==1849);return;}if(k==1846||k==1848){if(editing)EndCompose(false);else BeginCompose(k==1848);return;}}base.WndProc(ref m);}
     int S(int value){return (int)Math.Round(value*scale);}
     void PositionOverlay(){
         Rect bounds;var origin=new PointNative();
@@ -235,7 +290,7 @@ public sealed class DialogueOverlay : Form {
         string transcript=VoiceTranscript;
         if(String.IsNullOrWhiteSpace(transcript))return S(112);
         using(var bitmap=new Bitmap(1,1))using(var g=Graphics.FromImage(bitmap))using(var font=GameFont(12)){
-            int lines=(int)Math.Ceiling(g.MeasureString("You: "+transcript,font,Math.Max(80,(int)(width/scale)-48)).Height);
+            int lines=(int)Math.Ceiling(g.MeasureString(F("You: {0}",transcript),font,Math.Max(80,(int)(width/scale)-48)).Height);
             return S(118+Math.Max(26,lines));
         }
     }
@@ -381,6 +436,16 @@ public sealed class DialogueOverlay : Form {
     string Speaker(){if(!String.IsNullOrEmpty(state.name))return state.name.ToUpperInvariant();if(String.IsNullOrEmpty(state.actor))return "ANCA";var name=state.actor.Substring(state.actor.LastIndexOf('.')+1);return Regex.Replace(name,"_[0-9]+$","").Replace('_',' ').ToUpperInvariant();}
     void HudText(Graphics g,string text,Font font,Brush brush,RectangleF bounds,StringFormat format){
         if(!ClearBackground){g.DrawString(text,font,brush,bounds,format);return;}
+        // GDI+ text drawing supports linked fallback fonts; GraphicsPath.AddString
+        // only uses one font face and can replace translated glyphs with boxes.
+        if(UiLocalization.NeedsFontFallback(text)){
+            using(var shadow=new SolidBrush(Color.FromArgb(16,18,16))){
+                foreach(var offset in new[]{new PointF(-1.1f,0),new PointF(1.1f,0),new PointF(0,-1.1f),new PointF(0,1.1f)}){
+                    var copy=bounds;copy.Offset(offset);g.DrawString(text,font,shadow,copy,format);
+                }
+            }
+            g.DrawString(text,font,brush,bounds,format);return;
+        }
         // Keep subtitles legible over bright scenery without covering the game.
         using(var path=new GraphicsPath())using(var outline=new Pen(Color.FromArgb(16,18,16),2.5f){LineJoin=LineJoin.Round}){
             // All HUD fonts use pixel units. SizeInPoints depends on system DPI
@@ -400,7 +465,7 @@ public sealed class DialogueOverlay : Form {
         }
     }
     string MicrophoneLabel {
-        get {switch(MicrophonePhase){case "finishing":return "Sending";case "connecting":return "Connecting";case "error":return "Mic unavailable";case "quiet":return "No input signal";default:return "Listening";}}
+        get {switch(MicrophonePhase){case "finishing":return T("Sending");case "connecting":return T("Connecting");case "error":return T("Mic unavailable");case "quiet":return T("No input signal");default:return T("Listening");}}
     }
     void Diamond(Graphics g,float x,float y,float radius,Color colour){
         using(var brush=new SolidBrush(colour))g.FillPolygon(brush,new[]{new PointF(x,y-radius),new PointF(x+radius,y),new PointF(x,y+radius),new PointF(x-radius,y)});
@@ -438,7 +503,7 @@ public sealed class DialogueOverlay : Form {
     void DrawMicrophone(Graphics g,int width,int top){
         DrawMicRing(g,width/2f,top+45);
         string phase=MicrophonePhase;
-        string key=phase=="finishing"||phase=="connecting"?"":VoiceKey+(phase=="error"?" · RETRY":" · FINISH");
+        string key=phase=="finishing"||phase=="connecting"?"":VoiceKey+" · "+T(phase=="error"?"RETRY":"FINISH");
         using(var label=GameFont(12))using(var hint=GameFont(10))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center}){
             HudText(g,MicrophoneLabel,label,light,new RectangleF(4,top+85,width-8,24),format);
             HudText(g,key,hint,brass,new RectangleF(4,top+109,width-8,20),format);
@@ -459,13 +524,13 @@ public sealed class DialogueOverlay : Form {
         }
         using(var title=GameFont(13))using(var body=GameFont(18))using(var hint=GameFont(12))using(var light=new SolidBrush(ink))using(var brass=new SolidBrush(gold))using(var format=new StringFormat{Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
             if(!String.IsNullOrWhiteSpace(DisplayText)||editing){
-                string heading=HordeVisible?"HORDE":(state.mode=="group"?"GROUP · ":"")+Speaker();
+                string heading=HordeVisible?T("Horde"):(state.mode=="group"?T("GROUP")+" · ":"")+Speaker();
                 float half=Math.Min(w/2-45,g.MeasureString(heading,title).Width/2+18);
                 Ornament(g,Math.Max(24,w/2-half-70),w/2-half,18);Ornament(g,w/2+half,Math.Min(w-24,w/2+half+70),18);
                 HudText(g,heading,title,brass,new RectangleF(24,8,w-48,22),format);
                 if(!editing)HudText(g,DisplayText,body,light,new RectangleF(24,32,w-48,h-39-(int)(VoiceHeight(Width)/scale)),format);
             }
-            string footer=editing?(String.IsNullOrEmpty(error)?"ENTER  SEND     ·     ESC  RETURN":error):"";
+            string footer=editing?T(String.IsNullOrEmpty(error)?"ENTER  SEND     ·     ESC  RETURN":error):"";
             if(editing)HudText(g,footer,hint,brass,new RectangleF(28,composerBottom-30,w-56,24),format);
             if(VoiceVisible){
                 int voiceHeight=(int)(VoiceHeight(Width)/scale);int top=h-voiceHeight;
@@ -473,13 +538,13 @@ public sealed class DialogueOverlay : Form {
                 if(top>0)Ornament(g,w/2-40,w/2+40,top+1);
                 DrawMicRing(g,53,top+52);
                 string phase=MicrophonePhase;
-                string instruction=phase=="listening"?"Press "+VoiceKey+" again to send":phase=="quiet"?"Check your microphone · "+VoiceKey+" to finish":phase=="finishing"?"Finishing your message":phase=="connecting"?"Getting your conversation ready":VoiceNoticeVisible?voiceNotice:"Check your Windows microphone";
+                string instruction=phase=="listening"?F("Press {0} again to send",VoiceKey):phase=="quiet"?F("Check your microphone · {0} to finish",VoiceKey):T(phase=="finishing"?"Finishing your message":phase=="connecting"?"Getting your conversation ready":VoiceNoticeVisible?voiceNotice:"Check your Windows microphone");
                 using(var left=new StringFormat{Alignment=StringAlignment.Near,Trimming=StringTrimming.EllipsisWord}){
                     HudText(g,MicrophoneLabel,body,light,new RectangleF(108,top+24,w-132,30),left);
                     HudText(g,instruction,hint,brass,new RectangleF(108,top+62,w-132,40),left);
                 }
                 if(!String.IsNullOrWhiteSpace(VoiceTranscript)){
-                    HudText(g,"You: "+VoiceTranscript,hint,light,new RectangleF(24,top+118,w-48,voiceHeight-118),format);
+                    HudText(g,F("You: {0}",VoiceTranscript),hint,light,new RectangleF(24,top+118,w-48,voiceHeight-118),format);
                 }
             }
         }

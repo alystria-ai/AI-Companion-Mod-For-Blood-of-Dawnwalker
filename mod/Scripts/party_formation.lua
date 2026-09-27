@@ -33,13 +33,29 @@ function M.new()
    present[row.id]=true
    local s=self.seats[row.id]
    if not s then s={epoch=frame.epoch,parked=copy(row.position)};self.seats[row.id]=s end
+   if row.creature then
+    -- Human companions depart after a short step. A beast keeps its own rest
+    -- anchor through those shared-frame changes, including in mixed parties.
+    if row.locked then s.creatureRest=nil;s.parked=nil
+    elseif not s.creatureRest and (s.parked or not frame.moving and row.settledEpoch==frame.epoch)then
+     s.creatureRest={player=copy(player),distance=gap(row.position,player),epoch=frame.epoch}
+     s.parked=s.parked or copy(row.position)
+    end
+    local rest=s.creatureRest
+    if rest then
+     local distance=gap(row.position,player)
+     local leaving=gap(rest.player,player)>=250 and distance>=rest.distance+125
+     if leaving or distance>=math.max(700,(row.radius or 55)*2+300)then s.creatureRest=nil;s.parked=nil end
+    end
+   end
    -- Settings change the next journey, not the spot somebody currently owns.
    if not s.pitch or frame.moving then s.pitch=row.pitch;s.distanceScale=row.distanceScale;s.narrow=row.narrow end
    if row.locked then locked[#locked+1]=row;s.interrupted=true end
-   if frame.moving or s.epoch~=frame.epoch then s.parked=nil;s.epoch=frame.epoch end
+   if not s.creatureRest and (frame.moving or s.epoch~=frame.epoch)then s.parked=nil;s.epoch=frame.epoch end
    -- Hold the local group while the player approaches one companion. A new
    -- journey releases the parked seat; turning the camera never reshuffles it.
-   if not row.locked and not frame.moving and gap(row.position,player)<170 then s.parked=s.parked or copy(row.position)end
+   local approachGap=row.creature and (row.radius or 55)+120 or 170
+   if not row.locked and not frame.moving and (gap(row.position,player)<approachGap or row.creature and row.settledEpoch==frame.epoch)then s.parked=s.parked or copy(row.position)end
    -- A companion approached by Coen owns this resting spot. Reserve it before
    -- resolving arriving seats; otherwise somebody else's planned destination
    -- can send this stationary speaker back onto the arc and release attention.
@@ -78,7 +94,10 @@ function M.new()
     if not goal then goal=copy(row.position);mode='Waiting for seat'end
    end
    committed[row.id]=goal
-   goals[row.id]={point=copy(goal),distance=gap(row.position,goal),mode=mode,moving=frame.moving==true,epoch=frame.epoch,smallParty=#rows<=4}
+   local rest=self.seats[row.id].creatureRest
+   goals[row.id]={point=copy(goal),distance=gap(row.position,goal),mode=mode,moving=not rest and frame.moving==true,epoch=rest and rest.epoch or frame.epoch,smallParty=#rows<=4,
+    arrival=row.creature and math.min(100,math.max(65,(row.radius or 55)*.5))or nil,
+    settledTolerance=row.creature and math.max(175,(row.radius or 55))or nil}
   end end
   self.goals=goals;return goals
  end

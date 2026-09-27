@@ -31,7 +31,7 @@ def main():
     config.pop('apiKey', None)
     config.pop('endUserId', None)
     version = json.loads((ROOT / 'package.json').read_text())['version']
-    notes = f"""LLM NPC Companions System {version} - Multilingual voices
+    notes = f"""AI NPC Companions System {version} - Multilingual voices
 
 This optional pack replaces {len(replacements)} conversation profile IDs with multilingual
 copies and Azure voices. It keeps the normal biographies, relationships and game context.

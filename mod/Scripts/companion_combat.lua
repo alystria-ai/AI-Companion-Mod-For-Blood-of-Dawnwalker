@@ -25,6 +25,11 @@ function battles.observe(active,opponents,now)
  local r=battles.current
  if active then
   if not r then
+   -- Spawning/recruiting a creature can briefly raise a native combat flag
+   -- before its friendly attitude settles. A flag alone is not an encounter:
+   -- require an eligible hostile from the existing nearby-enemy observation.
+   -- Keep waiting if detection is delayed; never invent a nameless battle.
+   if not opponents or next(opponents)==nil then return end
    battles.serial=battles.serial+1;r=record('battle','battle-'..battles.serial,'Recent battle');battles.current=r;witness(r)
    for key,name in pairs(opponents or {})do if (r.count or 0)<64 then
     r.count=(r.count or 0)+1;r.enemies[key]=field(name)

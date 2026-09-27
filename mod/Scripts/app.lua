@@ -3,6 +3,7 @@ local AI = require('ai_state')
 local config = require('config')
 local root = require('runtime_path')
 local Targeting = require('targeting')
+local NativeSubtitles=require('native_subtitles')
 local Engagement = require('engagement')
 local FaceInspector = require('face_inspector')
 local FaceGraph = require('face_graph')
@@ -15,6 +16,9 @@ local FirstPerson=require('first_person_camera')
 local Abilities=require('player_abilities')
 local FastTravel=require('fast_travel')
 local Ambient=require('ambient_comments')
+local BattleComments=require('battle_comments')
+local Addons=require('addon_api')
+local CreatureService=require('creature_service')
 local LootComments=require('loot_comments');local SkillsAnywhere=require('skills_anywhere')
 local Passives=require('player_passives');local AutoLoot=require('auto_loot')
 local lastRelationshipRead=0
@@ -23,6 +27,7 @@ local UiInput=require('ui_input')
 local speechLayer=nil
 local partyChat=false
 local conversationMode='single';local conversationRoom='';local speakerTurn=''
+local lastManualSelection=os.time()
 local requestId=0
 local identity={}
 local generation = os.time() * 1000
@@ -79,12 +84,13 @@ local function each(array,callback)
     for i=1,#array do callback(array[i])end
 end
 local function publish()
-    write('target.txt', table.concat({tostring(generation),(selected and previewEnd==0) and '1' or '0',selected and selectedName or '',selected and selectedClass or '',clean(status),conversationMode,tostring(requestId),clean(identity.name or ''),clean(identity.definition or ''),clean(identity.bodyType or ''),clean(identity.voiceTag or ''),conversationRoom,speakerTurn},'\n')..'\n')
+    write('target.txt', table.concat({tostring(generation),(selected and previewEnd==0) and '1' or '0',selected and selectedName or '',selected and selectedClass or '',clean(status),conversationMode,tostring(requestId),clean(identity.name or ''),clean(identity.definition or ''),clean(identity.bodyType or ''),clean(identity.voiceTag or ''),conversationRoom,speakerTurn,identity.addon or '',identity.addonActor or '',identity.addonInstance or ''},'\n')..'\n')
 end
 local function cacheSelection(actor)
     selectedName=clean(actor:GetFullName());selectedClass=clean(actor:GetClass():GetFullName())
 end
 local function forgetConversation(message)
+    NativeSubtitles.clear()
     -- Unloading/destroyed objects cannot safely restore face layers, focus or
     -- input leases. Only discard Lua state here; publish uses cached strings.
     selected=nil;bindings={};speechLayer=nil;attention=nil;engagement=nil;partyChat=false
@@ -93,12 +99,23 @@ local function forgetConversation(message)
     generation=generation+1;status=message or 'Conversation unloaded';publish()
 end
 Companions.beforeReset(function(reason)
-    if reason=='party-reset'then Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for world or party reset',true)end
+    if reason=='party-reset'then Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();BattleComments.reset();CreatureService.reset();Addons.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for world or party reset',true)end
     forgetConversation('Conversation ended for world or party reset')
 end)
 local function neutral()
     if speechLayer then pcall(function()FaceGraph.applyWeights(speechLayer,{})end)end
     for _,b in ipairs(bindings) do if valid(b.mesh) then pcall(function() b.mesh:SetMorphTarget(FName(b.name),b.original or 0.0,true) end) end end
+end
+local function speechWeights(weights)
+    if not speechLayer then return end
+    -- Native combat/idle transitions may replace a linked facial instance while
+    -- audio is in flight. Losing that optional layer must not cancel the reply.
+    local ok,why=pcall(FaceGraph.applyWeights,speechLayer,weights)
+    if not ok then
+        local retired=speechLayer;speechLayer=nil
+        if valid(retired.instance)then pcall(FaceGraph.restoreLayer,retired)else retired.restored=true end
+        log('Facial layer changed; keeping the spoken reply: '..tostring(why))
+    end
 end
 local function releaseConversation(keepAttention)
     if keepAttention and engagement and engagement.attention then
@@ -119,12 +136,13 @@ local function releaseCompletedReply(data)
     if key==lastReplyRelease then return end
     lastReplyRelease=key
     if engagement and engagement.following then return end
-    releaseConversation(true);log('Single reply complete; movement released, attention retained')
+    releaseConversation(true);log('Single reply complete; movement released, attention retained');return true
 end
 -- Group membership is chosen within twelve metres of the player. Preserve
 -- this shared origin across speaker handoffs: facing the original addressee
 -- must not count as walking away from a later speaker behind the camera.
 local function conversationWalkedAway(a,forward,b,following)
+    if conversationRoom:match('^battle%-')or conversationRoom:match('^ambient%-')or conversationRoom:match('^loot%-')then return (a.X-b.X)^2+(a.Y-b.Y)^2+(a.Z-b.Z)^2>2000^2 end
     if conversationMode=='group' then
         if not groupOrigin then groupOrigin={X=a.X,Y=a.Y,Z=a.Z} end
         local x,y,z=a.X-groupOrigin.X,a.Y-groupOrigin.Y,a.Z-groupOrigin.Z
@@ -133,6 +151,7 @@ local function conversationWalkedAway(a,forward,b,following)
     return Targeting.walkedAway(a,forward,b,config.MaxDistance,following)
 end
 local function stop(message,quiet)
+    NativeSubtitles.clear()
     local previousActor=selected
     lookingAwaySince=nil
     if not quiet then groupOrigin=nil end
@@ -143,7 +162,7 @@ local function stop(message,quiet)
     partyChat=false
     if layer and not Companions.returnChatFace(previousActor,layer)then FaceGraph.restoreLayer(layer)end
 end
-if RegisterModCleanup then RegisterModCleanup(function()Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
+if RegisterModCleanup then RegisterModCleanup(function()Abilities.cleanup();Passives.cleanup();SkillsAnywhere.cleanup();FastTravel.cleanup();AutoLoot.reset();LootComments.reset();BattleComments.reset();CreatureService.reset();Addons.reset();Ambient.reset();FirstPerson.release();Horde.stop('Horde ended for live reload',true);if combatTrace then combatTrace.stop()end;NativeMenu.close();stop('Released for live reload');Companions.cleanup()end)end
 local function trace(nearest)
     local pc=playerController();if not valid(pc) or not valid(pc.Pawn) then return nil,'Player not ready' end
     cachedController=pc
@@ -163,7 +182,8 @@ local function trace(nearest)
             if actor:GetWorld():GetFullName()~=player:GetWorld():GetFullName() then return end
             if actor:IsPlayerControlled() then return end
             local score,distance,reason=Targeting.score(location,forward,actor:K2_GetActorLocation(),config.MaxDistance,config.FacingHalfAngle or 80)
-            local identity=Companions.identity(actor)
+            local identity=Addons.identity(actor)or Companions.identity(actor)
+            if nearest==true and identity and identity.addon then return end
             if identity and identity.chat==false then return end
             local owned=nearest~=nil and identity or nil
             if owned then
@@ -395,19 +415,23 @@ local function inspect(actor,detailed,inheritedFace)
 end
 local function toggle(mode,actorOverride)
     if selected and not actorOverride then if mode~='compose'then requestId=requestId+1 end;publish();return end
-    requestId=mode=='compose'and 0 or 1
+    requestId=(mode=='compose'or mode=='reaction')and 0 or 1
     local actor,reason=actorOverride,nil
     if not actor then actor,reason=trace(conversationMode=='group')end
     if not actor then status=reason;publish();log(reason);return end
     local pawnClass=AI.find('/Script/Engine.Pawn')
     if not actor:IsA(pawnClass) then status='Hit is not a Pawn: '..actor:GetFullName()..'. F8 records it for adaptation.';publish();log(status);return end
-    local canTalk,why,idleFace=Companions.selectForChat(actor,config.UseFaceLayer)
+    local external=Addons.identity(actor)
+    local reaction=mode=='reaction'and Companions.identity(actor)~=nil
+    local canTalk,why,idleFace
+    if external then canTalk=true elseif reaction then canTalk=Companions.selectForReaction(actor);why='Companion cannot react now' else canTalk,why,idleFace=Companions.selectForChat(actor,config.UseFaceLayer)end
     local idleAttention
     partyChat=canTalk~=nil
     if not partyChat then canTalk,why,idleFace,idleAttention=Companions.beforeConversation(actor,config.UseFaceLayer,config.FaceAndHold)end
     if canTalk==false then status=why;publish();return end
     attention=idleAttention -- Own transferred handles even if face setup fails.
-    inspect(actor,false,idleFace);cacheSelection(actor);selected=actor;generation=generation+1;identity=Companions.identity(actor)or Targeting.identify(actor)
+    if external or reaction then bindings={};speechLayer=nil else inspect(actor,false,idleFace)end
+    cacheSelection(actor);selected=actor;generation=generation+1;identity=external or Companions.identity(actor)or Targeting.identify(actor)
     activeController=cachedController
     selectedAt=os.time()
     if config.FaceAndHold and not partyChat then engagement=Engagement.begin(actor,log,attention);attention=nil end
@@ -418,7 +442,7 @@ end
 local function reuseConversation(actor)
     -- New request/room identity, same live actor and facial/attention ownership.
     -- Revalidate native ownership instead of relinking the face on every key.
-    if not valid(selected)or selected:GetFullName()~=actor:GetFullName()or not FaceGraph.isCurrent(speechLayer)then return false end
+    if not valid(selected)or selected:GetFullName()~=actor:GetFullName()or (not Addons.identity(actor)and not FaceGraph.isCurrent(speechLayer))then return false end
     if engagement and not Engagement.canReuseHold(engagement)then return false end
     if not valid(cachedController)or not valid(cachedController.Pawn)then return false end
     if config.FaceAndHold and not partyChat and not engagement then
@@ -446,6 +470,7 @@ local function applyAction()
     lastAction=id
     local result,message=false,'Unsupported action'
     local ok,err=pcall(function()
+        if Addons.identity(selected)then result,message=Addons.action(selected,name,id);return end
         if name=='Follow'or name=='Stop Walking'or name=='Look At Player'then Engagement.releaseAttention(attention);attention=nil end
         if name=='Follow' then
             local owned=Companions.identity(selected)
@@ -808,11 +833,20 @@ local function uiCommand()
     -- settle. A newer command replaces it, so repeated presses cannot stack UI.
     if command:match('^native%-menu:')and not NativeMenu.isOpen()and not FastTravel.uiReady(playerController())then return end
     lastUiCommand=command
-    if command:match('^camera%-toggle:')then
+    if command:match('^addon%-menu%-open:creature%-companion%-mounts:')then
+        local pc=playerController();local session=command:match(':([%w_-]+)$')
+        if not NativeMenu.isOpen()and FastTravel.uiReady(pc)and Addons.uiOpen(pc,true)then
+            if selected then stop('Creature menu')else restoreFocusPause()end
+            FirstPerson.tick(pc,Settings.values.FirstPersonCamera==1,true)
+            Addons.ackUi(pc,session)
+        end
+    elseif command:match('^addon%-menu%-close:creature%-companion%-mounts:')then
+        Addons.uiOpen(playerController(),true)
+    elseif command:match('^camera%-toggle:')then
         local pc=playerController()
         if valid(pc)and valid(pc.Pawn)then
             Settings.change('FirstPersonCamera',1)
-            FirstPerson.tick(pc,Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())
+            FirstPerson.tick(pc,Settings.values.FirstPersonCamera==1,NativeMenu.isOpen()or Addons.uiOpen(pc))
         end
     elseif command:match('^native%-menu:')then
         if selected then stop('Companion menu')else restoreFocusPause()end
@@ -825,6 +859,7 @@ local function uiCommand()
         if not ok then write('ui-ready.txt',command..'\n'..why);return end
         write('ui-ready.txt',command..'\nready')
     elseif command:match('^compose%-')or command:match('^select%-')then
+        lastManualSelection=os.time() -- Voice selection precedes the bridge readiness update.
         NativeMenu.close()
         local group=command:find('%-group:')~=nil
         -- Resolve before releasing the old selection. A failed lookup must not
@@ -848,19 +883,24 @@ local function uiCommand()
     elseif command:match('^close:')then restoreFocusPause()end
 end
 local function ambientComment()
- local pc=playerController()
+ local pc=playerController();Addons.refresh(pc)
  local actor=Companions.ambientSpeaker()
- local busy=NativeMenu.isOpen()or composeController~=nil
- local line=LootComments.tick(pc,Settings.values.LootComments==1,busy,actor~=nil)
- if line then actor=Companions.ambientSpeaker(true)
- else line=Ambient.tick(pc,busy,actor~=nil)end
+ local combatActor=Companions.battleSpeaker()
+ local busy=NativeMenu.isOpen()or Addons.uiOpen(pc)or composeController~=nil or os.time()-lastManualSelection<5
+ local ambient=Ambient.tick(pc,busy,actor~=nil,BattleComments.holdLoot())
+ local loot=LootComments.tick(pc,Settings.values.LootComments==1,busy or ambient~=nil,actor~=nil or combatActor~=nil,BattleComments.holdLoot())
+ local line=BattleComments.tick(pc,Settings.values.BattleComments==1,busy or loot~=nil or ambient~=nil,combatActor~=nil,Settings.values.LootComments==1 and LootComments or nil,actor~=nil,Ambient)
+ if line then actor=line.phase=='start'and combatActor or Companions.ambientSpeaker(true)
+ elseif loot then line=loot;actor=Companions.ambientSpeaker(true)
+ else line=ambient end
  if not line or not actor then return end
  conversationMode='single';conversationRoom=line.id;speakerTurn=''
- if not reuseConversation(actor)then
-  if selected then stop('Ambient observation')end
-  toggle('compose',actor)
- end
+ -- Openings must not acquire a facial layer during combat. Quiet closing,
+ -- exploration and loot comments retain lipsync while their layer is valid.
+ if selected then stop('Automatic companion reaction')end
+ toggle(line.phase=='start'and 'reaction'or 'compose',actor)
  if not selected then return end
+ write('observation-context.tsv',table.concat({line.id,tostring(generation),tostring(os.time()),clean(line.context or '')},'\t'))
  write('ambient-message.tsv',table.concat({line.id,tostring(generation),tostring(os.time()),clean(line.text)},'\t'))
 end
 local launchBackground
@@ -886,7 +926,7 @@ if config.AutoStartConvai then LoopAsync(1000,function()
     end
     return false
 end)end
-safe(function() status='v0.5.4: companions, conversations and horde mode';publish();log(status) end)
+safe(function() status='v0.5.5: companions, conversations and horde mode';publish();log(status) end)
 -- One dispatcher owns camera and application work. A lost UE4SS callback must
 -- not leave either path permanently marked pending.
 local partyElapsed,workElapsed=0,0
@@ -911,7 +951,7 @@ LoopAsync(16,function()
             if partyDue then Settings.poll();safe(function()Abilities.tick(playerController(),Settings.values.AnytimeAbilities==1)end)end
             -- Text/voice chat owns input, not the viewpoint. Keep first person
             -- throughout single/group chat; native scenes still yield inside tick.
-            if cameraDue or partyDue then FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen())end
+            if cameraDue or partyDue then FirstPerson.tick(playerController(),Settings.values.FirstPersonCamera==1,NativeMenu.isOpen()or Addons.uiOpen(playerController()))end
             if faceDue then FaceGraph.tickAmbient()end
             if not ordinaryDue then return end
             if partyDue then Horde.tick(false)end
@@ -919,10 +959,10 @@ LoopAsync(16,function()
             uiCommand()
             if mapDue or partyDue then safe(function()FastTravel.tick(playerController(),Settings.values.FastTravelAnywhere==1,mapDue and 48 or 250)end)end
             if partyDue then
-             Companions.tick(playerController(),selected);groupCommand();ambientComment()
+             safe(function()CreatureService.tick(playerController())end);Companions.tick(playerController(),selected);groupCommand();ambientComment()
              safe(function()SkillsAnywhere.tick(playerController(),Settings.values.SkillsAnywhere==1)end)
              safe(function()Passives.tick(playerController(),Settings.values.SlotlessPassives==1)end)
-             safe(function()AutoLoot.tick(playerController(),Settings.values.AutoLoot==1,NativeMenu.isOpen()or composeController~=nil,Companions.identity)end)
+             safe(function()AutoLoot.tick(playerController(),Settings.values.AutoLoot==1,NativeMenu.isOpen()or Addons.uiOpen(playerController())or composeController~=nil,Companions.identity)end)
             end
             if (selected or NativeMenu.isOpen())and os.time()-lastRelationshipRead>=2 then
                 lastRelationshipRead=os.time()
@@ -931,7 +971,7 @@ LoopAsync(16,function()
             end
             -- Journal/environment reads are conversation work. Leave them idle
             -- while simply playing; opening chat refreshes overdue snapshots.
-            if selected then
+            if selected and not identity.localActionsOnly then
                 questMemory()
                 environmentContext()
             end
@@ -943,6 +983,7 @@ LoopAsync(16,function()
             if not valid(selected) or not valid(pc) or not valid(pc.Pawn) then forgetConversation('Target unloaded');return end
             local selectedWorld,playerWorld=selected:GetWorld(),pc.Pawn:GetWorld()
             if not valid(selectedWorld)or not valid(playerWorld)or selectedWorld:GetAddress()~=playerWorld:GetAddress() then forgetConversation('World changed');return end
+            if identity.addon and not Addons.identity(selected)then forgetConversation('Add-on registration expired');return end
             local a,b=pc.Pawn:K2_GetActorLocation(),selected:K2_GetActorLocation()
             if updateCount%3==0 then
                 -- Roughly 10 Hz; no object scan, socket lookup or audio/network work.
@@ -992,18 +1033,21 @@ LoopAsync(16,function()
                 return
             end
             local f=io.open(root..'/frame.txt','r');if not f then
+                NativeSubtitles.clear()
                 neutral();if os.time()-selectedAt>5 then stop('No Convai bridge; released NPC') end;return
             end
             local data=f:read('*a');f:close()
+            NativeSubtitles.tick(pc,selected,generation,data)
             local gen,time=data:match('^(%d+)\t(%d+)\n')
             if tonumber(gen)~=generation or not time or math.abs(os.time()-tonumber(time))>2 then
                 neutral();if os.time()-selectedAt>5 then stop('Convai bridge not responding; released NPC') end;return
             end
             selectedAt=os.time()
-            releaseCompletedReply(data)
+            local completed=releaseCompletedReply(data)
+            if completed and (conversationRoom:match('^battle%-')or conversationRoom:match('^ambient%-')or conversationRoom:match('^loot%-'))then stop('Automatic reply complete');return end
             local weights={}
             for name,value in data:gmatch('\n([%w_]+)\t([%d%.]+)') do weights[name]=math.max(0,math.min(1,tonumber(value) or 0)) end
-            if speechLayer then FaceGraph.applyWeights(speechLayer,weights)end
+            speechWeights(weights)
             for _,binding in ipairs(bindings) do
                 if valid(binding.mesh) then binding.mesh:SetMorphTarget(FName(binding.name),weights[binding.channel] or 0,true) end
             end

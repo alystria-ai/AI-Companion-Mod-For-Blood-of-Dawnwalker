@@ -1,8 +1,11 @@
 -- Own native UMG layout; artwork and typeface come from the installed menu theme.
 local AI=require('ai_state');local Input=require('ui_input');local Party=require('companions');local Settings=require('companion_settings');local Appearance=require('companion_appearance');local Horde=require('horde_mode')
+local L=require('ui_localization')
+local UiFont=require('ui_font')
 local root=require('runtime_path');local M={};local view=nil;local Theme=nil;local serial=0
 local function cls(path)return assert(AI.find(path),path)end
 local function text(w,value)
+ value=L.text(value)
  local cache=view and view.textCache
  if cache and cache[w]==value then return end
  w:SetText(cls('/Script/Engine.Default__KismetTextLibrary'):Conv_StringToText(value))
@@ -13,9 +16,16 @@ local function add(panel,w)return panel:AddChild(w)end
 local function fill(slot)slot:SetHorizontalAlignment(0);slot:SetVerticalAlignment(0);return slot end
 local function size(w,x,y)local box=new('SizeBox');if x then box:SetWidthOverride(x)end;if y then box:SetHeightOverride(y)end;box:SetContent(w);return box end
 local function art(name)return Theme.image(view.tree,view.theme,name,{construct=function(path,tree)return StaticConstructObject(cls(path),tree)end})end
+local function themedFont(w,points)
+ Theme.font(w,view.theme,points)
+ if view.localizedFontCode~=L.code then
+  view.localizedFont=UiFont.resolve(L.code,w.Font.FontObject);view.localizedFontCode=L.code
+ end
+ if AI.valid(view.localizedFont)then w.Font.FontObject=view.localizedFont end
+end
 local function caption(value,points)
  local w=new('TextBlock');text(w,value);w:SetAutoWrapText(true);w:SetVisibility(3)
- Theme.font(w,view.theme,points or 26);Theme.textColor(w,'body');return w
+ themedFont(w,points or 26);Theme.textColor(w,'body');return w
 end
 local function describe(title,body)
  if not view then return end;text(view.detailTitle,title);text(view.detailBody,body)
@@ -44,7 +54,7 @@ local function button(panel,label,fn,width,help)
  b.WidgetStyle.NormalPadding={Left=0,Top=0,Right=0,Bottom=0}
  b.WidgetStyle.PressedPadding={Left=0,Top=0,Right=0,Bottom=0}
  -- The dependency's default button font is deliberately small; our design is 1920x1080.
- Theme.font(c,view.theme,26);c:SetJustification(0)
+ themedFont(c,26);c:SetJustification(0)
  c.Slot:SetHorizontalAlignment(0);c.Slot:SetVerticalAlignment(2);c.Slot:SetPadding({Left=0,Top=4,Right=18,Bottom=4})
  local overlay=new('Overlay');fill(add(overlay,b))
  local click=clickLayer(overlay,b)
@@ -105,7 +115,7 @@ function M.batch(requests,state)
   elseif phase=='failed'then result.failed=result.failed+1
   else result.pending=result.pending+1 end
   result.progress=result.progress+(stages[phase]or 0)
-  if phase~='ready'and #result.lines<3 then result.lines[#result.lines+1]=r.name..' · '..(r.message or 'Queued')end
+  if phase~='ready'and #result.lines<3 then result.lines[#result.lines+1]=r.name..' · '..L.text(r.message or 'Queued')end
  end
  result.progress=#requests>0 and result.progress/(#requests*5)or 0
  result.total=#requests;return result
@@ -126,7 +136,7 @@ local function updateAppearance(v)
  if v.appearanceNote then text(v.appearanceNote,v.selection and 'Applies to your next summon only.'or 'Select a character to choose their colours.')end
 end
 local function showSelection(v)
- if v.selection then describe(v.selection.name,v.selection.help)else describe('Choose your companions','Select a character on the left, then choose Summon. Dismiss removes the newest copy of that character. Use Party to choose a specific copy.')end
+ if v.selection then describe(v.selection.name,v.selection.help)else describe('Choose your companions','Select a character, choose colours, then Summon. Dismiss removes the newest copy; Party lets you choose a specific copy.')end
  for _,b in ipairs(v.buttons)do if b.characterId then b.active=v.selection and b.characterId==v.selection.id or false end end
  updateAppearance(v)
 end
@@ -138,17 +148,17 @@ local function changeAppearance(v,channel,direction)
 end
 local function refresh(v,state)
  local loading=state.queued or 0;for _,m in ipairs(state.members)do if m.loading then loading=loading+1 end end
- text(v.summary,#state.members..' in party · '..loading..' loading')
+ text(v.summary,L.format('{0} in party · {1} loading',#state.members,loading))
  if v.page=='Horde'then
   local run=Horde.view();local phase=run.phase or 'idle'
-  local status=run.active and ((run.mode=='nightmare'and 'Nightmare round 'or 'Wave ')..tostring(run.level or 0)..' / '..tostring(run.levels or 10)..' · '..tostring(run.alive or 0)..' of '..tostring(run.total or 0)..(run.mode=='nightmare'and ' bosses remaining'or ' enemies remaining'))or (phase=='complete'and 'All rounds cleared' or phase=='ended'and 'Run ended' or 'No horde running')
+  local status=run.active and L.format(run.mode=='nightmare'and 'Nightmare round {0} / {1} · {2} of {3} bosses remaining'or 'Wave {0} / {1} · {2} of {3} enemies remaining',run.level or 0,run.levels or 10,run.alive or 0,run.total or 0)or (phase=='complete'and 'All rounds cleared' or phase=='ended'and 'Run ended' or 'No horde running')
   if run.active and (run.level or 0)==0 then status=run.mode=='nightmare'and 'Preparing Nightmare'or 'Preparing the first wave'end
-  if phase=='rest'then status='Round '..tostring(run.level)..' cleared · next round in '..tostring(run.restSeconds or 0)..' s'end
+  if phase=='rest'then status=L.format('Round {0} cleared · next round in {1} s',run.level,run.restSeconds or 0)end
   text(v.hordeStatus,status);text(v.hordeDetail,run.message or '')
   enabled(v.hordeStart,not run.active);enabled(v.nightmareStart,not run.active);enabled(v.hordeEnd,run.active)
   if v.hordeWaveLabel then
    local index=Settings.values.HordeStartingWave;local wave=v.hordeWaves[index]
-   text(v.hordeWaveLabel,tostring(index)..'. '..tostring(wave and wave.name or 'Wave '..index))
+   text(v.hordeWaveLabel,tostring(index)..'. '..L.text(wave and wave.name or 'Wave '..index))
    for _,control in ipairs(v.hordeWaveControls or {})do enabled(control,not run.active);control.arrow:SetRenderOpacity(run.active and .4 or 1)end
   end
  end
@@ -160,12 +170,12 @@ local function refresh(v,state)
   for _,m in ipairs(state.members)do if m.characterId==v.selection.id then count=count+1 end end
   for _,m in ipairs(state.pending or {})do if m.characterId==v.selection.id then count=count+1 end end
  end
- text(v.copyCount,v.selection and (count..' summoned or queued · Dismiss removes the newest copy')or '')
+ text(v.copyCount,v.selection and L.format('{0} summoned or queued · Dismiss removes the newest copy',count)or '')
  if v.progressValue~=batch.progress then v.progressValue=batch.progress;v.progress:SetPercent(batch.progress)end
- text(v.progressTitle,batch.total>0 and (batch.ready..' / '..batch.total..' ready'..(batch.pending>0 and ' · '..batch.pending..' loading'or '')..(batch.failed>0 and ' · '..batch.failed..' failed'or ''))or 'Ready to summon')
- local lines=table.concat(batch.lines,'\n');if batch.pending>3 then lines=lines..'\n+'..(batch.pending-3)..' more loading'end
- text(v.feedback,(v.message~=''and (v.message..(lines~=''and '\n'or ''))or '')..lines)
- text(v.queueHint,(state.note or ''):match('^Paused')and 'Unpause the game to continue loading. You can still select and summon other characters while you wait.'or 'You can select and summon other characters while these load. Repeated Summon clicks queue additional copies.')
+ text(v.progressTitle,batch.total>0 and (L.format('{0} / {1} ready',batch.ready,batch.total)..(batch.pending>0 and ' · '..L.format('{0} loading',batch.pending)or '')..(batch.failed>0 and ' · '..L.format('{0} failed',batch.failed)or ''))or 'Ready to summon')
+ local lines=table.concat(batch.lines,'\n');if batch.pending>3 then lines=lines..'\n'..L.format('+{0} more loading',batch.pending-3)end
+ text(v.feedback,(v.message~=''and (L.text(v.message)..(lines~=''and '\n'or ''))or '')..lines)
+ text(v.queueHint,(state.note or ''):match('^Paused')and 'Unpause the game to continue loading. You can still queue other companions.'or 'You can select and summon other characters while these load. Repeated Summon clicks queue additional copies.')
  if batch.total>0 and batch.pending==0 and batch.failed==0 then v.readyAt=v.readyAt or os.time()else v.readyAt=nil end
 end
 local function bindingLabels(v)
@@ -182,6 +192,7 @@ local function back()
 end
 local function changeSetting(s,delta)
  Settings.change(s.id,delta)
+ if s.id=='UiLanguage'then view.dirty=true;return end
  for _,b in ipairs(view.buttons)do if b.setting==s then text(b.value,Settings.label(s))end end
  for _,slider in ipairs(view.sliders)do if slider.setting==s then
   slider.value=Settings.values[s.id]
@@ -191,6 +202,8 @@ local function changeSetting(s,delta)
 end
 render=function()
  local v=view;retireButtons(v);v.content:ClearChildren();v.textCache={};v.progressValue=nil;v.buttons={};v.sliders={};v.appearanceRows=nil;v.appearanceReset=nil;v.appearanceNote=nil;v.dirty=false;v.hover=nil;v.pointerMode=false;v.feedback=nil
+ v.languageRevision=L.revision
+ if v.backLabel then text(v.backLabel,'BACK');themedFont(v.backLabel,21)end
  local tabs=new('HorizontalBox');add(v.content,tabs)
  for _,name in ipairs({'Summon','Party','Horde','Settings','Controls','Help'})do local item=button(tabs,name,function()page(name)end,250);item.active=v.page==name end
  add(v.content,size(art('horizontal'),1580,3)):SetPadding({Left=0,Top=14,Right=0,Bottom=24})
@@ -295,7 +308,7 @@ render=function()
   v.queueHint=caption('',22);add(detail,v.queueHint):SetPadding({Left=0,Top=12,Right=0,Bottom=0})
   showSelection(v)
  elseif v.page=='Party'then
-  add(left,size(list,790,710));describe('Your travelling party','Select a companion to dismiss that copy. Fallen companions return automatically after combat. Health bars stay hidden.')
+  add(left,size(list,790,710));describe('Your travelling party','Select a companion to dismiss that copy. Fallen companions recover after combat. Health bars stay hidden.')
   for _,m in ipairs(model.members)do local id=m.id;local item=button(list,m.name..' · '..m.status,function()Party.enqueue('dismiss',id);v.message='Dismissal queued';v.refreshAt=0 end,nil,'Dismiss this copy from your party.');item.memberId=id end
   if #model.members>0 then button(list,'Dismiss everyone',function()Party.enqueue('dismiss_all');v.refreshAt=0 end)else add(list,caption('No companions summoned yet.'))end
  elseif v.page=='Horde'then
@@ -308,11 +321,11 @@ render=function()
     -- Explicit wrap width gives Slate a stable desired height on its first
     -- prepass. Let each body fit its actual lines instead of reserving blank rows.
     local card=new('VerticalBox')
-    local title=caption(tostring(i)..'. '..tostring(wave.name or 'Wave '..i),26);title:SetAutoWrapText(false)
+    local title=caption(tostring(i)..'. '..L.text(wave.name or 'Wave '..i),26);title:SetAutoWrapText(false)
     add(card,size(title,748,40))
     local enemies=caption(wave.enemies or wave.description or '',22);enemies.WrapTextAt=730
     add(card,size(enemies,748))
-    local boss=caption('Boss: '..tostring(wave.bosses or ''),22);boss.WrapTextAt=730
+    local boss=caption(L.format('Boss: {0}',wave.bosses or ''),22);boss.WrapTextAt=730
     add(card,size(boss,748)):SetPadding({Left=0,Top=5,Right=0,Bottom=0})
     add(list,size(card,764)):SetPadding({Left=0,Top=4,Right=0,Bottom=22})
    end
@@ -370,7 +383,7 @@ render=function()
    refresh(v,Party.view())
   end,656)
  elseif v.page=='Settings'then
-  add(left,size(list,790,710));describe('Settings guide','Changes save immediately. Scroll this panel for an explanation of every option. Horde changes apply to your next run.')
+  add(left,size(list,790,710));describe('Settings guide','Changes save immediately. Scroll this panel for each setting’s explanation. Horde changes apply to the next run.')
   v.detailBody.WrapTextAt=650
   local notes={
    Player='Optional player conveniences, all Off by default. Abilities keep their learned levels and native costs. Auto-loot only runs outside combat and skips locks and theft.',
@@ -389,33 +402,39 @@ render=function()
    local section=s.group or 'Companions'
    if section~=guideGroup then
     guideText(detail,string.upper(section),28,guideGroup and 24 or 4,8)
-    guideText(detail,notes[section]or '',22,0,16);guideGroup=section
+    if L.index==1 then guideText(detail,notes[section]or '',22,0,16)end;guideGroup=section
    end
    -- Auto-height cards with explicit wrapping prevent overlap after scrolling
    -- or changing resolution. Build once; hover never rebuilds this guide.
    local card=new('VerticalBox');add(detail,size(card,670)):SetPadding({Left=0,Top=0,Right=0,Bottom=20})
-   guideText(card,s.label..(s.menuOnly and ' (Horde page)'or ''),25,0,4)
+   guideText(card,L.text(s.label)..(s.menuOnly and ' ('..L.text('Horde')..')'or ''),25,0,4)
    local defaults
-   if s.romance then defaults='Default: Auto | Choices: Auto / On / Off'
-   elseif s.min==0 and s.max==1 then defaults='Default: '..(s.default==1 and 'On'or 'Off')
-   elseif s.id=='HordeStartingWave'then defaults='Default: Roadside raiders | 10 themes'
-   else local suffix=s.suffix or '';defaults='Default: '..s.default..suffix..' | Range: '..s.min..' to '..s.max..suffix end
+   if s.id=='UiLanguage'or s.romance then defaults=L.format('Default: {0}',L.text('Auto'))
+   elseif s.min==0 and s.max==1 then defaults=L.format('Default: {0}',L.text(s.default==1 and 'On'or 'Off'))
+   else local suffix=s.suffix or '';defaults=L.format('Default: {0}',s.default..suffix)..' | '..L.format('Range: {0} to {1}',s.min..suffix,s.max..suffix)end
    guideText(card,defaults,20,0,5)
-   guideText(card,s.help,22)
+   guideText(card,L.help(s),22)
   end
   local group
   for _,s in ipairs(Settings.schema)do if not s.menuOnly then
    local section=s.group or 'Companions'
    if section~=group then local top=group and 18 or 0;group=section;add(list,caption(group,32)):SetPadding({Left=0,Top=top,Right=0,Bottom=8})end
-   local item=button(list,s.label,function()changeSetting(s,1)end,nil,s.help);item.setting=s
+   local item=button(list,s.label,function()changeSetting(s,1)end,nil,L.help(s));item.setting=s
    local row=new('HorizontalBox');item.widget:SetContent(row)
    -- Button content otherwise defaults to centering its desired width. Toggle
    -- rows are narrower than slider rows, so that default indented their labels.
    fill(row.Slot):SetPadding({Left=0,Top=0,Right=18,Bottom=0})
-   local label=caption(s.label,26);label:SetAutoWrapText(false)
-   local labelBox=size(label,410,52);label.Slot:SetVerticalAlignment(2);add(row,labelBox)
+   local label=caption(s.label,23);label:SetAutoWrapText(true);label.WrapTextAt=s.choices and 335 or 400
+   local labelBox=size(label,s.choices and 345 or 410,52);label.Slot:SetVerticalAlignment(2);add(row,labelBox)
    local control
-   if s.max~=1 then
+   if s.choices then
+    local box=new('HorizontalBox')
+    local prev=caption('‹',26);add(box,size(prev,20,52));prev.Slot:SetVerticalAlignment(2)
+    local value=caption(Settings.label(s),23);value:SetJustification(1);value:SetAutoWrapText(false)
+    add(box,size(value,326,52));value.Slot:SetVerticalAlignment(2)
+    local next=caption('›',26);add(box,size(next,20,52));next.Slot:SetVerticalAlignment(2)
+    add(row,box);item.value=value
+   elseif s.max~=1 then
     item.click:SetVisibility(1);item.click:SetIsInteractionEnabled(false);item.widget:SetVisibility(0)
     local surface=new('Overlay')
     local trackApi={construct=function(path,tree)return StaticConstructObject(cls(path),tree)end,need=function(w,why)return assert(w,why)end}
@@ -430,15 +449,17 @@ render=function()
     control=surface;item.slider=slider
     v.sliders[#v.sliders+1]={widget=slider,fill=trackFill,setting=s,value=Settings.values[s.id],item=item}
    else control=new('Spacer')end
-   add(row,size(control,s.max~=1 and 134 or 185,52)):SetPadding({Left=0,Top=0,Right=s.max~=1 and 63 or 12,Bottom=0})
-   local value=caption(Settings.label(s),26);value:SetAutoWrapText(false)
-   local valueBox=size(value,100,52);value.Slot:SetVerticalAlignment(2)
-   add(row,valueBox):SetPadding({Left=10,Top=0,Right=0,Bottom=0});item.value=value
+   if not s.choices then
+    add(row,size(control,s.max~=1 and 134 or 185,52)):SetPadding({Left=0,Top=0,Right=s.max~=1 and 63 or 12,Bottom=0})
+    local value=caption(Settings.label(s),23);value:SetAutoWrapText(false)
+    local valueBox=size(value,110,52);value.Slot:SetVerticalAlignment(2)
+    add(row,valueBox):SetPadding({Left=0,Top=0,Right=0,Bottom=0});item.value=value
+   end
   end end
  elseif v.page=='Controls'then
-  add(left,size(list,790,710));describe('Keyboard controls','Select an action, then press its new key. Changes save immediately to keybindings.ini.\n\nUse F1–F11, letters, numbers, Home, End, PageUp, PageDown, Insert or Delete. Each action needs a different key. Escape cancels capture.\n\nChoose keys that do not conflict with your game controls. Voice keys toggle recording: press once to speak, and again to finish.')
+  add(left,size(list,790,710));describe('Keyboard controls',L.text('Choose an action and press a new key. Each action needs a unique key. Esc cancels. Changes save to keybindings.ini.')..'\n\n'..L.text('Use F1–F11, letters, digits, Home, End, PageUp, PageDown, Insert or Delete. Avoid keys used by the game.')..'\n\n'..L.text('Press a voice key once to start and again to finish. Aim at a character, or the closest talking companion is chosen.'))
   for _,s in ipairs(Settings.bindingSchema)do local id=s.id
-   local item=button(list,s.label,function()v.capture=id;v.message='Press a new key for '..s.label..'. Esc cancels.';bindingLabels(v)end);item.binding=s
+   local item=button(list,s.label,function()v.capture=id;v.message=L.format('Press a new key for {0}. Esc cancels.',L.text(s.label));bindingLabels(v)end);item.binding=s
    local row=new('HorizontalBox');item.widget:SetContent(row);fill(row.Slot):SetPadding({Left=0,Top=0,Right=18,Bottom=0})
    item.label:SetAutoWrapText(false)
    local action=size(item.label,470,52);item.label.Slot:SetVerticalAlignment(2);add(row,action)
@@ -449,7 +470,8 @@ render=function()
  else
   add(left,size(list,790,710));add(list,caption('Conversations',32))
   local k=Settings.bindings
-  add(list,caption(k.Camera..' · First / third person\n'..k.SingleText..' · Single text chat\n'..k.SingleVoice..' · Single voice chat\n'..k.GroupText..' · Group text chat\n'..k.GroupVoice..' · Group voice chat\n\nPress a voice key once to start and again to finish. Aim at someone to speak to them; otherwise the closest talking companion is used.'))
+  local shortcuts={};for _,binding in ipairs(Settings.bindingSchema)do if binding.id~='Menu'then shortcuts[#shortcuts+1]=k[binding.id]..' · '..L.text(binding.label)end end
+  add(list,caption(table.concat(shortcuts,'\n')..'\n\n'..L.text('Press a voice key once to start and again to finish. Aim at a character, or the closest talking companion is chosen.')))
   add(list,caption('Support',32)):SetPadding({Left=0,Top=28,Right=0,Bottom=12})
   local copy=button(list,'Copy logs',function()
    if v.supportPending then return end
@@ -460,8 +482,15 @@ render=function()
    else v.message='Cannot write the diagnostic request. Check mod-folder permissions.'end
    refresh(v,Party.view())
   end);copy.prominent=true
-  add(list,caption('Copies recent diagnostic logs to your clipboard and saves support-report.txt. Conversation history and configuration are excluded.',22))
-  describe('Travelling together','Companions follow and fight automatically. You can ask them to stop or follow during a conversation.\n\nQueue multiple summons without waiting. The panel closes when loading completes and you stop browsing. Loading waits while the game is paused.\n\nUp / Down: select a row\nLeft / Right: change a setting\nEnter: choose\nEsc: go back\n'..k.Menu..': close the menu\n\nReassign the six shortcuts under Controls.\n\nAppearance: use Left / Right or the arrows above Summon. Choices are saved for the next summon. Each copy keeps its own colours, including after recovery or travel. Restore original colours resets the next summon.\n\nRomance profiles: Auto follows romance history in the loaded save. On enables the romantic profile early. Off uses the normal profile even after unlocking romance. Choose separately for Anca and Lacra. This changes conversations only; it does not play cutscenes.\n\nHorde: choose from ten wave themes, or select Nightmare mode for groups of random bosses. Both use the Horde counts, growth, rounds and rest settings. The round prepares before combat; defeated bodies remain. End run or retreat to stop.')
+  add(list,caption('Copy a sanitized support report to the clipboard and support-report.txt. Conversation history and private configuration are excluded.',22))
+  describe('Travelling together',table.concat({
+   L.text('Companions follow and fight automatically. During conversation you can ask them to stop or follow.'),
+   L.text('Queue multiple summons while loading. The panel closes when loading finishes and you stop browsing. Pausing stops loading.'),
+   L.text('Up / Down: select row. Left / Right: change setting. Enter: choose. Esc: back. Menu shortcut: close.'),
+   L.text('Use appearance arrows before summoning. Each copy keeps its own colours through recovery and travel. Restore resets only the next summon.'),
+   L.text('Choose Anca and Lacra’s profiles separately: Auto follows your save, On enables romance, Off uses normal dialogue. No cutscenes are played.'),
+   L.text('Horde has ten themes; Nightmare uses random boss groups. Both share counts, growth, rounds and rest. Enemies load before combat; defeated bodies remain.'),
+  },'\n\n'))
  end
  if not v.feedback then v.feedback=caption('',22);add(detail,v.feedback):SetPadding({Left=0,Top=20,Right=0,Bottom=0})end
  v.summary=caption('',23);v.summary:SetAutoWrapText(false);add(v.content,size(v.summary,1580,36)):SetPadding({Left=0,Top=18,Right=0,Bottom=0})
@@ -489,7 +518,7 @@ function M.toggle(pc)
   v.content=new('VerticalBox');fill(add(design,v.content)):SetPadding({Left=leftEdge,Top=92,Right=150,Bottom=88})
   -- Persistent footer, independent of scroll content and selected page.
   v.backButton=new('Button');v.backButton.IsFocusable=false
-  local label=caption('BACK',21);Theme.button(v.backButton,label,v.theme,false);Theme.font(label,v.theme,21);label:SetAutoWrapText(false)
+  local label=caption('BACK',21);v.backLabel=label;Theme.button(v.backButton,label,v.theme,false);themedFont(label,21);label:SetAutoWrapText(false)
   v.backButton.WidgetStyle.NormalPadding={Left=0,Top=0,Right=0,Bottom=0}
   v.backButton.WidgetStyle.PressedPadding={Left=0,Top=0,Right=0,Bottom=0}
   local footer=new('HorizontalBox');v.backButton:SetContent(footer);fill(footer.Slot):SetPadding({Left=0,Top=0,Right=0,Bottom=0})
@@ -516,7 +545,7 @@ function M.input(name)
  if v.capture then
   if name=='Escape'then back();return end
   local ok,why=Settings.bind(v.capture,name)
-  if ok then v.message='Saved '..name;v.capture=nil;bindingLabels(v) else v.message=why end
+  if ok then v.message=L.format('Saved {0}',name);v.capture=nil;bindingLabels(v) else v.message=why end
   return
  end
  if name=='Escape'then back();return end
@@ -547,6 +576,7 @@ local function readInput(v)
 end
 function M.tick()
  local v=view;if not v then return end
+ if v.languageRevision~=L.revision then v.dirty=true end
  if not liveView(v)or not AI.valid(v.host)or not v.host:IsActivated()then M.close();return end
  local horde=Horde.view()
  if v.page=='Horde'and horde.active and (horde.phase=='preparing'or horde.phase=='loading')then v.hordeCloseId=horde.id end
@@ -574,7 +604,7 @@ function M.tick()
  end
  local buttonHover,hoveredButton={},nil
  for i,b in ipairs(v.buttons)do
-  local hovered=b.setting and b.setting.max~=1 and b.widget:IsHovered()or b.click:IsHovered()
+  local hovered=b.setting and not b.setting.choices and b.setting.max~=1 and b.widget:IsHovered()or b.click:IsHovered()
   buttonHover[i]=hovered;if hovered then hoveredButton=i end
  end
  local hoveredRow=nil
