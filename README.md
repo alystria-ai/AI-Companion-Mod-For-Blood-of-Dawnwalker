@@ -6,7 +6,6 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 ## Features
 
-- Supports the separate [Rideable Mount Companions addon](https://github.com/alystria-ai/Rideable-Mount-Companions): ride native beasts, give commands and reuse this mod's conversations and context without another runtime.
 - Text and microphone conversations with nearby supported characters, voiced replies, subtitles, facial animation and gentle distance-based volume; talk privately or in a group with up to three distinct speakers.
 - Interface language selection for English, Simplified Chinese, Traditional Chinese, Spanish, Brazilian Portuguese, French, German, Russian, Japanese and Korean. Auto follows the game language where available. This is separate from the optional multilingual conversation voices.
 - Transparent conversation HUD, with an optional microphone-only display, a separate NPC-subtitle toggle, and a shared bottom-offset control for chat and voice UI. Native subtitles above the speaker are On by default and advance in short spoken phrases; the usual HUD remains selectable.
@@ -39,13 +38,11 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 ### What changed in 0.5.5
 
-- Added support for [Rideable Mount Companions](https://github.com/alystria-ai/Rideable-Mount-Companions), including creature conversations, commands, mounted camera preferences and native following and combat. Install the separate addon to ride beasts.
 - Native overhead subtitles follow spoken phrases and account for scaled beast bodies.
 - Fixed missing shortcuts after incomplete Lua updates, false battle comments when spawning a creature, and repeated beast repositioning during small nearby movements.
 
 - Post-battle comments can combine Coen's immediate exploration remark and collected loot into one reply. A replaced facial-animation layer no longer cancels the audio, and opening a pause menu does not expire the closing window.
 - Exploration replies now receive event-specific journal context and the preceding line from the same observation. Hidden objectives and unchosen endings stay excluded; a shared exploration graph is not treated as proof of a particular mission or landmark.
-- Mounted first-person support hides the borrowed rider pose's hands and gauntlets, restoring them in third person or on dismount.
 - Loading a save now clears battle, loot and exploration reaction cooldowns, so a previous attempt does not silence the newly loaded game. Ordinary menu use and code reloads preserve them.
 - Fixed automatic battle and loot reactions being discarded when their speaker connection closed an already-inactive microphone. Fresh events now wait through brief connection transitions and queue once.
 - Added ten interface languages, with separate UI language selection and translated menu controls and settings help.
@@ -259,7 +256,7 @@ This is a preview mod. Some roster entries, boss powers and area attacks still n
 
 ## For developers
 
-[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-052.md)
+[Build from source](docs/SOURCE-BUILD.md) · [How the mod works](docs/DEVELOPER-GUIDE.md) · [File structure](docs/FILE-STRUCTURE.md) · [Release notes](docs/RELEASE-055.md)
 
 The developer guide covers UE4SS discovery, Lua lipsync, companion AI, Convai connections, group chat, quest memory and adapting the approach to another game.
 
@@ -272,3 +269,5 @@ This is a source-available license, not an OSI-approved open-source license. Thi
 ### Subtitles above speakers
 
 **F5 > Settings > Subtitles above speakers** is On by default. Replies appear in short phrases as the character speaks, rather than a full paragraph, through the game's native overhead dialogue widget above the current speaking NPC. Captions follow group speaker changes and the game HUD's visibility. Turn this setting Off to use the usual subtitle HUD. **NPC subtitles** must be enabled, and **Hide chat boxes** still hides them. Text entry and microphone indicators keep their usual position.
+
+Optional companion addon: [Rideable Mount Companions](https://github.com/alystria-ai/Rideable-Mount-Companions).
