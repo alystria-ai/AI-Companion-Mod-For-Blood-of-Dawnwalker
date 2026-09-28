@@ -17,6 +17,7 @@ ai:register('creature', creaturePawn, {
     name = 'Wolf',
     context = 'An allied wolf companion, currently following on the ground.',
     silentReplies = false,
+    automaticReactions = false,
     localActionsOnly = false,
     actions = {'Follow', 'Stop Walking', 'Come Here', 'Attack Nearby Enemies', 'Look At Player', 'Leave'}
 })
@@ -43,6 +44,8 @@ The owning add-on retains following, collision, animation and mount controls. Se
 ## Commands without conversation
 
 Set `silentReplies = true` for an action-only actor. The helper disables Convai TTS and gates local audio, NPC subtitles and face frames for that target. Text entry and microphone capture remain available for player orders. This does not alter the normal companions or the user's HUD settings. Dynamic context disables follow-up questions and asks for supported structured actions only.
+
+Since main mod 0.5.6, set `automaticReactions = false` to exclude this actor from automatic battle, loot and exploration comments while retaining normal direct speech, subtitles and commands. Omit it or set it to true to retain the existing reaction behavior, subject to the player's global settings. The SDK validates a boolean and appends it to the registration record; older records default to true. The game checks it when selecting a reaction speaker, and the helper checks again before queuing an automatic request. It does not borrow camera control or toggle silent replies. Rideable Mount Companions uses this opt-out for all its speaking beasts.
 
 Multiple creatures can use the same Convai character ID. Their individual registration and current dynamic context still determine the target and available orders. Each command is bound to the selected actor instance and conversation generation. A cloud profile interprets intent; it cannot run arbitrary Lua or choose an unregistered action.
 

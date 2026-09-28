@@ -4,6 +4,18 @@ import {parseAddonManifest,AddonRegistry} from '../bridge/addon-registry.mjs';
 import {parseTarget} from '../bridge/protocol.mjs';
 const id='12345678-1234-1234-1234-123456789abc';
 const raw=`COMPANION-AI\t1\tdragon\t100\tr1\ndragon\tPawn World.Dragon\t3\tWorld\tPawn World.Coen\tDragon\t${id}\tFlying companion\nEND\tr1`;
+
+test('automatic-reaction opt-out preserves direct speech and actions',()=>{
+ assert.equal(parseAddonManifest(raw,'dragon',100000)[0].automaticReactions,true);
+ const directOnly=raw.replace('Flying companion\n','Flying companion\t0\t0\tFollow,Leave\t0\t0\n');
+ const registry=new AddonRegistry('.');registry.entries=parseAddonManifest(directOnly,'dragon',100000);
+ const profile=registry.profile({active:true,addon:'dragon',addonActor:'dragon',actor:'Pawn World.Dragon',addonInstance:'3'});
+ assert.equal(profile.automaticReactions,false);
+ assert.equal(profile.silentReplies,false);
+ assert.equal(profile.localActionsOnly,false);
+ assert.deepEqual(profile.actions,['Follow','Leave']);
+ for(const bad of ['false','2','0\textra'])assert.equal(parseAddonManifest(directOnly.replace('\t0\t0\nEND','\t0\t'+bad+'\nEND'),'dragon',100000),null);
+});
 test('add-on registrations reject stale, partial, invalid and duplicate records',()=>{
  assert.equal(parseAddonManifest(raw,'dragon',100000)?.[0].profileId,id);
  for(const invalid of [raw.replace('END\tr1','END\tr2'),raw.replace(id,'invalid'),raw.replace('dragon\t100','dragon\t1'),raw.replace('Flying companion','bad\tfield')])assert.equal(parseAddonManifest(invalid,'dragon',100000),null);

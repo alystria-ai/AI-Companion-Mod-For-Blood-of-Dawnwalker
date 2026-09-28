@@ -137,7 +137,7 @@ setInterval(async () => {
       const raw=await readFile(resolve(runtime,'ambient-message.tsv'),'utf8').catch(()=>'');
       const message=parseAmbientMessage(raw,target);
       if(message&&message.id!==lastAmbient){
-        const enabled=message.id.startsWith('battle-')?battleCommentsEnabled:message.id.startsWith('loot-')?lootCommentsEnabled:ambientEnabled;
+        const enabled=addons.profile(target)?.automaticReactions!==false&&(message.id.startsWith('battle-')?battleCommentsEnabled:message.id.startsWith('loot-')?lootCommentsEnabled:ambientEnabled);
         reactionDelivery.observe(message,target,!enabled?'disabled':microphone.enabled?'waiting-for-microphone':Date.now()-lastManual<5000?'waiting-after-manual-input':'ready');
         if(!enabled)lastAmbient=message.id;
         else if(!microphone.enabled&&Date.now()-lastManual>=5000){

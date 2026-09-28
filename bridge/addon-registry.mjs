@@ -13,10 +13,10 @@ export function parseAddonManifest(raw,fileId,now=Date.now()){
  if(lines.pop()!==`END\t${header[4]}`||lines.length>32)return null;
  const ids=new Set(),actors=new Set(),entries=[];
  for(const line of lines){
-  const [id,actor,actorInstance,world,player,name,profileId,context,cameraLease,silentReplies,actionList,localActionsOnly,...extra]=line.split('\t');
+  const [id,actor,actorInstance,world,player,name,profileId,context,cameraLease,silentReplies,actionList,localActionsOnly,automaticReactions,...extra]=line.split('\t');
   const actions=actionList===undefined?defaultActions:actionList===''?[]:actionList.split(',');
-  if(extra.length||(localActionsOnly!==undefined&&localActionsOnly!=='0'&&localActionsOnly!=='1')||(cameraLease!==undefined&&cameraLease!=='0'&&cameraLease!=='1')||(silentReplies!==undefined&&silentReplies!=='0'&&silentReplies!=='1')||actions.length>ADDON_ACTIONS.length||new Set(actions).size!==actions.length||actions.some(a=>!ADDON_ACTIONS.includes(a))||!token.test(id)||ids.has(id)||!actor||actor.length>512||!(/^(?:0x)?[0-9a-f]{1,32}$/i.test(actorInstance||''))||!world||world.length>512||!player||player.length>512||!name||name.length>100||!uuid.test(profileId)||context===undefined||context.length>2400||actors.has(actor))return null;
-  ids.add(id);actors.add(actor);entries.push({addon:fileId,id,actor,actorInstance,world,player,name,profileId,context,cameraLease:cameraLease==='1',silentReplies:silentReplies==='1'||localActionsOnly==='1',localActionsOnly:localActionsOnly==='1',actions});
+  if(extra.length||(automaticReactions!==undefined&&automaticReactions!=='0'&&automaticReactions!=='1')||(localActionsOnly!==undefined&&localActionsOnly!=='0'&&localActionsOnly!=='1')||(cameraLease!==undefined&&cameraLease!=='0'&&cameraLease!=='1')||(silentReplies!==undefined&&silentReplies!=='0'&&silentReplies!=='1')||actions.length>ADDON_ACTIONS.length||new Set(actions).size!==actions.length||actions.some(a=>!ADDON_ACTIONS.includes(a))||!token.test(id)||ids.has(id)||!actor||actor.length>512||!(/^(?:0x)?[0-9a-f]{1,32}$/i.test(actorInstance||''))||!world||world.length>512||!player||player.length>512||!name||name.length>100||!uuid.test(profileId)||context===undefined||context.length>2400||actors.has(actor))return null;
+  ids.add(id);actors.add(actor);entries.push({addon:fileId,id,actor,actorInstance,world,player,name,profileId,context,cameraLease:cameraLease==='1',silentReplies:silentReplies==='1'||localActionsOnly==='1',localActionsOnly:localActionsOnly==='1',automaticReactions:automaticReactions!=='0',actions});
  }
  return entries;
 }
@@ -36,11 +36,11 @@ export class AddonRegistry{
   }));
   const seen=new Set();this.entries=records.flat().filter(e=>{if(seen.has(e.actor))return false;seen.add(e.actor);return true;}).slice(0,128);
   for(const file of this.cached.keys())if(!files.includes(file))this.cached.delete(file);
-  return ['COMPANION-AI\t1\t'+Math.floor(now/1000),...this.entries.map(e=>[e.addon,e.id,e.actor,e.actorInstance,e.world,e.player,e.name,e.profileId,e.context,e.cameraLease?'1':'0',e.silentReplies?'1':'0',e.actions.join(','),e.localActionsOnly?'1':'0'].join('\t')),'END'].join('\n');
+  return ['COMPANION-AI\t1\t'+Math.floor(now/1000),...this.entries.map(e=>[e.addon,e.id,e.actor,e.actorInstance,e.world,e.player,e.name,e.profileId,e.context,e.cameraLease?'1':'0',e.silentReplies?'1':'0',e.actions.join(','),e.localActionsOnly?'1':'0',e.automaticReactions?'1':'0'].join('\t')),'END'].join('\n');
  }
  profile(target){
   if(!target.active||!target.addon||!target.addonActor)return null;
   const entry=this.entries.find(e=>e.addon===target.addon&&e.id===target.addonActor&&e.actor===target.actor&&e.actorInstance===target.addonInstance);
-  return entry?{key:'addon:'+entry.addon+':'+entry.id+':'+entry.profileId,id:entry.profileId,name:entry.name,kind:'main',gender:'',aliases:[],context:entry.context,silentReplies:entry.silentReplies,localActionsOnly:entry.localActionsOnly,actions:entry.actions}:null;
+  return entry?{key:'addon:'+entry.addon+':'+entry.id+':'+entry.profileId,id:entry.profileId,name:entry.name,kind:'main',gender:'',aliases:[],context:entry.context,silentReplies:entry.silentReplies,localActionsOnly:entry.localActionsOnly,automaticReactions:entry.automaticReactions,actions:entry.actions}:null;
  }
 }

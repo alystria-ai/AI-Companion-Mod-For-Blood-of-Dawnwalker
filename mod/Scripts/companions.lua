@@ -694,13 +694,17 @@ end
 local function registeredReaction(m)
  if not m.addonOwner or not ready(m)or m.board.bIsDead or m.stub:IsInCinematicMode()then return false end
  local e=Addons.identity(m.actor)
- return e and not e.silentReplies and not e.localActionsOnly and not e.cameraLease
+ return e and e.automaticReactions~=false and not e.silentReplies and not e.localActionsOnly and not e.cameraLease
+end
+local function allowsAutomaticReaction(m)
+ local e=valid(m.actor)and Addons.identity(m.actor)
+ return not e or e.automaticReactions~=false
 end
 function M.ambientSpeaker(randomChoice)
  if not valid(player)then return end
  local best,bestDistance;local candidates={}
  for _,m in pairs(members)do
-  if (conversationCandidate(m)or registeredReaction(m)and not m.board.bMainBehaviorSuspended)
+  if allowsAutomaticReaction(m)and (conversationCandidate(m)or registeredReaction(m)and not m.board.bMainBehaviorSuspended)
    and not m.stub:IsInCombat()and not m.board.Combat.bInCombat and not m.board:HasAnyUnbreakableActiveAction()then
    local d=distance(loc(m.actor),loc(player))
    if d<=1200 then candidates[#candidates+1]=m.actor;if not bestDistance or d<bestDistance then best=m.actor;bestDistance=d end end
@@ -716,7 +720,7 @@ function M.battleSpeaker()
  if not valid(player)then return end
  local candidates={}
  for _,m in pairs(members)do
-  if (m.definition.chat~=false or registeredReaction(m))and ready(m)and not m.board.bIsDead and not m.stub:IsInCinematicMode()
+  if allowsAutomaticReaction(m)and (m.definition.chat~=false or registeredReaction(m))and ready(m)and not m.board.bIsDead and not m.stub:IsInCinematicMode()
    and distance(loc(m.actor),loc(player))<=2000 then candidates[#candidates+1]=m.actor end
  end
  if #candidates>0 then return candidates[math.random(#candidates)]end

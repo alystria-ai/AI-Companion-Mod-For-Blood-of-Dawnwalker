@@ -23,12 +23,13 @@ function SDK.new(runtime,addon)
   assert(token(id),'Use a lowercase actor registration ID')
   assert(valid(actor),'Register a live pawn')
   assert(type(profile)=='table'and type(profile.characterId)=='string'and profile.characterId:match('^[%x%-]+$')and #profile.characterId==36,'A Convai character UUID is required')
+  assert(profile.automaticReactions==nil or type(profile.automaticReactions)=='boolean','automaticReactions must be a boolean')
   local old=self.actors[id]
   if not old or not valid(old.actor)or old.actor:GetAddress()~=actor:GetAddress()then self.lastActionRaw=read(actionPath,1024)end
   local same=old and valid(old.actor)and old.actor:GetAddress()==actor:GetAddress()
   local actions,seen={},{};assert(profile.actions==nil or type(profile.actions)=='table','Actions must be a list')
   for _,name in ipairs(profile.actions or defaultActions)do assert(allowedActions[name]and not seen[name],'Unsupported or duplicate action');seen[name]=true;actions[#actions+1]=name end
-  self.actors[id]={actor=actor,name=clean(profile.name or id,100),profile=profile.characterId,context=clean(profile.context,2400),silentReplies=profile.silentReplies==true or profile.localActionsOnly==true,localActionsOnly=profile.localActionsOnly==true,actions=actions,cameraLease=same and old.cameraLease or false,cameraRequestedAt=same and old.cameraRequestedAt or nil}
+  self.actors[id]={actor=actor,name=clean(profile.name or id,100),profile=profile.characterId,context=clean(profile.context,2400),automaticReactions=profile.automaticReactions~=false,silentReplies=profile.silentReplies==true or profile.localActionsOnly==true,localActionsOnly=profile.localActionsOnly==true,actions=actions,cameraLease=same and old.cameraLease or false,cameraRequestedAt=same and old.cameraRequestedAt or nil}
   self.lastUpdate=nil
  end
  function self:unregister(id)self.actors[id]=nil;self.lastUpdate=nil end
@@ -49,7 +50,7 @@ function SDK.new(runtime,addon)
    for id,e in pairs(self.actors)do
     local ok=pcall(function()
      if not valid(e.actor)or e.actor:IsActorBeingDestroyed()or not valid(e.actor:GetWorld())or e.actor:GetWorld():GetFullName()..'#'..tostring(e.actor:GetWorld():GetAddress())~=world then self.actors[id]=nil;return end
-     if count<32 then out[#out+1]=table.concat({id,clean(e.actor:GetFullName(),512),tostring(e.actor:GetAddress()),clean(world,512),clean(player,512),e.name,e.profile,e.context,e.cameraLease and '1'or '0',e.silentReplies and '1'or '0',table.concat(e.actions,','),e.localActionsOnly and '1'or '0'},'\t');count=count+1 end
+     if count<32 then out[#out+1]=table.concat({id,clean(e.actor:GetFullName(),512),tostring(e.actor:GetAddress()),clean(world,512),clean(player,512),e.name,e.profile,e.context,e.cameraLease and '1'or '0',e.silentReplies and '1'or '0',table.concat(e.actions,','),e.localActionsOnly and '1'or '0',e.automaticReactions and '1'or '0'},'\t');count=count+1 end
     end)
     if not ok then self.actors[id]=nil end
    end

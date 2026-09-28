@@ -25,7 +25,8 @@ public sealed class DialogueOverlay : Form {
     [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h,out Rect r);
     [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h,ref PointNative p);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
-    [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h,int id,uint modifiers,uint key);
+    [DllImport("user32.dll",SetLastError=true)] static extern bool RegisterHotKey(IntPtr h,int id,uint modifiers,uint key);
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr h,int id);
     [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h,int index);
     [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr h,int index,int value);
@@ -44,6 +45,32 @@ public sealed class DialogueOverlay : Form {
     ComposerKeys nativeMenuKeys;string nativeMenuSession="";bool menuRegistered,cameraRegistered,addonMenuRegistered,addonRideRegistered;long nativeMenuStamp;
     Keys addonMenuKey=Keys.F5,addonRideKey=Keys.F6;
     DateTime addonUiReadAt;bool addonMenuAvailable;
+    DateTime addonHotkeyRetry;int addonMenuError,addonRideError;
+    bool addonMenuDown,addonRideDown,addonPolling;
+    static bool KeyHeld(Keys key){return (GetAsyncKeyState((int)key)&0x8000)!=0;}
+    void UpdateMountHotkeys(bool eligible){
+        if(!eligible){
+            if(addonMenuRegistered)UnregisterHotKey(Handle,1850);
+            if(addonRideRegistered)UnregisterHotKey(Handle,1851);
+            addonMenuRegistered=addonRideRegistered=addonPolling=false;addonHotkeyRetry=DateTime.MinValue;
+            return;
+        }
+        if(DateTime.UtcNow>=addonHotkeyRetry){
+            addonHotkeyRetry=DateTime.UtcNow.AddSeconds(1);
+            if(!addonMenuRegistered){addonMenuRegistered=RegisterHotKey(Handle,1850,0x4004,(uint)addonMenuKey);addonMenuError=addonMenuRegistered?0:Marshal.GetLastWin32Error();}
+            if(!addonRideRegistered){addonRideRegistered=RegisterHotKey(Handle,1851,0x4004,(uint)addonRideKey);addonRideError=addonRideRegistered?0:Marshal.GetLastWin32Error();}
+        }
+        if(addonMenuRegistered&&addonRideRegistered){addonPolling=false;return;}
+        // Some overlays reserve Shift+F5. Poll only the two configured chords,
+        // only in focused gameplay, and only dispatch when registration failed.
+        bool shift=KeyHeld(Keys.ShiftKey)&&!KeyHeld(Keys.ControlKey)&&!KeyHeld(Keys.Menu)&&!KeyHeld(Keys.LWin)&&!KeyHeld(Keys.RWin);
+        bool menu=shift&&KeyHeld(addonMenuKey),ride=shift&&KeyHeld(addonRideKey);
+        if(addonPolling&&IsGame(GetForegroundWindow())){
+            if(menu&&!addonMenuDown&&!addonMenuRegistered)RequestMountMenu();
+            else if(ride&&!addonRideDown&&!addonRideRegistered)RequestMountMenu(true);
+        }
+        addonMenuDown=menu;addonRideDown=ride;addonPolling=true;
+    }
     bool NativeMenuOpen {get{return nativeMenuSession!="";}}
     string inputDiagnostic="";DateTime inputErrorAt;
     readonly System.Collections.Generic.Queue<string> inputHistory=new System.Collections.Generic.Queue<string>();
@@ -108,6 +135,7 @@ public sealed class DialogueOverlay : Form {
                     if(menu==addonMenuKey&&ride==addonRideKey)return;
                     if(addonMenuRegistered)UnregisterHotKey(Handle,1850);addonMenuRegistered=false;
                     if(addonRideRegistered)UnregisterHotKey(Handle,1851);addonRideRegistered=false;
+                    addonPolling=false;addonHotkeyRetry=DateTime.MinValue;
                     addonMenuKey=menu;addonRideKey=ride;
                 }
             }
@@ -224,11 +252,8 @@ public sealed class DialogueOverlay : Form {
             bool eligible=state.gameAlive&&(gameFocused||ours)&&!NativeMenuOpen;
             bool shortcuts=eligible&&!editing&&!opening;
             bool addonShortcut=shortcuts&&MountMenuAvailable();
-            if(addonShortcut&&!addonMenuRegistered)addonMenuRegistered=RegisterHotKey(Handle,1850,0x4004,(uint)addonMenuKey);
-            if(!addonShortcut&&addonMenuRegistered){UnregisterHotKey(Handle,1850);addonMenuRegistered=false;}
-            if(addonShortcut&&!addonRideRegistered)addonRideRegistered=RegisterHotKey(Handle,1851,0x4004,(uint)addonRideKey);
-            if(!addonShortcut&&addonRideRegistered){UnregisterHotKey(Handle,1851);addonRideRegistered=false;}
-            InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts);
+            UpdateMountHotkeys(addonShortcut);
+            InputDiagnostic("Game="+state.gameAlive+" focus="+gameFocused+" menu="+NativeMenuOpen+" editing="+editing+" opening="+opening+" shortcuts="+shortcuts+" mountReady="+addonMenuAvailable+" mountMenu="+addonMenuRegistered+" mountRide="+addonRideRegistered+" mountErrors="+addonMenuError+","+addonRideError);
             File.WriteAllText(Path.Combine(runtime,"mic-focus.txt"),(eligible?DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():0).ToString());
             if(shortcuts&&!cameraRegistered)cameraRegistered=RegisterHotKey(Handle,1844,0x4000,(uint)bindings["Camera"]);
             if(!shortcuts&&cameraRegistered){UnregisterHotKey(Handle,1844);cameraRegistered=false;}

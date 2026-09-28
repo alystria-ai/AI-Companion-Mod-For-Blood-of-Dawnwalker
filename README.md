@@ -36,6 +36,11 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 ## Changelog
 
+### What changed in 0.5.6
+
+- Addons can now exclude their creatures from automatic battle, loot and exploration comments while keeping direct conversations and commands. Existing companion settings are unchanged.
+- Improved reserved mount shortcut recovery and added addon startup diagnostics to Copy logs.
+
 ### What changed in 0.5.5
 
 - Native overhead subtitles follow spoken phrases and account for scaled beast bodies.
@@ -104,7 +109,7 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.5](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.5)
+Windows · Game 1.05 · [Latest release: 0.5.6](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.6)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
 
@@ -116,10 +121,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.5/DawnwalkerConvai-0.5.5-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 

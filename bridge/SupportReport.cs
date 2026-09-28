@@ -39,7 +39,7 @@ public sealed class SupportReport {
         return value.Trim();
     }
     public static string Build(string directory){
-        var report=new StringBuilder("AI NPC Companions System 0.4 development diagnostic report\r\n");
+        var report=new StringBuilder("AI NPC Companions System diagnostic report\r\n");
         report.AppendLine("UTC: "+DateTime.UtcNow.ToString("o"));
         report.AppendLine("Windows: "+Environment.OSVersion.Version+"; 64-bit process: "+Environment.Is64BitProcess);
         report.AppendLine("Recent diagnostic tails only. No chat history, configuration or recordings included.");
@@ -55,7 +55,10 @@ public sealed class SupportReport {
             if(Path.IsPathRooted(mod)){
                 string log=Tail(Path.GetFullPath(Path.Combine(mod,"../../UE4SS.log")),65536);
                 report.AppendLine("\r\n--- UE4SS: recent mod messages ---");
-                foreach(var line in log.Split('\n'))if(line.Contains("DawnwalkerConvai")||line.Contains("Dawnwalker Companions"))report.AppendLine(Sanitize(line));
+                foreach(var line in log.Split('\n'))if(line.Contains("DawnwalkerConvai")||line.Contains("Dawnwalker Companions")||line.Contains("CreatureCompanionMounts"))report.AppendLine(Sanitize(line));
+                report.AppendLine("\r\n--- Mount addon status ---");
+                try{report.AppendLine(Sanitize(Tail(Path.GetFullPath(Path.Combine(mod,"../CreatureCompanionMounts/runtime/status.txt")),4096)));}
+                catch{report.AppendLine("Mount addon status unavailable.");}
             }
         }catch{report.AppendLine("UE4SS log excerpt unavailable.");}
         return report.ToString();

@@ -2,6 +2,13 @@
 
 Player-facing history for AI NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.6: September 29, 2026
+
+- Added an optional per-actor automaticReactions flag to the shared addon API. Addons can opt out of battle, loot and exploration comments without disabling direct speech, commands or changing global preferences. Older registrations retain their behavior.
+- Kept passive-pet spawning, protection and following inside Rideable Mount Companions instead of adding a pet-specific dependency to the main service.
+- Excluded addon creatures from automatic battle, loot and exploration replies. Direct beast conversations remain available.
+- Added a fallback for reserved mount shortcuts and included mount startup errors in support reports.
+
 ## 0.5.5: September 27, 2026
 
 - Settled beasts tolerate nearby steps and circling. They resume following after a meaningful move away, independently of human companions' quicker departure threshold.

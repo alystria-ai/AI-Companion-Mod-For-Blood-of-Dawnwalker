@@ -44,10 +44,10 @@ function M.refresh(pc)
  registryStamp=tonumber(h[3]);local cameraCandidates={}
  for i=2,math.min(#lines-1,129)do
   local r=fields(lines[i])
-  if (#r==9 or #r==10 or #r==12 or #r==13)and(r[10]==nil or r[10]=='0'or r[10]=='1')and(r[11]==nil or r[11]=='0'or r[11]=='1')and(r[13]==nil or r[13]=='0'or r[13]=='1')and r[5]==worldName and r[6]==playerName then
+  if (#r==9 or #r==10 or #r==12 or #r==13 or #r==14)and(r[10]==nil or r[10]=='0'or r[10]=='1')and(r[11]==nil or r[11]=='0'or r[11]=='1')and(r[13]==nil or r[13]=='0'or r[13]=='1')and(r[14]==nil or r[14]=='0'or r[14]=='1')and r[5]==worldName and r[6]==playerName then
    local key=r[3]..'#'..r[4]
    local actions={};for action in(r[12]or'Follow,Stop Walking,Look At Player,Leave'):gmatch('[^,]+')do actions[action]=true end
-   local entry={name=r[7],definition='',chat=true,addon=r[1],addonActor=r[2],addonInstance=r[4],profileId=r[8],actorName=r[3],world=worldName,player=playerName,cameraLease=r[10]=='1',silentReplies=r[11]=='1',localActionsOnly=r[13]=='1',actions=actions}
+   local entry={name=r[7],definition='',chat=true,addon=r[1],addonActor=r[2],addonInstance=r[4],profileId=r[8],actorName=r[3],world=worldName,player=playerName,cameraLease=r[10]=='1',silentReplies=r[11]=='1',localActionsOnly=r[13]=='1',automaticReactions=r[14]~='0',actions=actions}
    entries[key]=entry
    if entry.cameraLease then
     local old=previous[key];entry.actor=old and old.actor
