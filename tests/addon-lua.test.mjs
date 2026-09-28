@@ -11,7 +11,9 @@ test('add-on actor identity rejects a replacement world even if its UObject name
  local world={IsValid=function()return true end,GetFullName=function()return 'World'end,GetAddress=function()return 1 end}
  local function pawn(name,address)return {IsValid=function()return true end,GetFullName=function()return 'Pawn '..name end,GetAddress=function()return address end,GetWorld=function()return world end}end
  local pc={IsValid=function()return true end,Pawn=pawn('Coen',2)};local dragon=pawn('Dragon',3)
- M.refresh(pc);assert(M.identity(dragon).name=='Dragon')
+ M.refresh(pc);assert(M.identity(dragon).name=='Dragon'and M.identity(dragon).automaticReactions==true)
+ registry=registry:gsub('context\\nEND','context\\t0\\t0\\tFollow\\t0\\t0\\nEND');now=101;M.refresh(pc)
+ assert(M.identity(dragon).automaticReactions==false and not M.identity(dragon).silentReplies)
  world.GetAddress=function()return 8 end;assert(M.identity(dragon)==nil,'a stale registry must not bind a replacement world')
  now=101;M.refresh(pc);assert(M.identity(dragon)==nil)
 `));
@@ -52,7 +54,7 @@ test('mounted SDK waits for a fresh bound acknowledgement and republishes lease 
  local pc=pawn('Controller',8);pc.Pawn=pawn('Coen',2)
  local dragon=pawn('Dragon',3);local ai=SDK.new('.','dragon');local profile={name='Dragon',characterId='12345678-1234-1234-1234-123456789abc'}
  ai:register('dragon',dragon,profile);ai:update(pc);assert(writes==1)
- ai:setCameraLease('dragon',true);ai:update(pc);assert(writes==2 and files['./addon-dragon.tsv']:find('\\t1\\t0\\tFollow,Stop Walking,Look At Player,Leave\\t0\\nEND\\tr100-2',1,true))
+ ai:setCameraLease('dragon',true);ai:update(pc);assert(writes==2 and files['./addon-dragon.tsv']:find('\\t1\\t0\\tFollow,Stop Walking,Look At Player,Leave\\t0\\t1\\nEND\\tr100-2',1,true))
  local function ack(stamp,w,p,a)return 'COMPANION-CAMERA\\t1\\t'..stamp..'\\tdragon\\tdragon\\t'..(a or 3)..'\\t'..(w or'World#1')..'\\t'..(p or'Pawn Coen#2')end
  files['./addon-camera-ready.tsv']=ack(100);assert(not ai:cameraReady('dragon'),'prior same-second ack must not grant a new request')
  now=101;files['./addon-camera-ready.tsv']=ack(now);assert(ai:cameraReady('dragon'))
