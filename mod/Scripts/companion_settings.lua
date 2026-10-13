@@ -14,6 +14,7 @@ M.schema={
  {id='AttackFrequency',label='Attack frequency',default=180,min=50,max=250,step=10,suffix='%',help='Uses the native attack-speed attribute. Higher values shorten attacks; native AI still chooses when and what to attack. This is not a forced attack timer.'},
  {id='AncaRomance',label='Anca romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
  {id='LacraRomance',label='Lacra romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
+ {id='CrakeRomance',label='Crake romance profile',group='Conversations',default=0,min=-1,max=1,step=1,romance=true,help='Auto follows romance history in the loaded save. On always uses the romantic conversation profile. Off always uses the normal profile, even after romance is unlocked. This does not change quests or play cutscenes.'},
  {id='LootComments',label='React to collected loot',group='Conversations',default=1,min=0,max=1,step=1,help='One random nearby companion may comment after you finish collecting a batch of items. Ordinary loot has a 20% chance and at least ten minutes between comments. Newly acquired Legendary weapons or clothing bypass that chance, with a two-minute special-item cooldown. Storage withdrawals stay silent. Requires the conversation Runtime.'},
  {id='BattleComments',label='React to battles',group='Conversations',default=1,min=0,max=1,step=1,help='One companion comments when a battle begins and again after it ends. The closing comment can include collected loot. A ten-minute cooldown begins when the battle ends. Manual conversations take priority.'},
  {id='AmbientComments',label='React to Coen’s observations',group='Conversations',default=1,min=0,max=1,step=1,help='A nearby talking companion can briefly respond after Coen finishes a spoken exploration observation. Uses the actual solo game line and relevant revealed journal context, excluding the always-tracked family quest. No random roll; at least three minutes between reactions. A post-fight remark can join the battle closing reply. Excludes conversations with other characters and stays quiet during combat, cutscenes and manual chat. Requires the conversation Runtime.'},
@@ -89,11 +90,11 @@ function M.repairConfig(text)
  return changed and table.concat(rows,'\n')or text,values
 end
 local romanceStory={}
-function M.setRomanceStory(anca,lacra)
- romanceStory={AncaRomance=anca==true,LacraRomance=lacra==true}
+function M.setRomanceStory(anca,lacra,crake)
+ romanceStory={AncaRomance=anca==true,LacraRomance=lacra==true,CrakeRomance=crake==true}
 end
 function M.effective(id)
- if id=='AncaRomance'or id=='LacraRomance'then
+ if id=='AncaRomance'or id=='LacraRomance'or id=='CrakeRomance'then
   local value=M.values[id]
   return (value==1 or value==0 and romanceStory[id])and 1 or 0
  end

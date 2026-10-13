@@ -1,5 +1,7 @@
 import {createHash} from 'node:crypto';
+// The shared-romance scene is Anca and Lacra only; Crake has a profile but no rival.
 const keys=['anca','lacra'];
+const profileKeys=['anca','lacra','marat'];
 export function hasSharedRomance(state,now=Date.now()){
  return !!state&&now-state.updated<=10000&&now>=state.updated-1000&&keys.every(key=>{
   const value=state.characters?.[key];return value?.story===true||value?.completed>0;
@@ -16,13 +18,13 @@ export function parseRelationships(raw,now=Date.now()){
  const [header,...lines]=raw.trim().split(/\r?\n/),[kind,version,stamp,epoch,romanceProfiles]=header.split('\t');
  if(kind!=='RELATIONSHIPS'||!['2','3'].includes(version)||!/^\d+$/.test(stamp)||Math.abs(now-Number(stamp)*1000)>10000||(version==='2'&&!['0','1'].includes(romanceProfiles)))throw Error('Relationship snapshot unavailable');
  if(epoch==='unavailable')return {updated:Number(stamp)*1000,characters:{}};
- if(!/^\d+$/.test(epoch)||lines.length!==2)throw Error('Incomplete relationship snapshot');
+ if(!/^\d+$/.test(epoch)||lines.length<2||lines.length>profileKeys.length)throw Error('Incomplete relationship snapshot');
  const characters={};
  for(const line of lines){
   const [key,story,count,...tail]=line.split('\t');
   const enabled=version==='3'?tail[0]:romanceProfiles;
   const extra=version==='3'?tail.slice(1):tail;
-  if(!keys.includes(key)||characters[key]||extra.length||!['0','1'].includes(enabled)||!['0','1'].includes(story)||!/^\d+$/.test(count)||Number(count)>100000)throw Error('Invalid relationship snapshot');
+  if(!profileKeys.includes(key)||characters[key]||extra.length||!['0','1'].includes(enabled)||!['0','1'].includes(story)||!/^\d+$/.test(count)||Number(count)>100000)throw Error('Invalid relationship snapshot');
   characters[key]={story:story==='1',completed:Number(count),unlocked:enabled==='1'};
  }
  return {updated:Number(stamp)*1000,characters};
@@ -30,7 +32,7 @@ export function parseRelationships(raw,now=Date.now()){
 export function relationshipKnowledge(base,state,npc,now=Date.now()){
  if(!state||now-state.updated>10000)return base;
  const characters=state.characters||{},own=characters[npc],ledger=[...(base.ledger||[])],facts=[...base.facts];
- for(const key of keys){const value=characters[key];if(!value)continue;
+ for(const key of profileKeys){const value=characters[key];if(!value)continue;
   if(value.story)ledger.push({id:'relationship:'+key+':story',text:'Story romance completed'});
   if(value.completed)ledger.push({id:'relationship:'+key+':encounters',text:String(value.completed),counter:value.completed});
  }

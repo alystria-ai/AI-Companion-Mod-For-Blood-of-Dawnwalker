@@ -10,7 +10,7 @@ return function(root)
   rows[#rows+1]='CATALOG '..path..' '..#assets
   for i=1,math.min(#assets,150000)do
    local a=assets[i]:get();local name=a.AssetName:ToString();local package=a.PackageName:ToString();local lower=package:lower()
-   if lower:find('romanc',1,true)or lower:find('kiss',1,true)or lower:find('sq717',1,true)or lower:find('sq721',1,true)then
+   if lower:find('romanc',1,true)or lower:find('kiss',1,true)or lower:find('sq717',1,true)or lower:find('sq721',1,true)or lower:find('closer',1,true)or lower:find('crake',1,true)or lower:find('marat',1,true)then
     rows[#rows+1]='ASSET\t'..package..'.'..name
    end
   end
@@ -30,7 +30,7 @@ return function(root)
    local entries=list.GameplayTagList
    for i=1,math.min(#entries,100000)do
     local name=entries[i].Tag:ToString();local lower=name:lower()
-    if lower:find('romanc',1,true)or lower:find('kiss',1,true)then tags[name]=true end
+    if lower:find('romanc',1,true)or lower:find('kiss',1,true)or lower:find('crake',1,true)or lower:find('marat',1,true)or lower:find('closer',1,true)then tags[name]=true end
    end
    return #entries
   end)end

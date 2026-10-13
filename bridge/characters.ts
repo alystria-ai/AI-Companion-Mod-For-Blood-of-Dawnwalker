@@ -1,7 +1,7 @@
 export type Profile={key:string;id:string;romanceId?:string;name:string;kind:'main'|'generic';gender:string;aliases:string[]};
 export type Relationships=Record<string,{story:boolean;completed:number;unlocked:boolean}>;
 export function profileId(profile:Profile|undefined,relationships?:Relationships){
- return profile&&(['anca','lacra'].includes(profile.key)&&relationships?.[profile.key]?.unlocked&&profile.romanceId||profile.id);
+ return profile&&(['anca','lacra','marat'].includes(profile.key)&&relationships?.[profile.key]?.unlocked&&profile.romanceId||profile.id);
 }
 export function profileForId(profiles:Profile[],id:string){return profiles.find(p=>p.id===id||p.romanceId===id);}
 export type Identity={actor:string;actorClass:string;name?:string;definition?:string;bodyType?:string;voiceTag?:string};

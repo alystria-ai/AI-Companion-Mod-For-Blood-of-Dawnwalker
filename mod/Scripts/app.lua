@@ -926,7 +926,7 @@ if config.AutoStartConvai then LoopAsync(1000,function()
     end
     return false
 end)end
-safe(function() status='v0.5.5: companions, conversations and horde mode';publish();log(status) end)
+safe(function() status='v0.5.7: companions, conversations and horde mode';publish();log(status) end)
 -- One dispatcher owns camera and application work. A lost UE4SS callback must
 -- not leave either path permanently marked pending.
 local partyElapsed,workElapsed=0,0

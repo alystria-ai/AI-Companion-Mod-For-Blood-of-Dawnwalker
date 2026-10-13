@@ -389,7 +389,7 @@ render=function()
    Player='Optional player conveniences, all Off by default. Abilities keep their learned levels and native costs. Auto-loot only runs outside combat and skips locks and theft.',
    Following='Adjust how close companions gather behind Coen and how much space they leave each other. Changes apply on the next journey; stationary companions keep their current spots.',
    Companions='These settings affect summoned allies, not enemies. Native AI still chooses attacks and powers. Fallen companions recover automatically after 3 seconds out of combat.',
-   Conversations='Anca and Lacra have independent profile choices. HUD controls affect mod conversations only. Hiding chat boxes takes priority over NPC subtitles; spoken replies continue.',
+   Conversations='Each romance profile has an independent choice. HUD controls affect mod conversations only. Hiding chat boxes takes priority over NPC subtitles; spoken replies continue.',
    Camera='Field of view and camera offsets apply while first-person mode is On. Native dialogue and cutscene cameras retain control when needed.',
    Horde='Normal Horde counts exclude additional bosses. Nightmare is a separate mode: starting enemies plus additional bosses determines the number of bosses fighting together per round. Growth adds bosses each round, levels sets round count, and timeout sets rest between rounds. The starting-wave selector only affects normal Hordes. Changes apply to new runs.'
   }
@@ -488,7 +488,7 @@ render=function()
    L.text('Queue multiple summons while loading. The panel closes when loading finishes and you stop browsing. Pausing stops loading.'),
    L.text('Up / Down: select row. Left / Right: change setting. Enter: choose. Esc: back. Menu shortcut: close.'),
    L.text('Use appearance arrows before summoning. Each copy keeps its own colours through recovery and travel. Restore resets only the next summon.'),
-   L.text('Choose Anca and Lacra’s profiles separately: Auto follows your save, On enables romance, Off uses normal dialogue. No cutscenes are played.'),
+   L.text('Choose each romance profile separately: Auto follows your save, On enables romance, Off uses normal dialogue. No cutscenes are played.'),
    L.text('Horde has ten themes; Nightmare uses random boss groups. Both share counts, growth, rounds and rest. Enemies load before combat; defeated bodies remain.'),
   },'\n\n'))
  end

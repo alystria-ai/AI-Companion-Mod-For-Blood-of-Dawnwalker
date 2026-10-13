@@ -2,6 +2,11 @@
 
 Player-facing history for AI NPC Companions System. Published releases and development builds are labelled separately. Version numbers follow the original packages: the release before 0.5 is **0.30.9**.
 
+## 0.5.7: October 13, 2026
+
+- Added a Crake romance conversation profile with its own Auto, On and Off setting. Auto turns it on once you choose the intimate ending of his quest *A Closer Look*; On and Off always work. It changes conversation only and plays no cutscene.
+- The helper no longer stops talking for every character when a configuration file is damaged. It names the damaged file and line in the log, sets a damaged `runtime/convai-config.json` aside as `.broken-<time>` and carries on with the built-in defaults, and survives unexpected errors in a single request.
+
 ## 0.5.6: September 29, 2026
 
 - Added an optional per-actor automaticReactions flag to the shared addon API. Addons can opt out of battle, loot and exploration comments without disabling direct speech, commands or changing global preferences. Older registrations retain their behavior.

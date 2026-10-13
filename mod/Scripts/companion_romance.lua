@@ -3,7 +3,38 @@ local M={}
 local AI=require('ai_state')
 local Settings=require('companion_settings')
 local facts={anca='q.s.721.fact.anca_romance',lacra='q.s.717.fact.lacra_romance'}
+local order={'anca','lacra','marat'}
+local settingIds={anca='AncaRomance',lacra='LacraRomance',marat='CrakeRomance'}
 local system,instance,lastLookup=nil,nil,0
+-- Crake's romance has no dedicated story fact. It is the third ending of the
+-- quest "A Closer Look" (asset sq713_After_Tantari: "we spent some intimate time
+-- together"), so it is read from that quest's saved ChosenQuestEnding. The quest is
+-- matched by its asset GUID because its title is localized. Two later-chapter facts
+-- that name the romance are accepted as well.
+local crakeQuestId={2080704471,1130753160,1120068286,1871392165}
+local crakeRomanceEnding=3
+local crakeFacts={'q.m.302.fact.marat_romanced','q.m.401.fact.outcome.marat.romance'}
+local crakeQuest,crakeEpoch,crakeScan=nil,nil,0
+local function crakeEnding(epoch)
+ if crakeEpoch~=epoch then crakeQuest,crakeEpoch,crakeScan=nil,epoch,0 end
+ if not AI.valid(crakeQuest)then
+  if os.time()-crakeScan<5 then return 0 end;crakeScan=os.time()
+  for _,quest in ipairs(FindAllOf('Quest')or {})do
+   if AI.valid(quest)and not quest:GetFullName():find('/Game/',1,true)then
+    local ok,match=pcall(function()local id=quest.ID;return id.A==crakeQuestId[1]and id.B==crakeQuestId[2]and id.C==crakeQuestId[3]and id.D==crakeQuestId[4]end)
+    if ok and match then crakeQuest=quest;break end
+   end
+  end
+ end
+ if not AI.valid(crakeQuest)then return 0 end
+ local ok,ending=pcall(function()return crakeQuest.ChosenQuestEnding end)
+ return ok and tonumber(ending)or 0
+end
+local function crakeStory(db,epoch)
+ if crakeEnding(epoch)==crakeRomanceEnding then return true end
+ for _,tag in ipairs(crakeFacts)do if db:FactGetInt({TagName=FName(tag)})==1 then return true end end
+ return false
+end
 local function database(pc)
  if not AI.playerReady(pc)then return end
  local current=AI.find('/Script/Engine.Default__GameplayStatics'):GetGameInstance(pc)
@@ -28,22 +59,25 @@ end
 local function historyTag(key)return 'mod.dawnwalkerconvai.relationship.'..key..'.completed'end
 function M.read(pc)
  local db=database(pc)
- if not db then Settings.setRomanceStory(false,false);return end
+ if not db then Settings.setRomanceStory(false,false,false);return end
  local result={epoch=tostring(db:GetAddress()),characters={}}
- for key,tag in pairs(facts)do
-  local story=db:FactGetInt({TagName=FName(tag)})==1
+ for _,key in ipairs(order)do
+  local tag=facts[key]
+  local story
+  if tag then story=db:FactGetInt({TagName=FName(tag)})==1 else story=crakeStory(db,result.epoch)end
   local completed=math.max(0,math.min(100000,db:FactGetInt({TagName=FName(historyTag(key))})))
   result.characters[key]={story=story,completed=completed,unlocked=false}
  end
- Settings.setRomanceStory(result.characters.anca.story or result.characters.anca.completed>0,result.characters.lacra.story or result.characters.lacra.completed>0)
- for key,value in pairs(result.characters)do value.unlocked=Settings.effective(key=='anca'and 'AncaRomance'or 'LacraRomance')==1 end
+ local c=result.characters
+ Settings.setRomanceStory(c.anca.story or c.anca.completed>0,c.lacra.story or c.lacra.completed>0,c.marat.story or c.marat.completed>0)
+ for key,value in pairs(c)do value.unlocked=Settings.effective(settingIds[key])==1 end
  return result,db
 end
 function M.snapshot(pc)
  local state=M.read(pc)
  if not state then return 'RELATIONSHIPS\t3\t'..os.time()..'\tunavailable\n'end
  local rows={'RELATIONSHIPS\t3\t'..os.time()..'\t'..state.epoch}
- for _,key in ipairs({'anca','lacra'})do local value=state.characters[key]
+ for _,key in ipairs(order)do local value=state.characters[key]
   rows[#rows+1]=key..'\t'..(value.story and '1'or '0')..'\t'..value.completed..'\t'..(value.unlocked and '1'or '0')
  end
  return table.concat(rows,'\n')..'\n'

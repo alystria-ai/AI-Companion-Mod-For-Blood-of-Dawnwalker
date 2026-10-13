@@ -17,6 +17,11 @@ import {ActionQueue,parseQuests,activeQuestContext} from './game-context.mjs';
 import {knowledge as questKnowledge,recipient} from './quest-knowledge.mjs';
 import {parseRelationships,relationshipKnowledge,relationshipProfiles,hasSharedRomance,groupRomanceContext} from './relationships.mjs';
 import {battleContext} from './battle-context.mjs';
+import {loadJsonFile} from './json-file.mjs';
+// stderr is captured in runtime/webview-errors.log and the support report. One
+// failed request or timer must not take talk down for every character.
+process.on('uncaughtException',error=>console.error('Bridge error (continuing): '+(error?.stack||error)));
+process.on('unhandledRejection',error=>console.error('Bridge rejection (continuing): '+(error?.stack||error)));
 let relationships=null;
 const knowledge=(snapshot,npc)=>{
  const base=relationshipKnowledge(questKnowledge(snapshot,npc),relationships,npc);
@@ -38,7 +43,7 @@ let microphone={enabled:false,id:'initial',generation:0};let lastMicFocus=0,last
 const actionQueue=new ActionQueue();let questMemory=null,lastQuestRead=0,lastMemoryReport='';
 const textRequests=new TextRequests();
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const romanceVariants=JSON.parse(await readFile(resolve(root,'characters/romance-config.json'),'utf8').catch(()=>'{}'));
+const romanceVariants=await loadJsonFile(resolve(root,'characters/romance-config.json'),'characters/romance-config.json',{});
 const bundledConfig=JSON.parse(process.env.DAWNWALKER_DEFAULT_CONFIG||'{}');delete process.env.DAWNWALKER_DEFAULT_CONFIG;
 const runtime = process.env.DAWNWALKER_RUNTIME || resolve(root, 'runtime');
 const addons=new AddonRegistry(runtime);
@@ -71,7 +76,7 @@ function conversationFor(view,index){
  return {...result,followUpQuestions:!external.silentReplies&&result.followUpQuestions,revision:result.revision+':addon:'+external.key+':'+external.silentReplies+':'+external.actions.join(',')+':'+external.context,text:mode+'\n\nContext from the character owning mod: '+external.context};
 }
 await mkdir(runtime, {recursive:true});
-const companions=new Companions(runtime,JSON.parse(await readFile(resolve(root,'characters/companion-config.json'),'utf8')));
+const companions=new Companions(runtime,await loadJsonFile(resolve(root,'characters/companion-config.json'),'characters/companion-config.json',{version:1,limit:0,damageMultiplier:1,characters:[]}));
 await companions.init();setInterval(()=>companions.tick(),500);
 const token = randomBytes(32).toString('hex');
 const port = Number(process.env.DAWNWALKER_PORT || 32123), origin = `http://127.0.0.1:${port}`;
@@ -172,7 +177,7 @@ const server=http.createServer(async(req,res)=>{
       catch(e){res.writeHead(409).end(e.message);}return;
     }
     if(req.method==='GET' && path==='/config') {
-      const config={...bundledConfig,...JSON.parse(await readFile(resolve(runtime,'convai-config.json'),'utf8').catch(()=>'{}'))};
+      const config={...bundledConfig,...await loadJsonFile(resolve(runtime,'convai-config.json'),'runtime/convai-config.json',{},{quarantine:true})};
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify(relationshipProfiles(config,romanceVariants)));return;
     }
     if(req.method==='GET' && path==='/group-context') {

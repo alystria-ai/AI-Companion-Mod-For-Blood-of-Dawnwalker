@@ -36,6 +36,11 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 ## Changelog
 
+### What changed in 0.5.7
+
+- Added a Crake romance conversation profile with its own Auto, On and Off setting. Auto turns it on after the intimate ending of *A Closer Look*; it changes conversation only.
+- A damaged configuration file no longer stops talk for every character. The helper names the file and line in the log and carries on.
+
 ### What changed in 0.5.6
 
 - Addons can now exclude their creatures from automatic battle, loot and exploration comments while keeping direct conversations and commands. Existing companion settings are unchanged.
@@ -109,7 +114,7 @@ Talk to supported characters through text or voice, with spoken replies, subtitl
 
 [Full version history](CHANGELOG.md), including previous releases and development milestones.
 
-Windows · Game 1.05 · [Latest release: 0.5.6](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.6)
+Windows · Game 1.05 · [Latest release: 0.5.7](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/tag/v0.5.7)
 
 [Videos and updates on the Alystria AI YouTube channel](https://www.youtube.com/@AlystriaAI)
 
@@ -121,10 +126,10 @@ Get the mod from the [GitHub Releases page](https://github.com/alystria-ai/AI-Co
 
 | Download | What's inside |
 | --- | --- |
-| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Complete.zip) | Recommended: all player files in one download |
-| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Scripts.zip) | The Lua game scripts |
-| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Runtime.zip) | Everything else needed to run the mod |
-| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.6/DawnwalkerConvai-0.5.6-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
+| [Complete ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.7/DawnwalkerConvai-0.5.7-Complete.zip) | Recommended: all player files in one download |
+| [Scripts ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.7/DawnwalkerConvai-0.5.7-Scripts.zip) | The Lua game scripts |
+| [Runtime ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.7/DawnwalkerConvai-0.5.7-Runtime.zip) | Everything else needed to run the mod |
+| [Multilingual voices ZIP](https://github.com/alystria-ai/AI-Companion-Mod-For-Blood-of-Dawnwalker/releases/download/v0.5.7/DawnwalkerConvai-0.5.7-Multilingual.zip) | Optional character copies with Azure multilingual voices; Russian, Spanish and French tested |
 
 **Updating:** install Complete or both matching Scripts and Runtime packages, then reapply the matching Multilingual pack if you use it. Restart the game after updating.
 
@@ -209,6 +214,7 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | Attack frequency | 180% | Adjusts the native attack-speed attribute so attacks finish faster. Native AI still chooses when to attack and which moves to use. |
 | Anca romance profile | Auto | Auto follows your save. On always uses her romantic profile; Off always uses her normal profile, even after unlocking romance. |
 | Lacra romance profile | Auto | The same Auto, On and Off choices, independent of Anca. |
+| Crake romance profile | Auto | The same choices for Crake. Auto turns on after you choose the intimate ending of his quest *A Closer Look*. On or Off always works. |
 | Interface language | Auto | Select English, Simplified Chinese, Traditional Chinese, Spanish, Brazilian Portuguese, French, German, Russian, Japanese or Korean. Auto follows the game language where available, with a system-language fallback. Changes the mod interface, not character voices. |
 | React to battles | On | One nearby companion can comment at the start and after the end of a fight. The ten-minute cooldown begins at combat end and applies to the next battle, not to the paired closing line. Loading a save clears reaction cooldowns. The closing line waits briefly for looting and Coen's immediate exploration remark, then combines them into one response. Manual chat and cutscenes take priority. |
 | React to collected loot | On | Waits for six seconds without inventory changes, then one random nearby companion can comment on the batch. Ordinary items have a 20% chance and a ten-minute minimum gap. New Legendary-tier weapons or clothing bypass that chance, with a separate two-minute minimum gap. Storage withdrawals are excluded, and unrelated automatic reactions stay at least 30 seconds apart. A battle's own opening and closing form one pair. |
@@ -231,7 +237,7 @@ Starting a Horde resumes the game for loading and closes the panel when the wave
 | Bosses per level | 1 | Extra bosses in each Horde wave. In Nightmare this adds to the number of bosses fighting together per round. |
 | Horde timeout | 10 seconds | Rest before the next wave. The countdown pauses with the game and gives way to conversation subtitles. |
 
-Relationship management uses the **Anca romance profile** and **Lacra romance profile** settings shown in the menu. These change conversation profiles only. They do not complete quests, invent past encounters or play cutscenes. Auto rechecks relationship history when you load a save. Your explicit On or Off choice is saved and takes priority over that history.
+Relationship management uses the **Anca romance profile**, **Lacra romance profile** and **Crake romance profile** settings shown in the menu. These change conversation profiles only. They do not complete quests, invent past encounters or play cutscenes. Auto rechecks relationship history when you load a save. Your explicit On or Off choice is saved and takes priority over that history.
 
 Fallen companions recover automatically after 3 seconds out of combat. Recovery is always enabled, with no toggle to configure.
 
